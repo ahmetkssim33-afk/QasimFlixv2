@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Qasimflix — Dizi & Film İzle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0f;--bg2:#111118;--surface:rgba(255,255,255,0.05);
+  --border:rgba(255,255,255,0.08);--accent:#e50914;--accent2:#f40612;
+  --text:#ffffff;--muted:#b3b3b3;--muted2:#666;
+  --font:'DM Sans',sans-serif;--font-display:'Bebas Neue',sans-serif;
+  --mono:'DM Mono',monospace;--nav-h:64px;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);overflow-x:hidden;scrollbar-width:thin;scrollbar-color:var(--muted2) transparent}
+body::-webkit-scrollbar{width:6px}
+body::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:3px}
+
+/* NAVBAR */
+.navbar{position:fixed;top:0;left:0;right:0;z-index:100;height:var(--nav-h);display:flex;align-items:center;justify-content:space-between;padding:0 4%;background:linear-gradient(to bottom,rgba(0,0,0,0.9) 0%,transparent 100%);transition:background .3s}
+.navbar.scrolled{background:var(--bg2)}
+.nav-left{display:flex;align-items:center;gap:28px}
+.logo{font-family:var(--font-display);font-size:1.9rem;letter-spacing:.06em;color:var(--accent);text-decoration:none;flex-shrink:0}
+.nav-links{display:flex;gap:0;list-style:none}
+.nav-link{color:var(--muted);font-size:.85rem;font-weight:500;padding:8px 14px;text-decoration:none;transition:color .2s;cursor:pointer;border:none;background:none;font-family:var(--font)}
+.nav-link:hover,.nav-link.active{color:var(--text)}
+.nav-right{display:flex;align-items:center;gap:14px}
+.search-box{display:flex;align-items:center;gap:8px;background:rgba(0,0,0,0.6);border:1px solid var(--border);border-radius:4px;padding:7px 12px;transition:border-color .2s}
+.search-box:focus-within{border-color:rgba(255,255,255,0.3)}
+.search-box input{background:transparent;border:none;color:var(--text);font-family:var(--font);font-size:.82rem;width:160px;outline:none}
+.search-box input::placeholder{color:var(--muted2)}
+.google-btn{display:flex;align-items:center;gap:8px;background:#fff;color:#1f1f1f;font-family:var(--font);font-size:.8rem;font-weight:600;padding:7px 14px;border:none;border-radius:4px;cursor:pointer;letter-spacing:.02em;transition:background .2s;flex-shrink:0}
+.google-btn:hover{background:#f1f1f1}
+.google-btn svg{width:16px;height:16px;flex-shrink:0}
+.user-avatar-wrap{display:flex;align-items:center;gap:9px;cursor:pointer;position:relative}
+.user-avatar-wrap img{width:32px;height:32px;border-radius:50%;border:2px solid var(--accent);object-fit:cover}
+.user-name{font-size:.8rem;font-weight:500;color:var(--text);max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.user-dropdown{display:none;position:absolute;top:calc(100% + 10px);right:0;background:#1e1e28;border:1px solid var(--border);border-radius:8px;min-width:220px;padding:8px 0;z-index:999;box-shadow:0 8px 24px rgba(0,0,0,0.5)}
+.user-avatar-wrap:hover .user-dropdown{display:block}
+.user-dropdown-header{padding:12px 16px;border-bottom:1px solid var(--border);margin-bottom:4px}
+.user-dropdown-name{font-size:.88rem;font-weight:600;color:var(--text)}
+.user-dropdown-email{font-size:.74rem;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.user-dropdown-item{display:flex;align-items:center;gap:10px;padding:8px 16px;font-size:.82rem;color:var(--muted);cursor:pointer;transition:background .2s}
+.user-dropdown-item:hover{background:rgba(255,255,255,0.07);color:var(--text)}
+.login-modal{display:none;position:fixed;inset:0;z-index:300;align-items:center;justify-content:center;background:rgba(0,0,0,0.8)}
+.login-modal.open{display:flex}
+.login-modal-box{background:#141414;border-radius:10px;width:min(480px,94vw);max-height:80vh;display:flex;flex-direction:column;overflow:hidden}
+.login-modal-header{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--border)}
+.login-modal-header h3{font-size:1rem;font-weight:600}
+.login-history-list{overflow-y:auto;flex:1;padding:12px 0}
+.login-history-list::-webkit-scrollbar{width:4px}
+.login-history-list::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:2px}
+.login-entry{display:flex;align-items:center;gap:12px;padding:10px 22px;border-bottom:1px solid rgba(255,255,255,0.04)}
+.login-entry:last-child{border-bottom:none}
+.login-entry-icon{width:36px;height:36px;border-radius:50%;background:rgba(229,9,20,0.15);display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0}
+.login-entry-info{flex:1;min-width:0}
+.login-entry-date{font-size:.82rem;font-weight:500;color:var(--text)}
+.login-entry-sub{font-size:.72rem;color:var(--muted);margin-top:2px}
+.login-empty{text-align:center;padding:40px;color:var(--muted2);font-size:.85rem}
+
+/* HERO */
+.hero{position:relative;height:88vh;min-height:500px;display:flex;align-items:flex-end;background:#111 center/cover no-repeat}
+.hero::after{content:'';position:absolute;inset:0;background:linear-gradient(to right,rgba(0,0,0,0.85) 40%,transparent 100%),linear-gradient(to top,rgba(0,0,0,0.95) 0%,transparent 60%)}
+.hero-content{position:relative;z-index:1;padding:0 4% 5%;max-width:540px}
+.hero-badge{display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:#fff;font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:4px 10px;border-radius:3px;margin-bottom:16px}
+.hero-title{font-family:var(--font-display);font-size:clamp(2.5rem,6vw,5rem);letter-spacing:.03em;line-height:.95;margin-bottom:16px;text-shadow:0 2px 20px rgba(0,0,0,0.5)}
+.hero-meta{display:flex;align-items:center;gap:12px;font-size:.82rem;color:var(--muted);margin-bottom:14px;flex-wrap:wrap}
+.hero-meta .rating{color:#f5c518;font-weight:600}
+.hero-desc{font-size:.9rem;color:rgba(255,255,255,0.75);line-height:1.6;margin-bottom:28px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.hero-actions{display:flex;gap:12px;flex-wrap:wrap}
+.btn-play{display:flex;align-items:center;gap:8px;background:#fff;color:#000;font-family:var(--font);font-size:.95rem;font-weight:700;padding:10px 28px;border:none;border-radius:4px;cursor:pointer;transition:background .2s}
+.btn-play:hover{background:rgba(255,255,255,0.85)}
+.btn-info{display:flex;align-items:center;gap:8px;background:rgba(109,109,110,0.7);color:#fff;font-family:var(--font);font-size:.95rem;font-weight:600;padding:10px 24px;border:none;border-radius:4px;cursor:pointer;transition:background .2s}
+.btn-info:hover{background:rgba(109,109,110,0.9)}
+
+/* MAIN */
+.main-content{padding:0 0 60px;margin-top:-80px;position:relative;z-index:2}
+.section{margin-bottom:10px;padding:0 4%}
+.section-title{font-size:1.3rem;font-weight:600;letter-spacing:-.01em;margin-bottom:14px;color:var(--text)}
+
+/* CARDS ROW */
+.cards-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:12px;scrollbar-width:none}
+.cards-row::-webkit-scrollbar{display:none}
+
+/* CARD */
+.card{flex:0 0 175px;position:relative;border-radius:4px;overflow:hidden;cursor:pointer;transition:transform .25s}
+.card:hover{transform:scale(1.08);z-index:10}
+.card-img{width:100%;aspect-ratio:2/3;object-fit:cover;display:block;background:#1a1a2e}
+.card-placeholder{width:100%;aspect-ratio:2/3;background:linear-gradient(135deg,#1a1a2e,#16213e);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--muted2);font-size:.75rem;text-align:center;padding:12px}
+.card-placeholder .icon{font-size:2.5rem}
+.card-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.95) 0%,transparent 50%);opacity:0;transition:opacity .25s;display:flex;flex-direction:column;justify-content:flex-end;padding:12px}
+.card:hover .card-overlay{opacity:1}
+.card-overlay-play{width:32px;height:32px;border-radius:50%;background:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;margin-bottom:8px}
+.card-overlay-title{font-size:.78rem;font-weight:600;line-height:1.2;margin-bottom:4px}
+.card-overlay-meta{font-size:.7rem;color:var(--muted)}
+.badge-type{position:absolute;top:6px;left:6px;font-size:.6rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;border-radius:3px}
+.badge-series{background:var(--accent);color:#fff}
+.badge-movie{background:#1565c0;color:#fff}
+.badge-rating{position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.7);color:#f5c518;font-size:.68rem;font-weight:700;font-family:var(--mono);padding:2px 7px;border-radius:3px}
+
+/* SEARCH */
+#search-results{display:none;padding:0 4%}
+.search-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+
+/* SKELETON */
+.skeleton{background:linear-gradient(90deg,#1a1a2e 25%,#252545 50%,#1a1a2e 75%);background-size:400% 100%;animation:shimmer 1.4s infinite;border-radius:4px}
+@keyframes shimmer{0%{background-position:100% 0}100%{background-position:-100% 0}}
+.skeleton-card{flex:0 0 175px;aspect-ratio:2/3;border-radius:4px}
+
+/* EMPTY */
+.empty-state{text-align:center;padding:60px 20px;color:var(--muted2)}
+.empty-state .icon{font-size:3rem;margin-bottom:12px}
+
+/* NOTICE */
+.notice{background:rgba(229,9,20,0.1);border:1px solid rgba(229,9,20,0.3);border-radius:6px;padding:12px 16px;margin:12px 4%;font-size:.82rem;color:#ff8a8a;display:none;gap:8px;align-items:center}
+.notice.show{display:flex}
+
+/* DETAIL MODAL */
+.modal{display:none;position:fixed;inset:0;z-index:200;align-items:center;justify-content:center;background:rgba(0,0,0,0.75)}
+.modal.open{display:flex}
+.modal-box{background:#141414;border-radius:8px;width:min(880px,95vw);max-height:90vh;overflow:hidden;display:flex;flex-direction:column;position:relative}
+.modal-close{position:absolute;top:12px;right:12px;z-index:10;width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,0.7);border:none;cursor:pointer;color:#fff;font-size:1rem;display:flex;align-items:center;justify-content:center;transition:background .2s}
+.modal-close:hover{background:rgba(255,255,255,0.15)}
+.modal-hero-img{position:relative;height:240px;background:#111 center/cover no-repeat;flex-shrink:0}
+.modal-hero-img::after{content:'';position:absolute;inset:0;background:linear-gradient(to top,#141414 0%,transparent 50%),linear-gradient(to right,rgba(0,0,0,0.6) 30%,transparent 100%)}
+.modal-hero-content{position:absolute;bottom:0;left:0;padding:16px 24px;z-index:1}
+.modal-title{font-family:var(--font-display);font-size:2rem;letter-spacing:.04em;line-height:1}
+.modal-meta-row{display:flex;gap:10px;align-items:center;font-size:.8rem;color:var(--muted);margin-top:6px;flex-wrap:wrap}
+.modal-meta-row .rating{color:#f5c518;font-weight:600}
+.modal-body{overflow-y:auto;flex:1;padding:0 24px 24px}
+.modal-body::-webkit-scrollbar{width:4px}
+.modal-body::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:2px}
+.modal-desc{font-size:.88rem;color:var(--muted);line-height:1.6;margin:14px 0}
+.modal-actions{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;padding-top:4px}
+
+/* SEASONS/EPISODES */
+.season-label{font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);margin-bottom:10px}
+.season-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.season-tab{padding:6px 16px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--font);font-size:.82rem;font-weight:600;cursor:pointer;transition:all .2s}
+.season-tab.active,.season-tab:hover{background:var(--accent);border-color:var(--accent);color:#fff}
+.episodes-list{display:flex;flex-direction:column;gap:6px}
+.ep-card{display:flex;gap:12px;align-items:center;padding:10px 12px;border-radius:6px;background:var(--surface);border:1px solid var(--border);cursor:pointer;transition:background .2s}
+.ep-card:hover{background:rgba(255,255,255,0.1)}
+.ep-num{flex-shrink:0;width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.07);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:.78rem;color:var(--muted)}
+.ep-thumb-img{flex-shrink:0;width:90px;height:54px;border-radius:4px;object-fit:cover;background:#1a1a2e}
+.ep-info{flex:1;min-width:0}
+.ep-title{font-size:.85rem;font-weight:600;margin-bottom:3px;line-height:1.3}
+.ep-desc{font-size:.76rem;color:var(--muted);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ep-meta{font-size:.7rem;color:var(--muted2);margin-top:3px;font-family:var(--mono)}
+.ep-arrow{flex-shrink:0;color:var(--muted2);font-size:1rem;transition:color .2s}
+.ep-card:hover .ep-arrow{color:#fff}
+
+/* PLAYER MODAL */
+.player-modal-box{background:#000;border-radius:8px;width:min(960px,98vw);position:relative;overflow:hidden}
+.player-wrap{position:relative;padding-bottom:56.25%;height:0;overflow:hidden}
+.player-wrap video,.player-wrap>div{position:absolute;top:0;left:0;width:100%;height:100%;border:none}
+.player-wrap iframe{width:100%;height:100%;border:none}
+.player-bar{background:#0f0f0f;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.player-ep-info{font-size:.82rem;color:var(--muted);font-weight:500}
+.sub-select-wrap{display:flex;align-items:center;gap:6px;font-size:.8rem;color:var(--muted)}
+.sub-select-wrap select{background:#1a1a1a;border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:4px;font-family:var(--font);font-size:.78rem;outline:none;cursor:pointer}
+
+@media(max-width:600px){
+  .nav-links{display:none}
+  .search-box input{width:110px}
+  .hero-title{font-size:2.2rem}
+  .card{flex:0 0 130px}
+  .skeleton-card{flex:0 0 130px}
+}
+</style>
+</head>
+<body>
+
+<nav class="navbar" id="navbar">
+  <div class="nav-left">
+    <a href="index.html" class="logo">Qasimflix</a>
+    <ul class="nav-links">
+      <li><button class="nav-link active" onclick="showAll(this)">Ana Sayfa</button></li>
+      <li><button class="nav-link" onclick="showCategory('series',this)">Diziler</button></li>
+      <li><button class="nav-link" onclick="showCategory('movie',this)">Filmler</button></li>
+    </ul>
+  </div>
+  <div class="nav-right">
+    <div class="search-box">
+      <span>🔍</span>
+      <input type="text" id="search-input" placeholder="Ara..." oninput="handleSearch(this.value)">
+    </div>
+    <a href="admin.html" class="admin-btn" id="admin-link" style="display:none">⚙ Admin</a>
+    <!-- Google Sign-In -->
+    <div id="auth-section">
+      <button class="google-btn" id="google-signin-btn" onclick="signInWithGoogle()">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+        Google ile Kayıt Ol
+      </button>
+      <div class="user-avatar-wrap" id="user-info" style="display:none">
+        <img id="user-photo" src="" alt="avatar">
+        <span class="user-name" id="user-display-name"></span>
+        <div class="user-dropdown">
+          <div class="user-dropdown-header">
+            <div class="user-dropdown-name" id="dd-name"></div>
+            <div class="user-dropdown-email" id="dd-email"></div>
+          </div>
+          <div class="user-dropdown-item" onclick="openLoginHistory()">📋 Giriş Geçmişim</div>
+          <div class="user-dropdown-item" onclick="signOut()" style="color:#ff6b6b">🚪 Çıkış Yap</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<div class="hero" id="hero">
+  <div class="hero-content">
+    <div class="hero-badge">▶ Öne Çıkan</div>
+    <h1 class="hero-title" id="hero-title">Qasimflix'e Hoş Geldiniz</h1>
+    <div class="hero-meta">
+      <span class="rating" id="hero-rating"></span>
+      <span id="hero-year"></span>
+      <span id="hero-cats"></span>
+    </div>
+    <p class="hero-desc" id="hero-desc">Admin panelinden içerik ekleyerek başlayın.</p>
+    <div class="hero-actions">
+      <button class="btn-play" id="hero-play-btn" onclick="heroPlay()" style="display:none">▶ İzle</button>
+      <button class="btn-info" id="hero-info-btn" onclick="heroInfo()" style="display:none">ℹ Daha Fazla</button>
+    </div>
+  </div>
+</div>
+
+<main class="main-content">
+  <div class="notice" id="api-notice">⚠ Sunucuya bağlanılamadı. Backend'e bağlanılamadı.</div>
+
+  <div id="search-results">
+    <div class="section">
+      <div class="section-title" id="search-count">Arama Sonuçları</div>
+      <div class="search-grid" id="search-grid"></div>
+    </div>
+  </div>
+
+  <div id="main-sections">
+    <div class="section" id="popular-section">
+      <div class="section-title">🔥 Popüler İçerikler</div>
+      <div class="cards-row" id="popular-row">
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+      </div>
+    </div>
+    <div class="section" id="series-section">
+      <div class="section-title">📺 Diziler</div>
+      <div class="cards-row" id="series-row"></div>
+    </div>
+    <div class="section" id="movies-section">
+      <div class="section-title">🎬 Filmler</div>
+      <div class="cards-row" id="movies-row"></div>
+    </div>
+  </div>
+</main>
+
+<!-- DETAIL MODAL -->
+<div class="modal" id="detail-modal" onclick="if(event.target===this)closeDetailModal()">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeDetailModal()">✕</button>
+    <div class="modal-hero-img" id="modal-hero-img">
+      <div class="modal-hero-content">
+        <h2 class="modal-title" id="modal-title"></h2>
+        <div class="modal-meta-row" id="modal-meta"></div>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="modal-actions" id="modal-actions"></div>
+      <p class="modal-desc" id="modal-desc"></p>
+      <div id="seasons-area"></div>
+    </div>
+  </div>
+</div>
+
+<!-- PLAYER MODAL -->
+<div class="modal" id="player-modal" onclick="if(event.target===this)closePlayer()">
+  <div class="modal-box player-modal-box">
+    <button class="modal-close" onclick="closePlayer()">✕</button>
+    <div class="player-wrap" id="player-wrap">
+      <video id="video-player" controls>
+        <source id="video-source" src="" type="video/mp4">
+      </video>
+      <div id="embed-player" style="display:none;position:absolute;top:0;left:0;width:100%;height:100%"></div>
+    </div>
+    <div class="player-bar">
+      <div class="player-ep-info" id="player-ep-info"></div>
+      <div class="sub-select-wrap" id="sub-wrap">
+        <label>Altyazı:</label>
+        <select id="subtitle-select" onchange="changeSubtitle()">
+          <option value="">Kapalı</option>
+        </select>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LOGIN HISTORY MODAL -->
+<div class="login-modal" id="login-modal" onclick="if(event.target===this)closeLoginHistory()">
+  <div class="login-modal-box">
+    <div class="login-modal-header">
+      <h3>📋 Giriş Geçmişim</h3>
+      <button class="modal-close" onclick="closeLoginHistory()" style="position:relative;top:auto;right:auto">✕</button>
+    </div>
+    <div class="login-history-list" id="login-history-list">
+      <div class="login-empty">Henüz giriş kaydı yok.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase / Google Auth -->
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+  import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut as fbSignOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+  import { getFirestore, collection, addDoc, query, where, orderBy, getDocs, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+  // ⚠️ Firebase projenizin config bilgilerini buraya girin
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_AUTH_DOMAIN",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_STORAGE_BUCKET",
+    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+    appId: "YOUR_APP_ID"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const provider = new GoogleAuthProvider();
+
+  // Auth durumunu global'e aktar
+  window._auth = auth;
+  window._db = db;
+  window._fbSignOut = fbSignOut;
+
+  window.signInWithGoogle = async () => {
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      // Giriş kaydını Firestore'a yaz
+      await addDoc(collection(db, 'loginHistory'), {
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+        photoURL: user.photoURL,
+        loginAt: serverTimestamp(),
+        userAgent: navigator.userAgent.substring(0, 120)
+      });
+    } catch (e) {
+      console.error('Giriş hatası:', e);
+      alert('Giriş yapılamadı: ' + e.message);
+    }
+  };
+
+  window.signOut = async () => {
+    await fbSignOut(auth);
+  };
+
+  window.openLoginHistory = async () => {
+    const modal = document.getElementById('login-modal');
+    const list = document.getElementById('login-history-list');
+    modal.classList.add('open');
+    list.innerHTML = '<div class="login-empty">Yükleniyor...</div>';
+    try {
+      const user = auth.currentUser;
+      if (!user) return;
+      const q = query(
+        collection(db, 'loginHistory'),
+        where('uid', '==', user.uid),
+        orderBy('loginAt', 'desc')
+      );
+      const snap = await getDocs(q);
+      if (snap.empty) {
+        list.innerHTML = '<div class="login-empty">Henüz giriş kaydı yok.</div>';
+        return;
+      }
+      list.innerHTML = '';
+      snap.forEach(doc => {
+        const d = doc.data();
+        const date = d.loginAt?.toDate ? d.loginAt.toDate() : new Date();
+        const formatted = date.toLocaleString('tr-TR', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+        list.innerHTML += `
+          <div class="login-entry">
+            <div class="login-entry-icon">🔑</div>
+            <div class="login-entry-info">
+              <div class="login-entry-date">${formatted}</div>
+              <div class="login-entry-sub">${d.email}</div>
+            </div>
+          </div>`;
+      });
+    } catch(e) {
+      list.innerHTML = '<div class="login-empty">Geçmiş yüklenemedi.</div>';
+      console.error(e);
+    }
+  };
+
+  window.closeLoginHistory = () => {
+    document.getElementById('login-modal').classList.remove('open');
+  };
+
+  // Auth state listener
+  onAuthStateChanged(auth, user => {
+    const signinBtn = document.getElementById('google-signin-btn');
+    const userInfo = document.getElementById('user-info');
+    if (user) {
+      signinBtn.style.display = 'none';
+      userInfo.style.display = 'flex';
+      document.getElementById('user-photo').src = user.photoURL || '';
+      document.getElementById('user-display-name').textContent = user.displayName?.split(' ')[0] || 'Kullanıcı';
+      document.getElementById('dd-name').textContent = user.displayName || '';
+      document.getElementById('dd-email').textContent = user.email || '';
+    } else {
+      signinBtn.style.display = 'flex';
+      userInfo.style.display = 'none';
+    }
+  });
+</script>
+<script src="app.js"></script>
+</body>
+</html>
