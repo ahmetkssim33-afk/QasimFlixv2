@@ -954,7 +954,7 @@ async function checkApiHealth() {
 
 async function loadAllSeries() {
   try {
-    const d = await api('GET', '/series?page=1&limit=500');
+    const d = await api('GET', '/series?page=1&limit=500&_=' + Date.now());
     allSeries = d.series || [];
     document.getElementById('nb-series').textContent = allSeries.length;
     populateSeriesSelects();
@@ -1091,7 +1091,7 @@ async function loadSeasonsList(seriesId) {
   const wrap = document.getElementById('seasons-list-wrap');
   wrap.innerHTML = '<div class="skeleton skeleton-item"></div>';
   try {
-    const seasons = await api('GET', '/seasons/' + seriesId);
+    const seasons = await api('GET', '/seasons/' + seriesId + '?_=' + Date.now());
     if (!seasons || !seasons.length) {
       wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">▤</div><p>Bu seride sezon yok</p></div>';
       return;
@@ -1148,7 +1148,7 @@ async function onEpSeriesChange() {
   seasonSel.innerHTML = '<option value="">— Yükleniyor —</option>';
   if (!seriesId) { seasonSel.innerHTML = '<option value="">— Önce Seri Seç —</option>'; loadEpisodesList(); return; }
   try {
-    const seasons = await api('GET', '/seasons/' + seriesId);
+    const seasons = await api('GET', '/seasons/' + seriesId + '?_=' + Date.now());
     seasonSel.innerHTML = '<option value="">— Sezon Seç —</option>';
     (seasons||[]).forEach(s => {
       const o = document.createElement('option');
@@ -1168,7 +1168,7 @@ async function loadEpisodesList(seriesId) {
   }
   wrap.innerHTML = '<div class="skeleton skeleton-item"></div>';
   try {
-    const data = await api('GET', '/series/' + seriesId);
+    const data = await api('GET', '/series/' + seriesId + '?_=' + Date.now());
     if (!data.seasons || !data.seasons.length) {
       wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">▶</div><p>Bu seride sezon yok</p></div>';
       return;
@@ -1212,18 +1212,23 @@ async function addEpisode() {
   const btn = document.getElementById('btn-add-ep');
   setLoading(btn, true);
   try {
-    await api('POST', '/episodes', {
+    const result = await api('POST', '/episodes', {
       seasonId, seriesId, episodeNumber: num, title,
       description: v('ep-desc'),
       videoUrl: video,
       duration: parseInt(v('ep-dur')) || 0,
       thumbnail: v('ep-thumb'),
     });
-    toast('✓ Bölüm eklendi', 'success');
+    console.log('Bölüm eklendi:', result);
+    toast('✓ Bölüm eklendi: ' + title, 'success');
     ['ep-num','ep-title','ep-desc','ep-video','ep-dur','ep-thumb'].forEach(id => reset(id));
-    document.getElementById('ep-thumb-prev').style.display = 'none';
+    const thumbPrev = document.getElementById('ep-thumb-prev');
+    if (thumbPrev) thumbPrev.style.display = 'none';
     await loadEpisodesList(seriesId);
-  } catch(e) { toast(e.message,'error'); }
+  } catch(e) {
+    console.error('addEpisode error:', e);
+    toast('Hata: ' + e.message, 'error');
+  }
   finally { setLoading(btn, false, '+ Bölüm Ekle'); }
 }
 
@@ -1443,7 +1448,7 @@ async function openEditSeason(id, seriesId) {
   let season;
   try {
     // Sezonları çek ve bul
-    const seasons = await api('GET', '/seasons/' + seriesId);
+    const seasons = await api('GET', '/seasons/' + seriesId + '?_=' + Date.now());
     season = seasons.find(s => s._id === id);
     if (!season) throw new Error('Sezon bulunamadı');
   } catch(e) { toast(e.message, 'error'); return; }
