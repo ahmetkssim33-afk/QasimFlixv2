@@ -329,7 +329,15 @@ function showSeasonEpisodes(season) {
 
 function playMovieDirect() {
     if (!currentSeries) return;
-    // For movies, use the series id to get episode-level data
+    // Film için: sezon ve bölüm var mı kontrol et
+    const seasons = currentSeries.seasons || [];
+    for (const s of seasons) {
+        if (s.episodes && s.episodes.length) {
+            playEpisode(s.episodes[0]._id, true);
+            return;
+        }
+    }
+    // Bölüm yoksa seri ID'si ile dene (eski davranış)
     playEpisode(currentSeries._id, true);
 }
 

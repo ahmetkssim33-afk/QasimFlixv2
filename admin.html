@@ -440,6 +440,44 @@ select{
 /* ── VIEWS ── */
 .view{display:none}
 .view.active{display:block}
+
+/* ── EDIT MODAL ── */
+#edit-modal-overlay{
+  position:fixed;inset:0;z-index:600;
+  background:rgba(0,0,0,.75);backdrop-filter:blur(3px);
+  display:none;align-items:center;justify-content:center;
+  overflow-y:auto;padding:20px;
+}
+#edit-modal-overlay.open{display:flex}
+.edit-modal{
+  background:var(--bg2);border:1px solid var(--border2);
+  border-radius:var(--radius2);padding:28px;
+  width:560px;max-width:95vw;position:relative;
+  max-height:90vh;overflow-y:auto;
+}
+.edit-modal h3{font-size:1rem;font-weight:700;margin-bottom:20px;
+  display:flex;align-items:center;gap:10px;}
+.edit-modal h3::after{content:'';flex:1;height:1px;background:var(--border);}
+.edit-modal-close{
+  position:absolute;top:14px;right:16px;
+  background:none;border:none;color:var(--muted);
+  font-size:1.3rem;cursor:pointer;line-height:1;
+}
+.edit-modal-close:hover{color:var(--text)}
+.edit-modal .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:8px}
+
+/* ── IMGUR HINT ── */
+.imgur-hint{
+  font-size:.72rem;color:var(--muted2);margin-top:4px;
+  font-family:var(--font-mono);
+}
+.imgur-hint a{color:var(--info);text-decoration:none}
+.imgur-hint a:hover{text-decoration:underline}
+.poster-preview-wrap{margin-top:8px;display:flex;gap:10px;align-items:flex-start}
+.poster-preview-wrap img{
+  width:80px;height:115px;object-fit:cover;
+  border-radius:var(--radius);border:1px solid var(--border2);display:none;
+}
 </style>
 </head>
 <body>
@@ -576,8 +614,9 @@ select{
           </div>
           <div class="form-group">
             <label>Poster URL</label>
-            <input type="text" id="s-poster" placeholder="https://..." oninput="previewImg(this,'s-poster-prev')">
-            <img id="s-poster-prev" class="preview-img">
+            <input type="text" id="s-poster" placeholder="https://i.imgur.com/xxxx.jpg veya https://imgur.com/a/xxxx" oninput="handlePosterInput(this,'s-poster-prev')">
+            <div class="imgur-hint">Imgur album linki (<code>imgur.com/a/xxxx</code>) otomatik dönüştürülür. Doğrudan resim linki de kullanabilirsiniz.</div>
+            <div class="poster-preview-wrap"><img id="s-poster-prev" alt="poster önizleme"></div>
           </div>
           <button class="btn btn-red" id="btn-add-series" onclick="addSeries()">
             <span>+ Seri Ekle</span>
@@ -750,6 +789,15 @@ select{
 
     </div><!-- /content -->
   </main>
+</div>
+
+<!-- EDIT MODAL -->
+<div id="edit-modal-overlay">
+  <div class="edit-modal" id="edit-modal-inner">
+    <button class="edit-modal-close" onclick="closeEditModal()">×</button>
+    <h3 id="edit-modal-title">Düzenle</h3>
+    <div id="edit-modal-body"></div>
+  </div>
 </div>
 
 <!-- CONFIRM MODAL -->
@@ -985,6 +1033,7 @@ function seriesItemHTML(s) {
       </div>
     </div>
     <div class="item-actions">
+      <button class="btn btn-info sm" onclick="openEditSeries('${s._id}')">✎ Düzenle</button>
       <button class="btn btn-danger sm" onclick="deleteSeries('${s._id}','${esc(s.title)}')">🗑 Sil</button>
     </div>
   </div>`;
@@ -1003,7 +1052,7 @@ async function addSeries() {
       releaseYear: parseInt(v('s-year')) || null,
       rating: parseFloat(v('s-rating')) || 0,
       categories: v('s-cats').split(',').map(c=>c.trim()).filter(Boolean),
-      poster: v('s-poster'),
+      poster: getPosterUrl('s-poster'),
     });
     toast('✓ Seri eklendi: ' + title, 'success');
     ['s-title','s-desc','s-year','s-cats','s-poster','s-rating'].forEach(id => reset(id));
@@ -1054,6 +1103,7 @@ async function loadSeasonsList(seriesId) {
           <div class="item-meta"><span>${esc(s.description||'Açıklama yok')}</span></div>
         </div>
         <div class="item-actions">
+          <button class="btn btn-info sm" onclick="openEditSeason('${s._id}','${seriesId}')">✎ Düzenle</button>
           <button class="btn btn-danger sm" onclick="deleteSeason('${s._id}','${seriesId}')">🗑 Sil</button>
         </div>
       </div>`).join('')}</div>`;
@@ -1139,6 +1189,7 @@ async function loadEpisodesList(seriesId) {
               </div>
             </div>
             <div class="item-actions">
+              <button class="btn btn-info sm" onclick="openEditEpisode('${ep._id}','${seriesId}')">✎ Düzenle</button>
               <button class="btn btn-danger sm" onclick="deleteEpisode('${ep._id}','${seriesId}')">🗑 Sil</button>
             </div>
           </div>`).join('')}</div></div>`;
@@ -1263,8 +1314,242 @@ function onGlobalSearch(val) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// UTILS
+// IMGUR HELPER
 // ═══════════════════════════════════════════════════════════════
+function imgurToDirectUrl(url) {
+  if (!url) return '';
+  url = url.trim();
+  // Zaten direkt resim linki (i.imgur.com)
+  if (url.includes('i.imgur.com')) return url;
+  // Album linki: https://imgur.com/a/XXXXX → https://i.imgur.com/XXXXX.jpg dönüştür
+  // Not: album ID direkt resme çevrilemez, kullanıcıya doğru linki alma talimatı ver
+  // Galeri: https://imgur.com/gallery/XXXXX
+  // Tekil resim: https://imgur.com/XXXXX → https://i.imgur.com/XXXXX.jpg
+  const singleMatch = url.match(/imgur\.com\/([a-zA-Z0-9]+)$/);
+  if (singleMatch) return `https://i.imgur.com/${singleMatch[1]}.jpg`;
+  // Zaten direkt URL ise olduğu gibi kullan
+  return url;
+}
+
+function handlePosterInput(inp, prevId) {
+  let val = imgurToDirectUrl(inp.value);
+  // Eğer dönüşüm olduysa input'u güncelle
+  if (val !== inp.value && val) {
+    // Sadece önizleme için kullan, değeri değiştirme (kullanıcı farkında olsun)
+  }
+  const img = document.getElementById(prevId);
+  if (!img) return;
+  if (val) { img.src = val; img.style.display = 'block'; }
+  else img.style.display = 'none';
+}
+
+// poster kaydedilirken dönüştür
+function getPosterUrl(inputId) {
+  return imgurToDirectUrl(v(inputId));
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EDIT MODAL
+// ═══════════════════════════════════════════════════════════════
+function openEditModal(title, bodyHTML) {
+  document.getElementById('edit-modal-title').textContent = title;
+  document.getElementById('edit-modal-body').innerHTML = bodyHTML;
+  document.getElementById('edit-modal-overlay').classList.add('open');
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal-overlay').classList.remove('open');
+}
+
+document.getElementById('edit-modal-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('edit-modal-overlay')) closeEditModal();
+});
+
+// ─── SERİ DÜZENLE ───
+async function openEditSeries(id) {
+  const s = allSeries.find(x => x._id === id);
+  if (!s) { toast('Seri bulunamadı', 'error'); return; }
+
+  const cats = (s.categories || []).join(', ');
+  openEditModal('Seri Düzenle', `
+    <div class="form-row">
+      <div class="form-group">
+        <label>Seri Adı <span class="required">*</span></label>
+        <input type="text" id="edit-s-title" value="${esc(s.title)}">
+      </div>
+      <div class="form-group">
+        <label>Tür</label>
+        <select id="edit-s-type">
+          <option value="series" ${s.type==='series'?'selected':''}>Seri / Dizi</option>
+          <option value="movie" ${s.type==='movie'?'selected':''}>Film</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Açıklama</label>
+      <textarea id="edit-s-desc">${esc(s.description||'')}</textarea>
+    </div>
+    <div class="form-row three">
+      <div class="form-group">
+        <label>Yayın Yılı</label>
+        <input type="number" id="edit-s-year" value="${s.releaseYear||''}">
+      </div>
+      <div class="form-group">
+        <label>Puan (0–10)</label>
+        <input type="number" id="edit-s-rating" min="0" max="10" step="0.1" value="${s.rating||0}">
+      </div>
+      <div class="form-group">
+        <label>Kategoriler</label>
+        <input type="text" id="edit-s-cats" value="${esc(cats)}" placeholder="Aksiyon, Dram">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Poster URL</label>
+      <input type="text" id="edit-s-poster" value="${esc(s.poster||'')}" placeholder="https://i.imgur.com/xxxx.jpg" oninput="handlePosterInput(this,'edit-s-poster-prev')">
+      <div class="imgur-hint">Imgur: <code>imgur.com/a/xxxx</code> → resim sayfasını açıp sağ tık → "Resim linkini kopyala" kullanın.</div>
+      <div class="poster-preview-wrap"><img id="edit-s-poster-prev" alt="önizleme" ${s.poster?`src="${esc(s.poster)}" style="display:block"`:''} ></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeEditModal()">İptal</button>
+      <button class="btn btn-red" onclick="saveEditSeries('${id}')">💾 Kaydet</button>
+    </div>
+  `);
+}
+
+async function saveEditSeries(id) {
+  const title = (document.getElementById('edit-s-title')?.value||'').trim();
+  if (!title) { toast('Seri adı zorunludur', 'error'); return; }
+  const posterRaw = (document.getElementById('edit-s-poster')?.value||'').trim();
+  const poster = imgurToDirectUrl(posterRaw);
+  try {
+    await api('PUT', '/series/' + id, {
+      title,
+      type: document.getElementById('edit-s-type')?.value,
+      description: (document.getElementById('edit-s-desc')?.value||'').trim(),
+      releaseYear: parseInt(document.getElementById('edit-s-year')?.value)||null,
+      rating: parseFloat(document.getElementById('edit-s-rating')?.value)||0,
+      categories: (document.getElementById('edit-s-cats')?.value||'').split(',').map(c=>c.trim()).filter(Boolean),
+      poster,
+    });
+    toast('✓ Seri güncellendi', 'success');
+    closeEditModal();
+    await loadAllSeries();
+    renderSeriesList();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ─── SEZON DÜZENLE ───
+async function openEditSeason(id, seriesId) {
+  let season;
+  try {
+    // Sezonları çek ve bul
+    const seasons = await api('GET', '/seasons/' + seriesId);
+    season = seasons.find(s => s._id === id);
+    if (!season) throw new Error('Sezon bulunamadı');
+  } catch(e) { toast(e.message, 'error'); return; }
+
+  openEditModal('Sezon Düzenle', `
+    <div class="form-row">
+      <div class="form-group">
+        <label>Sezon No <span class="required">*</span></label>
+        <input type="number" id="edit-sea-num" value="${season.seasonNumber}" min="1">
+      </div>
+      <div class="form-group">
+        <label>Sezon Başlığı</label>
+        <input type="text" id="edit-sea-title" value="${esc(season.title||'')}">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Açıklama</label>
+      <textarea id="edit-sea-desc">${esc(season.description||'')}</textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeEditModal()">İptal</button>
+      <button class="btn btn-red" onclick="saveEditSeason('${id}','${seriesId}')">💾 Kaydet</button>
+    </div>
+  `);
+}
+
+async function saveEditSeason(id, seriesId) {
+  const num = parseInt(document.getElementById('edit-sea-num')?.value);
+  if (!num || num < 1) { toast('Geçerli sezon numarası girin', 'error'); return; }
+  try {
+    await api('PUT', '/seasons/' + id, {
+      seasonNumber: num,
+      title: (document.getElementById('edit-sea-title')?.value||'').trim(),
+      description: (document.getElementById('edit-sea-desc')?.value||'').trim(),
+    });
+    toast('✓ Sezon güncellendi', 'success');
+    closeEditModal();
+    await loadSeasonsList(seriesId);
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ─── BÖLÜM DÜZENLE ───
+async function openEditEpisode(id, seriesId) {
+  let episode;
+  try {
+    episode = await api('GET', '/episodes/' + id);
+    if (Array.isArray(episode)) throw new Error('Bölüm bulunamadı');
+  } catch(e) { toast(e.message, 'error'); return; }
+
+  openEditModal('Bölüm Düzenle', `
+    <div class="form-row">
+      <div class="form-group">
+        <label>Bölüm No <span class="required">*</span></label>
+        <input type="number" id="edit-ep-num" value="${episode.episodeNumber}" min="1">
+      </div>
+      <div class="form-group">
+        <label>Başlık <span class="required">*</span></label>
+        <input type="text" id="edit-ep-title" value="${esc(episode.title)}">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Açıklama</label>
+      <textarea id="edit-ep-desc">${esc(episode.description||'')}</textarea>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Video URL <span class="required">*</span></label>
+        <input type="text" id="edit-ep-video" value="${esc(episode.videoUrl||'')}">
+        <div class="hint">MP4, YouTube, Google Drive, iframe veya embed kodu</div>
+      </div>
+      <div class="form-group">
+        <label>Süre (saniye)</label>
+        <input type="number" id="edit-ep-dur" value="${episode.duration||0}" min="0">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Küçük Resim URL</label>
+      <input type="text" id="edit-ep-thumb" value="${esc(episode.thumbnail||'')}" oninput="handlePosterInput(this,'edit-ep-thumb-prev')">
+      <div class="poster-preview-wrap"><img id="edit-ep-thumb-prev" alt="önizleme" ${episode.thumbnail?`src="${esc(episode.thumbnail)}" style="display:block;width:120px;height:68px"`:''}></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeEditModal()">İptal</button>
+      <button class="btn btn-red" onclick="saveEditEpisode('${id}','${seriesId}')">💾 Kaydet</button>
+    </div>
+  `);
+}
+
+async function saveEditEpisode(id, seriesId) {
+  const title = (document.getElementById('edit-ep-title')?.value||'').trim();
+  const video = (document.getElementById('edit-ep-video')?.value||'').trim();
+  if (!title) { toast('Başlık zorunlu', 'error'); return; }
+  if (!video) { toast('Video URL zorunlu', 'error'); return; }
+  try {
+    await api('PUT', '/episodes/' + id, {
+      episodeNumber: parseInt(document.getElementById('edit-ep-num')?.value)||1,
+      title,
+      description: (document.getElementById('edit-ep-desc')?.value||'').trim(),
+      videoUrl: video,
+      duration: parseInt(document.getElementById('edit-ep-dur')?.value)||0,
+      thumbnail: imgurToDirectUrl((document.getElementById('edit-ep-thumb')?.value||'').trim()),
+    });
+    toast('✓ Bölüm güncellendi', 'success');
+    closeEditModal();
+    await loadEpisodesList(seriesId);
+  } catch(e) { toast(e.message, 'error'); }
+}
 function v(id) { return (document.getElementById(id)?.value||'').trim(); }
 function reset(id) { const el = document.getElementById(id); if(el) el.value = ''; }
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -1273,7 +1558,8 @@ function fmtDur(s) { const m=Math.floor(s/60),sec=s%60; return m+'dk'+sec+'sn'; 
 function previewImg(inp, prevId) {
   const img = document.getElementById(prevId);
   if (!img) return;
-  if (inp.value) { img.src = inp.value; img.style.display = 'block'; }
+  const val = imgurToDirectUrl(inp.value);
+  if (val) { img.src = val; img.style.display = 'block'; }
   else img.style.display = 'none';
 }
 function setLoading(btn, loading, label) {
