@@ -219,10 +219,12 @@ function setActiveNavBtn(btn) {
 // ═══════════════════════════════════════════
 async function openDetail(seriesId, autoPlay = false) {
     try {
-        const res = await fetch(API + '/series/' + seriesId);
+        const res = await fetch(API + '/series/' + seriesId + '?_=' + Date.now());
         const series = await res.json();
         currentSeries = series;
         currentSeason = null;
+
+        console.log('[openDetail] series:', series.title, 'seasons:', series.seasons?.length, series.seasons?.map(s => ({seasonNumber: s.seasonNumber, episodes: s.episodes?.length})));
 
         // Hero image
         const heroImg = document.getElementById('modal-hero-img');
@@ -357,9 +359,22 @@ function closeDetailModal() {
 // ═══════════════════════════════════════════
 async function playEpisode(episodeId, isMovie = false) {
     try {
-        const res = await fetch(API + '/episodes/' + episodeId);
+        console.log('[playEpisode] fetching episode:', episodeId);
+        const res = await fetch(API + '/episodes/' + episodeId + '?_=' + Date.now());
         const episode = await res.json();
+
+        // Eğer array geldiyse (yanlış endpoint) hata ver
+        if (Array.isArray(episode)) {
+            console.error('[playEpisode] array geldi, episode ID yanlış:', episodeId);
+            return;
+        }
+        if (!episode || !episode.videoUrl) {
+            console.error('[playEpisode] videoUrl yok:', episode);
+            return;
+        }
+
         currentEpisode = episode;
+        console.log('[playEpisode] videoUrl:', episode.videoUrl);
 
         const videoPlayer = document.getElementById('video-player');
         const videoSource = document.getElementById('video-source');

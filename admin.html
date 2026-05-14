@@ -1256,7 +1256,7 @@ async function populateSubEpisodes(seriesId) {
   sel.innerHTML = '<option value="">— Yükleniyor —</option>';
   if (!seriesId) { sel.innerHTML = '<option value="">— Önce Seri Seç —</option>'; return; }
   try {
-    const data = await api('GET', '/series/' + seriesId);
+    const data = await api('GET', '/series/' + seriesId + '?_=' + Date.now());
     sel.innerHTML = '<option value="">— Bölüm Seç —</option>';
     (data.seasons||[]).forEach(season => {
       (season.episodes||[]).forEach(ep => {
@@ -1494,7 +1494,7 @@ async function saveEditSeason(id, seriesId) {
 async function openEditEpisode(id, seriesId) {
   let episode;
   try {
-    episode = await api('GET', '/episodes/' + id);
+    episode = await api('GET', '/episodes/' + id + '?_=' + Date.now());
     if (Array.isArray(episode)) throw new Error('Bölüm bulunamadı');
   } catch(e) { toast(e.message, 'error'); return; }
 
