@@ -9,6 +9,9 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
 
 const app = express();
 
@@ -16,12 +19,42 @@ const app = express();
 // MIDDLEWARE
 // ───────────────────────────────────────────────────────────
 app.use(cors({
-  origin: "*",                  // Geliştirme için herkese izin. Production'da
-  methods: ["GET","POST","PUT","DELETE"], // kendi domain'inle değiştir.
+  origin: "*",
+  methods: ["GET","POST","PUT","DELETE"],
   allowedHeaders: ["Content-Type"]
 }));
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+
+// ───────────────────────────────────────────────────────────
+// UPLOAD — Multer (lokal: /uploads klasörü, Vercel: /tmp)
+// ───────────────────────────────────────────────────────────
+const uploadsDir = process.env.VERCEL
+  ? "/tmp/uploads"
+  : path.join(__dirname, "..", "uploads");
+
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadsDir),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, Date.now() + "-" + Math.round(Math.random() * 1e6) + ext);
+  }
+});
+const upload = multer({
+  storage,
+  limits: { fileSize: 20 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith("image/")) cb(null, true);
+    else cb(new Error("Sadece görsel dosyaları kabul edilir"));
+  }
+});
+
+// Yüklenen dosyaları serve et (lokal için)
+if (!process.env.VERCEL) {
+  app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
+}
 
 // ───────────────────────────────────────────────────────────
 // VERİTABANI BAĞLANTISI
@@ -154,12 +187,24 @@ app.get("/api/series", async (req, res) => {
   }
 });
 
-// Tek seri getir
+// Tek seri getir (sezonlar ve bölümler dahil)
 app.get("/api/series/:id", async (req, res) => {
   try {
     const series = await Series.findById(req.params.id);
     if (!series) return res.status(404).json({ error: "Seri bulunamadı" });
-    res.json(series);
+
+    // Sezonları ve bölümleri de çek
+    const seasons = await Season.find({ seriesId: series._id }).sort({ seasonNumber: 1 });
+    const seasonIds = seasons.map(s => s._id);
+    const episodes = await Episode.find({ seasonId: { $in: seasonIds } }).sort({ episodeNumber: 1 });
+
+    // Her sezona bölümlerini ekle
+    const seasonsWithEpisodes = seasons.map(season => ({
+      ...season.toObject(),
+      episodes: episodes.filter(ep => ep.seasonId.toString() === season._id.toString())
+    }));
+
+    res.json({ ...series.toObject(), seasons: seasonsWithEpisodes });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -187,10 +232,13 @@ app.put("/api/series/:id", async (req, res) => {
   }
 });
 
-// Seri sil (Admin)
+// Seri sil (Admin) — cascade: sezon ve bölümleri de sil
 app.delete("/api/series/:id", async (req, res) => {
   try {
-    await Series.findByIdAndDelete(req.params.id);
+    const id = req.params.id;
+    await Series.findByIdAndDelete(id);
+    await Season.deleteMany({ seriesId: id });
+    await Episode.deleteMany({ seriesId: id });
     res.json({ message: "Seri silindi" });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -232,7 +280,9 @@ app.put("/api/seasons/:id", async (req, res) => {
 
 app.delete("/api/seasons/:id", async (req, res) => {
   try {
-    await Season.findByIdAndDelete(req.params.id);
+    const id = req.params.id;
+    await Season.findByIdAndDelete(id);
+    await Episode.deleteMany({ seasonId: id });
     res.json({ message: "Sezon silindi" });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -243,7 +293,20 @@ app.delete("/api/seasons/:id", async (req, res) => {
 // API ENDPOINTS — BÖLÜMLER
 // ═══════════════════════════════════════════════════════════
 
-app.get("/api/episodes/:seasonId", async (req, res) => {
+// Tek bölüm getir — /api/episodes/:id
+// app.js bu endpoint'i kullanıyor, her zaman tek obje dönmeli
+app.get("/api/episodes/:id", async (req, res) => {
+  try {
+    const episode = await Episode.findById(req.params.id);
+    if (!episode) return res.status(404).json({ error: "Bölüm bulunamadı" });
+    res.json(episode);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Sezona göre bölüm listesi — /api/episodes/by-season/:seasonId
+app.get("/api/episodes/by-season/:seasonId", async (req, res) => {
   try {
     const episodes = await Episode.find({ seasonId: req.params.seasonId }).sort({ episodeNumber: 1 });
     res.json(episodes);
@@ -252,6 +315,7 @@ app.get("/api/episodes/:seasonId", async (req, res) => {
   }
 });
 
+// Geriye dönük uyumluluk
 app.get("/api/episode/:id", async (req, res) => {
   try {
     const episode = await Episode.findById(req.params.id);
@@ -366,6 +430,20 @@ app.post("/api/categories", async (req, res) => {
     res.status(201).json(cat);
   } catch (err) {
     res.status(400).json({ error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// UPLOAD — Poster / Thumbnail yükleme
+// ═══════════════════════════════════════════════════════════
+app.post("/api/upload", upload.single("image"), (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: "Dosya seçilmedi" });
+    // Vercel'de /tmp geçici; lokal'de /uploads kalıcı
+    const filePath = "/uploads/" + req.file.filename;
+    res.json({ ok: true, path: filePath });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
