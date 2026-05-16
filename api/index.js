@@ -158,13 +158,22 @@ app.get("/api/series/:id", async (req, res) => {
       .sort({ seasonNumber: 1 })
       .lean();
 
-    // Her sezon için bölümleri çek
+    // Her sezon için bölümleri çek — _id'leri string'e çevir
     const seasonsWithEpisodes = await Promise.all(
       seasons.map(async (season) => {
         const episodes = await Episode.find({ seasonId: season._id })
           .sort({ episodeNumber: 1 })
           .lean();
-        return { ...season, episodes };
+        return {
+          ...season,
+          _id: String(season._id),
+          episodes: episodes.map(ep => ({
+            ...ep,
+            _id: String(ep._id),
+            seasonId: String(ep.seasonId),
+            seriesId: String(ep.seriesId)
+          }))
+        };
       })
     );
 
