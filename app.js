@@ -375,7 +375,7 @@ function closeDetailModal() {
 async function playEpisode(episodeId, isMovie = false) {
     try {
         console.log('[playEpisode] fetching episode:', episodeId);
-        const res = await fetch(API + '/episodes/' + episodeId + '?_=' + Date.now());
+        const res = await fetch(API + '/episode/' + episodeId + '?_=' + Date.now());
         const episode = await res.json();
 
         // Eğer array geldiyse (yanlış endpoint) hata ver
