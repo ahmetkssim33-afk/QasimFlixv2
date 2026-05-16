@@ -374,11 +374,20 @@ function closeDetailModal() {
 // ═══════════════════════════════════════════
 async function playEpisode(episodeId, isMovie = false) {
     try {
-        console.log('[playEpisode] fetching episode:', episodeId);
-        const res = await fetch(API + '/episode/' + episodeId + '?_=' + Date.now());
-        const episode = await res.json();
+        // Önce cache'deki (currentSeries.seasons) episode'u bul — API'ye istek atmaya gerek yok
+        let episode = null;
+        const seasons = currentSeries?.seasons || [];
+        for (const s of seasons) {
+            const found = (s.episodes || []).find(e => String(e._id) === String(episodeId));
+            if (found) { episode = found; break; }
+        }
 
-        // Eğer array geldiyse (yanlış endpoint) hata ver
+        // Cache'de bulunamazsa API'den çek
+        if (!episode) {
+            const res = await fetch(API + '/episode/' + episodeId + '?_=' + Date.now());
+            episode = await res.json();
+        }
+
         if (Array.isArray(episode)) {
             console.error('[playEpisode] array geldi, episode ID yanlış:', episodeId);
             return;
