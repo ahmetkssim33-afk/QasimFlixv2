@@ -1,0 +1,1623 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CineAdmin — Streaming Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#0d0f14;
+  --bg2:#141720;
+  --bg3:#1c2030;
+  --bg4:#242840;
+  --surface:#1a1d28;
+  --border:rgba(255,255,255,0.07);
+  --border2:rgba(255,255,255,0.13);
+  --accent:#e5091a;
+  --accent2:#ff2233;
+  --accent-glow:rgba(229,9,26,0.18);
+  --text:#eef0f6;
+  --muted:#7a7f98;
+  --muted2:#4a4f68;
+  --success:#22c55e;
+  --success-bg:rgba(34,197,94,0.1);
+  --warning:#f59e0b;
+  --danger:#ef4444;
+  --danger-bg:rgba(239,68,68,0.1);
+  --info:#3b82f6;
+  --info-bg:rgba(59,130,246,0.1);
+  --sidebar-w:240px;
+  --font-head:'Syne',sans-serif;
+  --font-mono:'DM Mono',monospace;
+  --radius:6px;
+  --radius2:10px;
+}
+
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font-head)}
+
+/* ── AUTH OVERLAY ── */
+#auth-overlay{
+  position:fixed;inset:0;z-index:999;
+  background:var(--bg);
+  display:flex;align-items:center;justify-content:center;
+}
+.auth-card{
+  width:380px;padding:40px;
+  background:var(--surface);
+  border:1px solid var(--border2);
+  border-radius:var(--radius2);
+}
+.auth-card .logo{
+  font-size:1.6rem;font-weight:800;letter-spacing:-0.04em;
+  color:var(--accent);margin-bottom:8px;text-align:center;
+}
+.auth-card .logo span{color:var(--text)}
+.auth-card p{color:var(--muted);font-size:.85rem;text-align:center;margin-bottom:28px;letter-spacing:.01em}
+.auth-card input{
+  width:100%;padding:12px 14px;
+  background:var(--bg3);border:1px solid var(--border2);
+  color:var(--text);border-radius:var(--radius);
+  font-family:var(--font-mono);font-size:.9rem;
+  margin-bottom:14px;letter-spacing:.05em;
+}
+.auth-card input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+.auth-card .auth-error{
+  color:var(--danger);font-size:.8rem;text-align:center;
+  margin-bottom:10px;min-height:18px;
+}
+.btn-primary{
+  width:100%;padding:12px;
+  background:var(--accent);color:#fff;
+  border:none;border-radius:var(--radius);
+  font-family:var(--font-head);font-size:.9rem;font-weight:700;
+  letter-spacing:.05em;text-transform:uppercase;
+  cursor:pointer;transition:background .2s,transform .1s;
+}
+.btn-primary:hover{background:var(--accent2)}
+.btn-primary:active{transform:scale(.98)}
+.btn-primary:disabled{background:var(--muted2);cursor:not-allowed;transform:none}
+
+/* ── LAYOUT ── */
+#app{display:none;height:100vh;overflow:hidden;flex-direction:row}
+#app.visible{display:flex}
+
+/* ── SIDEBAR ── */
+aside.sidebar{
+  width:var(--sidebar-w);flex-shrink:0;
+  background:var(--bg2);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+  height:100vh;overflow-y:auto;
+}
+.sidebar-logo{
+  padding:24px 20px 18px;
+  font-size:1.25rem;font-weight:800;letter-spacing:-.04em;
+  color:var(--accent);border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.sidebar-logo span{color:var(--text)}
+.sidebar-logo .version{
+  font-family:var(--font-mono);font-size:.65rem;font-weight:400;
+  color:var(--muted2);letter-spacing:.05em;display:block;margin-top:2px;
+}
+nav{flex:1;padding:12px 0}
+.nav-section-label{
+  font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted2);font-weight:600;
+  padding:10px 20px 6px;
+}
+.nav-item{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 20px;cursor:pointer;
+  font-size:.85rem;font-weight:500;
+  color:var(--muted);
+  border-left:2px solid transparent;
+  transition:all .15s;position:relative;
+}
+.nav-item:hover{color:var(--text);background:var(--bg3)}
+.nav-item.active{
+  color:var(--text);background:var(--bg3);
+  border-left-color:var(--accent);
+}
+.nav-item .icon{font-size:1rem;flex-shrink:0}
+.nav-badge{
+  margin-left:auto;
+  background:var(--accent);color:#fff;
+  font-size:.65rem;font-family:var(--font-mono);font-weight:500;
+  padding:2px 7px;border-radius:20px;
+}
+.sidebar-footer{
+  padding:16px 20px;border-top:1px solid var(--border);
+  font-size:.72rem;color:var(--muted2);font-family:var(--font-mono);
+}
+
+/* ── MAIN ── */
+main{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+.topbar{
+  padding:18px 28px;
+  background:var(--bg2);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:16px;
+  flex-shrink:0;position:sticky;top:0;z-index:10;
+}
+.topbar h1{
+  font-size:1.1rem;font-weight:700;letter-spacing:-.02em;flex:1;
+}
+.topbar .breadcrumb{
+  font-size:.75rem;color:var(--muted);
+  font-family:var(--font-mono);letter-spacing:.02em;
+}
+.search-wrap{position:relative}
+.search-wrap input{
+  background:var(--bg3);border:1px solid var(--border2);
+  color:var(--text);padding:8px 12px 8px 34px;
+  border-radius:var(--radius);font-family:var(--font-head);font-size:.82rem;
+  width:200px;transition:border-color .2s;
+}
+.search-wrap input:focus{outline:none;border-color:var(--accent)}
+.search-wrap .search-icon{
+  position:absolute;left:10px;top:50%;transform:translateY(-50%);
+  color:var(--muted);font-size:.85rem;pointer-events:none;
+}
+.content{padding:24px 28px;flex:1}
+
+/* ── STAT CARDS ── */
+.stats-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+  gap:14px;margin-bottom:28px;
+}
+.stat-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius2);padding:18px 20px;
+  position:relative;overflow:hidden;
+}
+.stat-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:var(--accent);opacity:.7;
+}
+.stat-card .stat-label{
+  font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);font-weight:600;margin-bottom:8px;
+}
+.stat-card .stat-value{
+  font-size:1.9rem;font-weight:800;letter-spacing:-.04em;
+  color:var(--text);font-family:var(--font-mono);
+}
+.stat-card .stat-sub{
+  font-size:.72rem;color:var(--muted2);margin-top:4px;
+  font-family:var(--font-mono);
+}
+
+/* ── SECTION HEADER ── */
+.section-header{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:18px;
+}
+.section-header h2{
+  font-size:1rem;font-weight:700;letter-spacing:-.02em;
+}
+.section-header .sub{
+  font-size:.78rem;color:var(--muted);margin-top:2px;
+  font-family:var(--font-mono);
+}
+
+/* ── FORM CARD ── */
+.form-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius2);padding:22px 24px;
+  margin-bottom:24px;
+}
+.form-card h3{
+  font-size:.85rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:18px;
+  display:flex;align-items:center;gap:8px;
+}
+.form-card h3::after{
+  content:'';flex:1;height:1px;background:var(--border);
+}
+.form-row{
+  display:grid;grid-template-columns:1fr 1fr;gap:16px;
+}
+.form-row.three{grid-template-columns:1fr 1fr 1fr}
+.form-group{margin-bottom:16px}
+.form-group label{
+  display:block;font-size:.78rem;font-weight:600;letter-spacing:.03em;
+  color:var(--muted);margin-bottom:6px;text-transform:uppercase;
+}
+.form-group .required{color:var(--accent)}
+.form-group input,
+.form-group select,
+.form-group textarea{
+  width:100%;padding:10px 12px;
+  background:var(--bg3);border:1px solid var(--border2);
+  color:var(--text);border-radius:var(--radius);
+  font-family:var(--font-head);font-size:.88rem;
+  transition:border-color .2s,box-shadow .2s;
+  -webkit-appearance:none;
+}
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus{
+  outline:none;border-color:var(--accent);
+  box-shadow:0 0 0 3px var(--accent-glow);
+}
+.form-group textarea{resize:vertical;min-height:80px}
+.form-group select option{background:var(--bg3)}
+.form-group .hint{
+  font-size:.72rem;color:var(--muted2);margin-top:4px;
+  font-family:var(--font-mono);
+}
+.form-group .preview-img{
+  width:80px;height:60px;object-fit:cover;
+  border-radius:var(--radius);border:1px solid var(--border2);
+  margin-top:8px;display:none;
+}
+
+/* ── BUTTONS ── */
+.btn{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:10px 18px;border:none;border-radius:var(--radius);
+  font-family:var(--font-head);font-size:.83rem;font-weight:700;
+  letter-spacing:.03em;cursor:pointer;
+  transition:all .15s;white-space:nowrap;
+}
+.btn-red{background:var(--accent);color:#fff}
+.btn-red:hover{background:var(--accent2)}
+.btn-red:active{transform:scale(.97)}
+.btn-ghost{
+  background:transparent;color:var(--muted);
+  border:1px solid var(--border2);
+}
+.btn-ghost:hover{color:var(--text);border-color:var(--border2);background:var(--bg3)}
+.btn-danger{background:var(--danger-bg);color:var(--danger);border:1px solid rgba(239,68,68,.2)}
+.btn-danger:hover{background:rgba(239,68,68,.2)}
+.btn-success{background:var(--success-bg);color:var(--success);border:1px solid rgba(34,197,94,.2)}
+.btn-info{background:var(--info-bg);color:var(--info);border:1px solid rgba(59,130,246,.2)}
+.btn sm{padding:7px 12px;font-size:.76rem}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important}
+.spinner{
+  display:inline-block;width:14px;height:14px;
+  border:2px solid rgba(255,255,255,.2);border-top-color:#fff;
+  border-radius:50%;animation:spin .7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── LIST ITEMS ── */
+.list-container{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius2);overflow:hidden}
+.list-item{
+  display:grid;align-items:center;
+  padding:14px 18px;
+  border-bottom:1px solid var(--border);
+  gap:14px;transition:background .15s;
+}
+.list-item:last-child{border-bottom:none}
+.list-item:hover{background:var(--bg3)}
+.list-item.series-item{grid-template-columns:48px 1fr auto}
+.list-item.season-item{grid-template-columns:1fr auto}
+.list-item.episode-item{grid-template-columns:1fr auto}
+.list-thumb{
+  width:48px;height:68px;
+  object-fit:cover;border-radius:4px;
+  background:var(--bg3);flex-shrink:0;
+}
+.list-thumb-placeholder{
+  width:48px;height:68px;border-radius:4px;
+  background:var(--bg4);display:flex;align-items:center;
+  justify-content:center;color:var(--muted2);font-size:1.2rem;
+  flex-shrink:0;
+}
+.item-title{font-size:.9rem;font-weight:700;letter-spacing:-.01em;margin-bottom:4px}
+.item-meta{
+  font-size:.75rem;color:var(--muted);font-family:var(--font-mono);
+  display:flex;align-items:center;flex-wrap:wrap;gap:10px;
+}
+.badge{
+  display:inline-flex;align-items:center;
+  padding:2px 8px;border-radius:20px;
+  font-size:.68rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+  font-family:var(--font-mono);
+}
+.badge-red{background:rgba(229,9,26,.15);color:var(--accent)}
+.badge-blue{background:var(--info-bg);color:var(--info)}
+.badge-green{background:var(--success-bg);color:var(--success)}
+.badge-gray{background:rgba(122,127,152,.12);color:var(--muted)}
+.item-actions{display:flex;gap:8px;align-items:center;flex-shrink:0}
+.empty-state{
+  text-align:center;padding:48px 24px;color:var(--muted);
+}
+.empty-state .empty-icon{font-size:2.5rem;margin-bottom:12px;opacity:.3}
+.empty-state p{font-size:.85rem}
+
+/* ── TOAST ── */
+#toast-container{
+  position:fixed;bottom:24px;right:24px;
+  z-index:9999;display:flex;flex-direction:column;gap:10px;
+}
+.toast{
+  display:flex;align-items:center;gap:12px;
+  padding:13px 18px;border-radius:var(--radius2);
+  font-size:.83rem;font-weight:600;
+  border:1px solid;min-width:260px;
+  animation:slideIn .25s ease;
+  box-shadow:0 8px 24px rgba(0,0,0,.4);
+}
+@keyframes slideIn{
+  from{transform:translateX(40px);opacity:0}
+  to{transform:none;opacity:1}
+}
+.toast.success{
+  background:rgba(22,29,22,.95);
+  border-color:rgba(34,197,94,.3);
+  color:var(--success);
+}
+.toast.error{
+  background:rgba(29,16,16,.95);
+  border-color:rgba(239,68,68,.3);
+  color:var(--danger);
+}
+.toast.info{
+  background:rgba(16,20,29,.95);
+  border-color:rgba(59,130,246,.3);
+  color:var(--info);
+}
+.toast-icon{font-size:1rem;flex-shrink:0}
+.toast-close{
+  margin-left:auto;background:none;border:none;
+  color:inherit;opacity:.5;cursor:pointer;font-size:1rem;
+  line-height:1;padding:0 2px;
+}
+.toast-close:hover{opacity:1}
+
+/* ── MODAL ── */
+#modal-overlay{
+  position:fixed;inset:0;z-index:500;
+  background:rgba(0,0,0,.7);backdrop-filter:blur(2px);
+  display:none;align-items:center;justify-content:center;
+}
+#modal-overlay.open{display:flex}
+.modal{
+  background:var(--bg2);border:1px solid var(--border2);
+  border-radius:var(--radius2);padding:28px;
+  width:380px;max-width:90vw;
+}
+.modal h3{font-size:1rem;font-weight:700;margin-bottom:10px}
+.modal p{font-size:.85rem;color:var(--muted);line-height:1.6;margin-bottom:22px}
+.modal .modal-actions{display:flex;gap:10px;justify-content:flex-end}
+
+/* ── TABS (within pages) ── */
+.tab-bar{display:flex;gap:4px;margin-bottom:20px;background:var(--bg3);padding:4px;border-radius:var(--radius2);width:fit-content}
+.tab-pill{
+  padding:7px 16px;border-radius:var(--radius);cursor:pointer;
+  font-size:.8rem;font-weight:600;letter-spacing:.02em;
+  color:var(--muted);transition:all .15s;border:none;background:transparent;
+}
+.tab-pill.active{background:var(--surface);color:var(--text)}
+
+/* ── SEASON GROUP ── */
+.season-group{margin-bottom:16px}
+.season-group-header{
+  background:var(--bg3);padding:10px 18px;
+  font-size:.78rem;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--muted);
+  display:flex;align-items:center;gap:10px;
+}
+.season-group-header .season-num{
+  color:var(--accent);font-family:var(--font-mono);font-weight:500;
+}
+
+/* ── LOADING ── */
+.skeleton{
+  background:linear-gradient(90deg,var(--bg3) 25%,var(--bg4) 50%,var(--bg3) 75%);
+  background-size:200% 100%;animation:shimmer 1.4s infinite;
+  border-radius:var(--radius);
+}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.skeleton-item{height:72px;margin-bottom:2px}
+
+/* ── RESPONSIVE ── */
+@media(max-width:768px){
+  :root{--sidebar-w:0px}
+  aside.sidebar{display:none}
+  .form-row,.form-row.three{grid-template-columns:1fr}
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--muted2)}
+
+/* ── SELECT ARROW ── */
+select{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237a7f98' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;padding-right:32px!important;
+}
+
+/* ── VIEWS ── */
+.view{display:none}
+.view.active{display:block}
+
+/* ── EDIT MODAL ── */
+#edit-modal-overlay{
+  position:fixed;inset:0;z-index:600;
+  background:rgba(0,0,0,.75);backdrop-filter:blur(3px);
+  display:none;align-items:center;justify-content:center;
+  overflow-y:auto;padding:20px;
+}
+#edit-modal-overlay.open{display:flex}
+.edit-modal{
+  background:var(--bg2);border:1px solid var(--border2);
+  border-radius:var(--radius2);padding:28px;
+  width:560px;max-width:95vw;position:relative;
+  max-height:90vh;overflow-y:auto;
+}
+.edit-modal h3{font-size:1rem;font-weight:700;margin-bottom:20px;
+  display:flex;align-items:center;gap:10px;}
+.edit-modal h3::after{content:'';flex:1;height:1px;background:var(--border);}
+.edit-modal-close{
+  position:absolute;top:14px;right:16px;
+  background:none;border:none;color:var(--muted);
+  font-size:1.3rem;cursor:pointer;line-height:1;
+}
+.edit-modal-close:hover{color:var(--text)}
+.edit-modal .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:8px}
+
+/* ── IMGUR HINT ── */
+.imgur-hint{
+  font-size:.72rem;color:var(--muted2);margin-top:4px;
+  font-family:var(--font-mono);
+}
+.imgur-hint a{color:var(--info);text-decoration:none}
+.imgur-hint a:hover{text-decoration:underline}
+.poster-preview-wrap{margin-top:8px;display:flex;gap:10px;align-items:flex-start}
+.poster-preview-wrap img{
+  width:80px;height:115px;object-fit:cover;
+  border-radius:var(--radius);border:1px solid var(--border2);display:none;
+}
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="auth-overlay">
+  <div class="auth-card">
+    <div class="logo">Cine<span>Admin</span></div>
+    <p>Streaming Platform — Admin Dashboard</p>
+    <div class="auth-error" id="auth-error"></div>
+    <input type="password" id="auth-pass" placeholder="Admin şifresi" autocomplete="current-password">
+    <button class="btn-primary" id="auth-btn" onclick="doLogin()">Giriş Yap →</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      Cine<span>Admin</span>
+      <span class="version">v2.0 — PROD</span>
+    </div>
+    <nav>
+      <div class="nav-section-label">Ana Menü</div>
+      <div class="nav-item active" data-view="dashboard" onclick="navigate(this,'dashboard')">
+        <span class="icon">◈</span> Dashboard
+      </div>
+      <div class="nav-item" data-view="series" onclick="navigate(this,'series')">
+        <span class="icon">▦</span> Seriler
+        <span class="nav-badge" id="nb-series">0</span>
+      </div>
+      <div class="nav-item" data-view="seasons" onclick="navigate(this,'seasons')">
+        <span class="icon">▤</span> Sezonlar
+      </div>
+      <div class="nav-item" data-view="episodes" onclick="navigate(this,'episodes')">
+        <span class="icon">▶</span> Bölümler
+      </div>
+      <div class="nav-section-label" style="margin-top:8px">İçerik</div>
+      <div class="nav-item" data-view="subtitles" onclick="navigate(this,'subtitles')">
+        <span class="icon">⊟</span> Altyazılar
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      API: <span id="api-indicator" style="color:var(--success)">●</span> Vercel API
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main>
+    <div class="topbar">
+      <div style="flex:1">
+        <h1 id="page-title">Dashboard</h1>
+        <div class="breadcrumb" id="page-breadcrumb">CineAdmin / Dashboard</div>
+      </div>
+      <div class="search-wrap">
+        <span class="search-icon">⌕</span>
+        <input type="text" placeholder="Hızlı ara..." id="global-search" oninput="onGlobalSearch(this.value)">
+      </div>
+      <button class="btn btn-ghost sm" onclick="refreshAll()" title="Yenile" style="padding:8px 12px">↺</button>
+    </div>
+
+    <div class="content">
+
+      <!-- DASHBOARD VIEW -->
+      <div class="view active" id="view-dashboard">
+        <div class="stats-grid" id="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Toplam Seri</div>
+            <div class="stat-value" id="stat-series">—</div>
+            <div class="stat-sub">içerik tanımlandı</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Toplam Sezon</div>
+            <div class="stat-value" id="stat-seasons">—</div>
+            <div class="stat-sub">sezon eklendi</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Toplam Bölüm</div>
+            <div class="stat-value" id="stat-episodes">—</div>
+            <div class="stat-sub">izlenebilir içerik</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Film</div>
+            <div class="stat-value" id="stat-movies">—</div>
+            <div class="stat-sub">film kataloğu</div>
+          </div>
+        </div>
+        <div class="section-header">
+          <div>
+            <h2>Son Eklenen Seriler</h2>
+            <div class="sub">En son eklenen 5 içerik</div>
+          </div>
+          <button class="btn btn-ghost sm" onclick="navigate(document.querySelector('[data-view=series]'),'series')">Tümünü Gör →</button>
+        </div>
+        <div id="dashboard-recent"></div>
+      </div>
+
+      <!-- SERIES VIEW -->
+      <div class="view" id="view-series">
+        <div class="form-card">
+          <h3>Yeni Seri Ekle</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Seri Adı <span class="required">*</span></label>
+              <input type="text" id="s-title" placeholder="örn. Breaking Bad">
+            </div>
+            <div class="form-group">
+              <label>Tür <span class="required">*</span></label>
+              <select id="s-type">
+                <option value="series">Seri / Dizi</option>
+                <option value="movie">Film</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Açıklama</label>
+            <textarea id="s-desc" placeholder="Seri hakkında kısa açıklama..."></textarea>
+          </div>
+          <div class="form-row three">
+            <div class="form-group">
+              <label>Yayın Yılı</label>
+              <input type="number" id="s-year" min="1900" max="2100" placeholder="2024">
+            </div>
+            <div class="form-group">
+              <label>Puan (0–10)</label>
+              <input type="number" id="s-rating" min="0" max="10" step="0.1" value="0">
+            </div>
+            <div class="form-group">
+              <label>Kategoriler</label>
+              <input type="text" id="s-cats" placeholder="Aksiyon, Dram">
+              <div class="hint">virgülle ayır</div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Poster Görseli</label>
+            <input type="file" id="s-poster-file" accept="image/*" onchange="previewLocalFile(this,'s-poster-prev')" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:10px 12px;border-radius:var(--radius);font-family:var(--font-head);font-size:.85rem;width:100%;cursor:pointer;">
+            <div class="hint">JPG, PNG, WebP — maks. 20 MB</div>
+            <div class="poster-preview-wrap"><img id="s-poster-prev" alt="poster önizleme"></div>
+          </div>
+          <button class="btn btn-red" id="btn-add-series" onclick="addSeries()">
+            <span>+ Seri Ekle</span>
+          </button>
+        </div>
+
+        <div class="section-header">
+          <div>
+            <h2>Mevcut Seriler</h2>
+            <div class="sub" id="series-count-label">yükleniyor...</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <select id="filter-type" onchange="renderSeriesList()" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:7px 28px 7px 10px;border-radius:var(--radius);font-family:var(--font-head);font-size:.78rem">
+              <option value="">Tümü</option>
+              <option value="series">Sadece Diziler</option>
+              <option value="movie">Sadece Filmler</option>
+            </select>
+          </div>
+        </div>
+        <div id="series-list-wrap">
+          <div class="skeleton skeleton-item"></div>
+          <div class="skeleton skeleton-item" style="opacity:.7"></div>
+        </div>
+      </div>
+
+      <!-- SEASONS VIEW -->
+      <div class="view" id="view-seasons">
+        <div class="form-card">
+          <h3>Yeni Sezon Ekle</h3>
+          <div class="form-group">
+            <label>Seri Seç <span class="required">*</span></label>
+            <select id="sea-series" onchange="onSeasonSeriesChange()">
+              <option value="">— Seri Seç —</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Sezon No <span class="required">*</span></label>
+              <input type="number" id="sea-num" min="1" placeholder="1">
+            </div>
+            <div class="form-group">
+              <label>Sezon Başlığı</label>
+              <input type="text" id="sea-title" placeholder="örn. İlk Sezon">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Açıklama</label>
+            <textarea id="sea-desc" placeholder="Sezon hakkında..."></textarea>
+          </div>
+          <button class="btn btn-red" id="btn-add-season" onclick="addSeason()">
+            <span>+ Sezon Ekle</span>
+          </button>
+        </div>
+
+        <div class="section-header">
+          <h2>Sezonlar</h2>
+        </div>
+        <div id="seasons-list-wrap">
+          <div class="empty-state">
+            <div class="empty-icon">▤</div>
+            <p>Bir seri seçin</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- EPISODES VIEW -->
+      <div class="view" id="view-episodes">
+        <div class="form-card">
+          <h3>Yeni Bölüm Ekle</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Seri <span class="required">*</span></label>
+              <select id="ep-series" onchange="onEpSeriesChange()">
+                <option value="">— Seri Seç —</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Sezon <span class="required">*</span></label>
+              <select id="ep-season">
+                <option value="">— Önce Seri Seç —</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Bölüm No <span class="required">*</span></label>
+              <input type="number" id="ep-num" min="1" placeholder="1">
+            </div>
+            <div class="form-group">
+              <label>Başlık <span class="required">*</span></label>
+              <input type="text" id="ep-title" placeholder="Bölüm adı">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Açıklama</label>
+            <textarea id="ep-desc" placeholder="Bölüm özeti..."></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Video URL <span class="required">*</span></label>
+              <input type="text" id="ep-video" placeholder="https://.../video.mp4">
+            </div>
+            <div class="form-group">
+              <label>Süre (saniye)</label>
+              <input type="number" id="ep-dur" min="0" placeholder="2700">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Küçük Resim (Thumbnail)</label>
+            <input type="file" id="ep-thumb-file" accept="image/*" onchange="previewLocalFile(this,'ep-thumb-prev')" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:10px 12px;border-radius:var(--radius);font-family:var(--font-head);font-size:.85rem;width:100%;cursor:pointer;">
+            <img id="ep-thumb-prev" class="preview-img">
+          </div>
+          <button class="btn btn-red" id="btn-add-ep" onclick="addEpisode()">
+            <span>+ Bölüm Ekle</span>
+          </button>
+        </div>
+
+        <div class="section-header">
+          <div>
+            <h2>Bölümler</h2>
+          </div>
+        </div>
+        <div id="episodes-list-wrap">
+          <div class="empty-state">
+            <div class="empty-icon">▶</div>
+            <p>Bir seri seçin</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUBTITLES VIEW -->
+      <div class="view" id="view-subtitles">
+        <div class="form-card">
+          <h3>Altyazı Ekle</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Seri <span class="required">*</span></label>
+              <select id="sub-series" onchange="onSubSeriesChange()">
+                <option value="">— Seri Seç —</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Bölüm <span class="required">*</span></label>
+              <select id="sub-episode">
+                <option value="">— Önce Seri Seç —</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Dil <span class="required">*</span></label>
+            <select id="sub-lang">
+              <option value="TR">Türkçe (TR)</option>
+              <option value="EN">İngilizce (EN)</option>
+              <option value="ES">İspanyolca (ES)</option>
+              <option value="FR">Fransızca (FR)</option>
+              <option value="DE">Almanca (DE)</option>
+              <option value="AR">Arapça (AR)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>VTT İçeriği <span class="required">*</span></label>
+            <textarea id="sub-vtt" style="min-height:140px;font-family:var(--font-mono);font-size:.8rem" placeholder="WEBVTT&#10;&#10;00:00:00.000 --> 00:00:05.000&#10;Altyazı metni..."></textarea>
+            <div class="hint">WebVTT formatında altyazı içeriği</div>
+          </div>
+          <button class="btn btn-red" id="btn-add-sub" onclick="addSubtitle()">
+            <span>+ Altyazı Ekle</span>
+          </button>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </main>
+</div>
+
+<!-- EDIT MODAL -->
+<div id="edit-modal-overlay">
+  <div class="edit-modal" id="edit-modal-inner">
+    <button class="edit-modal-close" onclick="closeEditModal()">×</button>
+    <h3 id="edit-modal-title">Düzenle</h3>
+    <div id="edit-modal-body"></div>
+  </div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div id="modal-overlay">
+  <div class="modal">
+    <h3 id="modal-title">Emin misiniz?</h3>
+    <p id="modal-body">Bu işlem geri alınamaz.</p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">İptal</button>
+      <button class="btn btn-danger" id="modal-confirm">Sil</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div id="toast-container"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════════════
+const API = window.location.origin + '/api';
+const ADMIN_PASS = 'admin123'; // Değiştirin
+
+// ═══════════════════════════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════════════════════════
+function doLogin() {
+  const pass = document.getElementById('auth-pass').value;
+  const err  = document.getElementById('auth-error');
+  const btn  = document.getElementById('auth-btn');
+
+  if (!pass) { err.textContent = 'Şifre gerekli'; return; }
+
+  btn.disabled = true;
+  btn.textContent = '...';
+
+  setTimeout(() => {
+    if (pass === ADMIN_PASS) {
+      document.getElementById('auth-overlay').style.display = 'none';
+      document.getElementById('app').classList.add('visible');
+      initApp();
+    } else {
+      err.textContent = '✕ Hatalı şifre';
+      btn.disabled = false;
+      btn.textContent = 'Giriş Yap →';
+      document.getElementById('auth-pass').value = '';
+    }
+  }, 400);
+}
+
+document.getElementById('auth-pass').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+
+// ═══════════════════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════════════════
+function toast(msg, type = 'info') {
+  const icons = { success: '✓', error: '✕', info: 'ℹ' };
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `<span class="toast-icon">${icons[type]||'·'}</span><span>${msg}</span><button class="toast-close" onclick="this.closest('.toast').remove()">×</button>`;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 4500);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MODAL
+// ═══════════════════════════════════════════════════════════════
+let _resolve;
+function confirm2(title, body) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').textContent  = body;
+  document.getElementById('modal-overlay').classList.add('open');
+  return new Promise(r => { _resolve = r; });
+}
+document.getElementById('modal-confirm').onclick = () => {
+  document.getElementById('modal-overlay').classList.remove('open');
+  const r = _resolve; _resolve = null; r && r(true);
+};
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  const r = _resolve; _resolve = null; r && r(false);
+}
+document.getElementById('modal-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-overlay')) { closeModal(); }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// API HELPER
+// ═══════════════════════════════════════════════════════════════
+async function api(method, path, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  try {
+    const r = await fetch(API + path, opts);
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || d.message || `HTTP ${r.status}`);
+    return d;
+  } catch (e) {
+    if (e.message.includes('fetch')) throw new Error('Sunucuya bağlanılamadı');
+    throw e;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// NAV
+// ═══════════════════════════════════════════════════════════════
+const pageTitles = {
+  dashboard: ['Dashboard', 'Genel Bakış'],
+  series: ['Seri Yönetimi', 'Seriler / Filmler'],
+  seasons: ['Sezon Yönetimi', 'Sezonlar'],
+  episodes: ['Bölüm Yönetimi', 'Bölümler'],
+  subtitles: ['Altyazı Yönetimi', 'Altyazılar'],
+};
+
+function navigate(el, view) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(`view-${view}`).classList.add('active');
+  const [title, crumb] = pageTitles[view] || [view, view];
+  document.getElementById('page-title').textContent = title;
+  document.getElementById('page-breadcrumb').textContent = `CineAdmin / ${crumb}`;
+  if (view === 'dashboard') loadDashboard();
+  if (view === 'series')    loadSeriesList();
+  if (view === 'seasons')   populateSeriesSelects();
+  if (view === 'episodes')  populateSeriesSelects();
+  if (view === 'subtitles') populateSeriesSelects();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+let allSeries = [];
+let searchTerm = '';
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+async function initApp() {
+  await loadAllSeries();
+  loadDashboard();
+  checkApiHealth();
+}
+
+async function checkApiHealth() {
+  try {
+    await fetch(API + '/series?page=1&limit=1');
+    document.getElementById('api-indicator').style.color = 'var(--success)';
+  } catch {
+    document.getElementById('api-indicator').style.color = 'var(--danger)';
+  }
+}
+
+async function loadAllSeries() {
+  try {
+    const d = await api('GET', '/series?page=1&limit=500&_=' + Date.now());
+    allSeries = d.series || [];
+    document.getElementById('nb-series').textContent = allSeries.length;
+    populateSeriesSelects();
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+function refreshAll() {
+  loadAllSeries().then(() => {
+    const active = document.querySelector('.nav-item.active');
+    if (active) active.click();
+  });
+  toast('Yenilendi', 'info');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════════════════
+async function loadDashboard() {
+  const movies = allSeries.filter(s => s.type === 'movie').length;
+  document.getElementById('stat-series').textContent  = allSeries.length;
+  document.getElementById('stat-movies').textContent  = movies;
+  document.getElementById('stat-seasons').textContent = '—';
+  document.getElementById('stat-episodes').textContent= '—';
+
+  // Recent 5
+  const recent = [...allSeries].reverse().slice(0,5);
+  const wrap = document.getElementById('dashboard-recent');
+  if (!recent.length) {
+    wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">▦</div><p>Henüz seri eklenmedi</p></div>';
+    return;
+  }
+  wrap.innerHTML = `<div class="list-container">${recent.map(s => seriesItemHTML(s)).join('')}</div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SERIES
+// ═══════════════════════════════════════════════════════════════
+async function loadSeriesList() {
+  await loadAllSeries();
+  renderSeriesList();
+}
+
+function renderSeriesList() {
+  const filter = document.getElementById('filter-type')?.value || '';
+  let list = allSeries.filter(s => !filter || s.type === filter);
+  if (searchTerm) list = list.filter(s => s.title.toLowerCase().includes(searchTerm));
+  const lbl = document.getElementById('series-count-label');
+  if (lbl) lbl.textContent = `${list.length} içerik listeleniyor`;
+  const wrap = document.getElementById('series-list-wrap');
+  if (!list.length) {
+    wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">▦</div><p>Sonuç bulunamadı</p></div>';
+    return;
+  }
+  wrap.innerHTML = `<div class="list-container">${list.map(s => seriesItemHTML(s)).join('')}</div>`;
+}
+
+function seriesItemHTML(s) {
+  const cats = (s.categories||[]).join(', ') || '—';
+  const typeBadge = s.type === 'movie' ? '<span class="badge badge-blue">Film</span>' : '<span class="badge badge-red">Dizi</span>';
+  const poster = s.poster
+    ? `<img class="list-thumb" src="${esc(s.poster)}" alt="" onerror="this.style.display='none';this.nextSibling.style.display='flex'">`
+    : '';
+  const placeholder = `<div class="list-thumb-placeholder" ${s.poster?'style="display:none"':''}>▦</div>`;
+  return `
+  <div class="list-item series-item">
+    <div style="display:contents">${poster}${placeholder}</div>
+    <div>
+      <div class="item-title">${esc(s.title)}</div>
+      <div class="item-meta">
+        ${typeBadge}
+        <span>${esc(cats)}</span>
+        <span>⭐ ${s.rating||0}</span>
+        ${s.releaseYear ? `<span>${s.releaseYear}</span>` : ''}
+      </div>
+    </div>
+    <div class="item-actions">
+      <button class="btn btn-info sm" onclick="openEditSeries('${s._id}')">✎ Düzenle</button>
+      <button class="btn btn-danger sm" onclick="deleteSeries('${s._id}','${esc(s.title)}')">🗑 Sil</button>
+    </div>
+  </div>`;
+}
+
+async function addSeries() {
+  const title = v('s-title');
+  if (!title) { toast('Seri adı zorunludur', 'error'); return; }
+  const btn = document.getElementById('btn-add-series');
+  setLoading(btn, true);
+  try {
+    // Önce posteri yükle (varsa)
+    let posterPath = '';
+    const posterFile = document.getElementById('s-poster-file')?.files?.[0];
+    if (posterFile) {
+      posterPath = await uploadImage(posterFile);
+    }
+
+    await api('POST', '/series', {
+      title,
+      type: v('s-type'),
+      description: v('s-desc'),
+      releaseYear: parseInt(v('s-year')) || null,
+      rating: parseFloat(v('s-rating')) || 0,
+      categories: v('s-cats').split(',').map(c=>c.trim()).filter(Boolean),
+      poster: posterPath,
+    });
+    toast('✓ Seri eklendi: ' + title, 'success');
+    ['s-title','s-desc','s-year','s-cats','s-rating'].forEach(id => reset(id));
+    document.getElementById('s-rating').value = '0';
+    const pf = document.getElementById('s-poster-file');
+    if (pf) pf.value = '';
+    document.getElementById('s-poster-prev').style.display = 'none';
+    await loadAllSeries();
+    renderSeriesList();
+  } catch(e) { toast(e.message, 'error'); }
+  finally { setLoading(btn, false, '+ Seri Ekle'); }
+}
+
+async function deleteSeries(id, title) {
+  const ok = await confirm2('Seriyi Sil', `"${title}" serisi ve tüm sezon/bölümleri silinecek. Devam?`);
+  if (!ok) return;
+  try {
+    await api('DELETE', '/series/' + id);
+    toast('Seri silindi', 'info');
+    allSeries = allSeries.filter(s => s._id !== id);
+    document.getElementById('nb-series').textContent = allSeries.length;
+    renderSeriesList();
+    populateSeriesSelects();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SEASONS
+// ═══════════════════════════════════════════════════════════════
+function onSeasonSeriesChange() {
+  const id = v('sea-series');
+  if (id) loadSeasonsList(id);
+  else document.getElementById('seasons-list-wrap').innerHTML =
+    '<div class="empty-state"><div class="empty-icon">▤</div><p>Bir seri seçin</p></div>';
+}
+
+async function loadSeasonsList(seriesId) {
+  const wrap = document.getElementById('seasons-list-wrap');
+  wrap.innerHTML = '<div class="skeleton skeleton-item"></div>';
+  try {
+    const seasons = await api('GET', '/seasons/' + seriesId + '?_=' + Date.now());
+    if (!seasons || !seasons.length) {
+      wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">▤</div><p>Bu seride sezon yok</p></div>';
+      return;
+    }
+    wrap.innerHTML = `<div class="list-container">${seasons.map(s => `
+      <div class="list-item season-item">
+        <div>
+          <div class="item-title">Sezon ${s.seasonNumber}${s.title ? ': '+esc(s.title) : ''}</div>
+          <div class="item-meta"><span>${esc(s.description||'Açıklama yok')}</span></div>
+        </div>
+        <div class="item-actions">
+          <button class="btn btn-info sm" onclick="openEditSeason('${s._id}','${seriesId}')">✎ Düzenle</button>
+          <button class="btn btn-danger sm" onclick="deleteSeason('${s._id}','${seriesId}')">🗑 Sil</button>
+        </div>
+      </div>`).join('')}</div>`;
+  } catch(e) { toast(e.message,'error'); wrap.innerHTML=''; }
+}
+
+async function addSeason() {
+  const seriesId = v('sea-series');
+  const num = parseInt(v('sea-num'));
+  if (!seriesId) { toast('Seri seçin', 'error'); return; }
+  if (!num || num < 1) { toast('Geçerli sezon numarası girin', 'error'); return; }
+  const btn = document.getElementById('btn-add-season');
+  setLoading(btn, true);
+  try {
+    await api('POST', '/seasons', {
+      seriesId, seasonNumber: num,
+      title: v('sea-title'), description: v('sea-desc'),
+    });
+    toast('✓ Sezon eklendi', 'success');
+    ['sea-num','sea-title','sea-desc'].forEach(id => reset(id));
+    await loadSeasonsList(seriesId);
+  } catch(e) { toast(e.message,'error'); }
+  finally { setLoading(btn, false, '+ Sezon Ekle'); }
+}
+
+async function deleteSeason(id, seriesId) {
+  const ok = await confirm2('Sezonu Sil', 'Bu sezon ve tüm bölümleri silinecek. Devam?');
+  if (!ok) return;
+  try {
+    await api('DELETE', '/seasons/' + id);
+    toast('Sezon silindi', 'info');
+    await loadSeasonsList(seriesId);
+  } catch(e) { toast(e.message,'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EPISODES
+// ═══════════════════════════════════════════════════════════════
+async function onEpSeriesChange() {
+  const seriesId = v('ep-series');
+  const seasonSel = document.getElementById('ep-season');
+  seasonSel.innerHTML = '<option value="">— Yükleniyor —</option>';
+  if (!seriesId) { seasonSel.innerHTML = '<option value="">— Önce Seri Seç —</option>'; loadEpisodesList(); return; }
+  try {
+    const seasons = await api('GET', '/seasons/' + seriesId + '?_=' + Date.now());
+    seasonSel.innerHTML = '<option value="">— Sezon Seç —</option>';
+    (seasons||[]).forEach(s => {
+      const o = document.createElement('option');
+      o.value = s._id; o.textContent = `Sezon ${s.seasonNumber}${s.title?' - '+s.title:''}`;
+      seasonSel.appendChild(o);
+    });
+    await loadEpisodesList(seriesId);
+    await populateSubEpisodes(seriesId);
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function loadEpisodesList(seriesId) {
+  const wrap = document.getElementById('episodes-list-wrap');
+  if (!seriesId) {
+    wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">▶</div><p>Bir seri seçin</p></div>';
+    return;
+  }
+  wrap.innerHTML = '<div class="skeleton skeleton-item"></div>';
+  try {
+    const data = await api('GET', '/series/' + seriesId + '?_=' + Date.now());
+    if (!data.seasons || !data.seasons.length) {
+      wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">▶</div><p>Bu seride sezon yok</p></div>';
+      return;
+    }
+    let html = '';
+    data.seasons.forEach(season => {
+      if (!season.episodes || !season.episodes.length) return;
+      html += `<div class="season-group">
+        <div class="season-group-header"><span class="season-num">S${pad(season.seasonNumber)}</span>${esc(season.title||'Sezon '+season.seasonNumber)}</div>
+        <div class="list-container">${season.episodes.map(ep => `
+          <div class="list-item episode-item">
+            <div>
+              <div class="item-title">E${pad(ep.episodeNumber)}: ${esc(ep.title)}</div>
+              <div class="item-meta">
+                <span>${esc(ep.description||'Açıklama yok').substring(0,80)}</span>
+                ${ep.duration ? `<span>${fmtDur(ep.duration)}</span>` : ''}
+                ${ep.subtitles?.length ? `<span class="badge badge-green">ALT: ${ep.subtitles.map(s=>s.language).join(', ')}</span>` : ''}
+              </div>
+            </div>
+            <div class="item-actions">
+              <button class="btn btn-info sm" onclick="openEditEpisode('${ep._id}','${seriesId}')">✎ Düzenle</button>
+              <button class="btn btn-danger sm" onclick="deleteEpisode('${ep._id}','${seriesId}')">🗑 Sil</button>
+            </div>
+          </div>`).join('')}</div></div>`;
+    });
+    wrap.innerHTML = html || '<div class="empty-state"><div class="empty-icon">▶</div><p>Bölüm yok</p></div>';
+  } catch(e) { toast(e.message,'error'); wrap.innerHTML=''; }
+}
+
+async function addEpisode() {
+  const seasonId = v('ep-season');
+  const seriesId = v('ep-series');
+  const num = parseInt(v('ep-num'));
+  const title = v('ep-title');
+  const video = v('ep-video');
+  if (!seriesId) { toast('Seri seçin', 'error'); return; }
+  if (!seasonId) { toast('Sezon seçin', 'error'); return; }
+  if (!num) { toast('Bölüm numarası girin', 'error'); return; }
+  if (!title) { toast('Başlık zorunlu', 'error'); return; }
+  if (!video) { toast('Video URL zorunlu', 'error'); return; }
+  const btn = document.getElementById('btn-add-ep');
+  setLoading(btn, true);
+  try {
+    // Thumbnail dosyası varsa yükle
+    let thumbPath = '';
+    const thumbFile = document.getElementById('ep-thumb-file')?.files?.[0];
+    if (thumbFile) {
+      thumbPath = await uploadImage(thumbFile);
+    }
+
+    const result = await api('POST', '/episodes', {
+      seasonId, seriesId, episodeNumber: num, title,
+      description: v('ep-desc'),
+      videoUrl: video,
+      duration: parseInt(v('ep-dur')) || 0,
+      thumbnail: thumbPath,
+    });
+    console.log('Bölüm eklendi:', result);
+    toast('✓ Bölüm eklendi: ' + title, 'success');
+    ['ep-num','ep-title','ep-desc','ep-video','ep-dur'].forEach(id => reset(id));
+    const tf = document.getElementById('ep-thumb-file');
+    if (tf) tf.value = '';
+    const thumbPrev = document.getElementById('ep-thumb-prev');
+    if (thumbPrev) thumbPrev.style.display = 'none';
+    await loadEpisodesList(seriesId);
+  } catch(e) {
+    console.error('addEpisode error:', e);
+    toast('Hata: ' + e.message, 'error');
+  }
+  finally { setLoading(btn, false, '+ Bölüm Ekle'); }
+}
+
+async function deleteEpisode(id, seriesId) {
+  const ok = await confirm2('Bölümü Sil', 'Bu bölüm kalıcı olarak silinecek. Devam?');
+  if (!ok) return;
+  try {
+    await api('DELETE', '/episodes/' + id);
+    toast('Bölüm silindi', 'info');
+    await loadEpisodesList(seriesId);
+  } catch(e) { toast(e.message,'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SUBTITLES
+// ═══════════════════════════════════════════════════════════════
+async function onSubSeriesChange() {
+  const seriesId = v('sub-series');
+  await populateSubEpisodes(seriesId);
+}
+
+async function populateSubEpisodes(seriesId) {
+  const sel = document.getElementById('sub-episode');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— Yükleniyor —</option>';
+  if (!seriesId) { sel.innerHTML = '<option value="">— Önce Seri Seç —</option>'; return; }
+  try {
+    const data = await api('GET', '/series/' + seriesId + '?_=' + Date.now());
+    sel.innerHTML = '<option value="">— Bölüm Seç —</option>';
+    (data.seasons||[]).forEach(season => {
+      (season.episodes||[]).forEach(ep => {
+        const o = document.createElement('option');
+        o.value = ep._id;
+        o.textContent = `S${pad(season.seasonNumber)}E${pad(ep.episodeNumber)}: ${ep.title}`;
+        sel.appendChild(o);
+      });
+    });
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function addSubtitle() {
+  const epId = v('sub-episode');
+  const vtt  = v('sub-vtt');
+  const lang = v('sub-lang');
+  if (!epId) { toast('Bölüm seçin', 'error'); return; }
+  if (!vtt)  { toast('VTT içeriği gerekli', 'error'); return; }
+  const btn = document.getElementById('btn-add-sub');
+  setLoading(btn, true);
+  try {
+    await api('POST', `/episodes/${epId}/subtitle`, { language: lang, vttContent: vtt });
+    toast('✓ Altyazı eklendi (' + lang + ')', 'success');
+    reset('sub-vtt');
+  } catch(e) { toast(e.message,'error'); }
+  finally { setLoading(btn, false, '+ Altyazı Ekle'); }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// POPULATE SELECTS
+// ═══════════════════════════════════════════════════════════════
+function populateSeriesSelects() {
+  const selIds = ['sea-series','ep-series','sub-series'];
+  selIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const cur = el.value;
+    el.innerHTML = '<option value="">— Seri Seç —</option>';
+    allSeries.forEach(s => {
+      const o = document.createElement('option');
+      o.value = s._id;
+      o.textContent = s.title + (s.type === 'movie' ? ' [Film]' : '');
+      el.appendChild(o);
+    });
+    if (cur) el.value = cur;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SEARCH
+// ═══════════════════════════════════════════════════════════════
+let _searchT;
+function onGlobalSearch(val) {
+  clearTimeout(_searchT);
+  _searchT = setTimeout(() => {
+    searchTerm = val.toLowerCase().trim();
+    const active = document.querySelector('.nav-item.active')?.dataset.view;
+    if (active === 'series') renderSeriesList();
+  }, 220);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GÖRSEL YÜKLEME YARDIMCILARı
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Bir File nesnesini /api/upload'a yükler, dönen path'i döndürür.
+ * Hata olursa exception fırlatır (toast üst fonksiyon tarafından yakalanır).
+ */
+async function uploadImage(file) {
+  const formData = new FormData();
+  formData.append('image', file);
+  const res = await fetch(API + '/upload', { method: 'POST', body: formData });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Görsel yükleme başarısız');
+  return data.path; // örn. "/uploads/1717000000-123456.jpg"
+}
+
+/**
+ * Dosya input'undan seçilen görseli anlık önizler (upload etmeden).
+ */
+function previewLocalFile(input, prevId) {
+  const img = document.getElementById(prevId);
+  if (!img) return;
+  const file = input.files?.[0];
+  if (!file) { img.style.display = 'none'; return; }
+  const reader = new FileReader();
+  reader.onload = e => { img.src = e.target.result; img.style.display = 'block'; };
+  reader.readAsDataURL(file);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EDIT MODAL
+// ═══════════════════════════════════════════════════════════════
+function openEditModal(title, bodyHTML) {
+  document.getElementById('edit-modal-title').textContent = title;
+  document.getElementById('edit-modal-body').innerHTML = bodyHTML;
+  document.getElementById('edit-modal-overlay').classList.add('open');
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal-overlay').classList.remove('open');
+}
+
+document.getElementById('edit-modal-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('edit-modal-overlay')) closeEditModal();
+});
+
+// ─── SERİ DÜZENLE ───
+async function openEditSeries(id) {
+  const s = allSeries.find(x => x._id === id);
+  if (!s) { toast('Seri bulunamadı', 'error'); return; }
+
+  const cats = (s.categories || []).join(', ');
+  openEditModal('Seri Düzenle', `
+    <div class="form-row">
+      <div class="form-group">
+        <label>Seri Adı <span class="required">*</span></label>
+        <input type="text" id="edit-s-title" value="${esc(s.title)}">
+      </div>
+      <div class="form-group">
+        <label>Tür</label>
+        <select id="edit-s-type">
+          <option value="series" ${s.type==='series'?'selected':''}>Seri / Dizi</option>
+          <option value="movie" ${s.type==='movie'?'selected':''}>Film</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Açıklama</label>
+      <textarea id="edit-s-desc">${esc(s.description||'')}</textarea>
+    </div>
+    <div class="form-row three">
+      <div class="form-group">
+        <label>Yayın Yılı</label>
+        <input type="number" id="edit-s-year" value="${s.releaseYear||''}">
+      </div>
+      <div class="form-group">
+        <label>Puan (0–10)</label>
+        <input type="number" id="edit-s-rating" min="0" max="10" step="0.1" value="${s.rating||0}">
+      </div>
+      <div class="form-group">
+        <label>Kategoriler</label>
+        <input type="text" id="edit-s-cats" value="${esc(cats)}" placeholder="Aksiyon, Dram">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Poster Görseli</label>
+      ${s.poster ? `<div style="margin-bottom:8px"><img src="${esc(s.poster)}" style="width:100px;height:140px;object-fit:cover;border-radius:4px;border:1px solid var(--border2);" onerror="this.style.display='none'"><br><small style="color:var(--muted);font-size:.75rem">Mevcut poster</small></div>` : ''}
+      <input type="file" id="edit-s-poster-file" accept="image/*" onchange="previewLocalFile(this,'edit-s-poster-prev')" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:10px 12px;border-radius:var(--radius);font-family:var(--font-head);font-size:.85rem;width:100%;cursor:pointer;">
+      <div class="hint">Yeni bir görsel seçin (boş bırakırsanız mevcut poster korunur)</div>
+      <div class="poster-preview-wrap"><img id="edit-s-poster-prev" alt="önizleme"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeEditModal()">İptal</button>
+      <button class="btn btn-red" onclick="saveEditSeries('${id}')">💾 Kaydet</button>
+    </div>
+  `);
+}
+
+async function saveEditSeries(id) {
+  const title = (document.getElementById('edit-s-title')?.value||'').trim();
+  if (!title) { toast('Seri adı zorunludur', 'error'); return; }
+
+  // Yeni poster dosyası seçildiyse yükle; yoksa mevcut posteri koru
+  let poster;
+  const posterFile = document.getElementById('edit-s-poster-file')?.files?.[0];
+  if (posterFile) {
+    poster = await uploadImage(posterFile);
+  } else {
+    // Mevcut posteri DB'den çek (allSeries'dan)
+    const existing = allSeries.find(s => s._id === id);
+    poster = existing?.poster || '';
+  }
+
+  try {
+    await api('PUT', '/series/' + id, {
+      title,
+      type: document.getElementById('edit-s-type')?.value,
+      description: (document.getElementById('edit-s-desc')?.value||'').trim(),
+      releaseYear: parseInt(document.getElementById('edit-s-year')?.value)||null,
+      rating: parseFloat(document.getElementById('edit-s-rating')?.value)||0,
+      categories: (document.getElementById('edit-s-cats')?.value||'').split(',').map(c=>c.trim()).filter(Boolean),
+      poster,
+    });
+    toast('✓ Seri güncellendi', 'success');
+    closeEditModal();
+    await loadAllSeries();
+    renderSeriesList();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ─── SEZON DÜZENLE ───
+async function openEditSeason(id, seriesId) {
+  let season;
+  try {
+    // Sezonları çek ve bul
+    const seasons = await api('GET', '/seasons/' + seriesId + '?_=' + Date.now());
+    season = seasons.find(s => s._id === id);
+    if (!season) throw new Error('Sezon bulunamadı');
+  } catch(e) { toast(e.message, 'error'); return; }
+
+  openEditModal('Sezon Düzenle', `
+    <div class="form-row">
+      <div class="form-group">
+        <label>Sezon No <span class="required">*</span></label>
+        <input type="number" id="edit-sea-num" value="${season.seasonNumber}" min="1">
+      </div>
+      <div class="form-group">
+        <label>Sezon Başlığı</label>
+        <input type="text" id="edit-sea-title" value="${esc(season.title||'')}">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Açıklama</label>
+      <textarea id="edit-sea-desc">${esc(season.description||'')}</textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeEditModal()">İptal</button>
+      <button class="btn btn-red" onclick="saveEditSeason('${id}','${seriesId}')">💾 Kaydet</button>
+    </div>
+  `);
+}
+
+async function saveEditSeason(id, seriesId) {
+  const num = parseInt(document.getElementById('edit-sea-num')?.value);
+  if (!num || num < 1) { toast('Geçerli sezon numarası girin', 'error'); return; }
+  try {
+    await api('PUT', '/seasons/' + id, {
+      seasonNumber: num,
+      title: (document.getElementById('edit-sea-title')?.value||'').trim(),
+      description: (document.getElementById('edit-sea-desc')?.value||'').trim(),
+    });
+    toast('✓ Sezon güncellendi', 'success');
+    closeEditModal();
+    await loadSeasonsList(seriesId);
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ─── BÖLÜM DÜZENLE ───
+async function openEditEpisode(id, seriesId) {
+  let episode;
+  try {
+    episode = await api('GET', '/episodes/' + id + '?_=' + Date.now());
+    if (Array.isArray(episode)) throw new Error('Bölüm bulunamadı');
+  } catch(e) { toast(e.message, 'error'); return; }
+
+  openEditModal('Bölüm Düzenle', `
+    <div class="form-row">
+      <div class="form-group">
+        <label>Bölüm No <span class="required">*</span></label>
+        <input type="number" id="edit-ep-num" value="${episode.episodeNumber}" min="1">
+      </div>
+      <div class="form-group">
+        <label>Başlık <span class="required">*</span></label>
+        <input type="text" id="edit-ep-title" value="${esc(episode.title)}">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Açıklama</label>
+      <textarea id="edit-ep-desc">${esc(episode.description||'')}</textarea>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Video URL <span class="required">*</span></label>
+        <input type="text" id="edit-ep-video" value="${esc(episode.videoUrl||'')}">
+        <div class="hint">MP4, YouTube, Google Drive, iframe veya embed kodu</div>
+      </div>
+      <div class="form-group">
+        <label>Süre (saniye)</label>
+        <input type="number" id="edit-ep-dur" value="${episode.duration||0}" min="0">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Küçük Resim (Thumbnail)</label>
+      ${episode.thumbnail ? `<div style="margin-bottom:8px"><img src="${esc(episode.thumbnail)}" style="width:120px;height:68px;object-fit:cover;border-radius:4px;border:1px solid var(--border2);" onerror="this.style.display='none'"><br><small style="color:var(--muted);font-size:.75rem">Mevcut thumbnail</small></div>` : ''}
+      <input type="file" id="edit-ep-thumb-file" accept="image/*" onchange="previewLocalFile(this,'edit-ep-thumb-prev')" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:10px 12px;border-radius:var(--radius);font-family:var(--font-head);font-size:.85rem;width:100%;cursor:pointer;">
+      <div class="hint">Yeni görsel seçin (boş bırakırsanız mevcut korunur)</div>
+      <div class="poster-preview-wrap"><img id="edit-ep-thumb-prev" alt="önizleme"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeEditModal()">İptal</button>
+      <button class="btn btn-red" onclick="saveEditEpisode('${id}','${seriesId}')">💾 Kaydet</button>
+    </div>
+  `);
+}
+
+async function saveEditEpisode(id, seriesId) {
+  const title = (document.getElementById('edit-ep-title')?.value||'').trim();
+  const video = (document.getElementById('edit-ep-video')?.value||'').trim();
+  if (!title) { toast('Başlık zorunlu', 'error'); return; }
+  if (!video) { toast('Video URL zorunlu', 'error'); return; }
+
+  // Yeni thumbnail seçildiyse yükle; yoksa mevcut thumbnail DB'de kalır
+  let thumbnail;
+  const thumbFile = document.getElementById('edit-ep-thumb-file')?.files?.[0];
+  if (thumbFile) {
+    thumbnail = await uploadImage(thumbFile);
+  } else {
+    // Mevcut değeri koru (API PUT ile göndermemek yerine boş string'den kaçın)
+    thumbnail = undefined;
+  }
+
+  try {
+    const body = {
+      episodeNumber: parseInt(document.getElementById('edit-ep-num')?.value)||1,
+      title,
+      description: (document.getElementById('edit-ep-desc')?.value||'').trim(),
+      videoUrl: video,
+      duration: parseInt(document.getElementById('edit-ep-dur')?.value)||0,
+    };
+    if (thumbnail !== undefined) body.thumbnail = thumbnail;
+
+    await api('PUT', '/episodes/' + id, body);
+    toast('✓ Bölüm güncellendi', 'success');
+    closeEditModal();
+    await loadEpisodesList(seriesId);
+  } catch(e) { toast(e.message, 'error'); }
+}
+function v(id) { return (document.getElementById(id)?.value||'').trim(); }
+function reset(id) { const el = document.getElementById(id); if(el) el.value = ''; }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function pad(n) { return String(n||0).padStart(2,'0'); }
+function fmtDur(s) { const m=Math.floor(s/60),sec=s%60; return m+'dk'+sec+'sn'; }
+function previewImg(inp, prevId) { // deprecated, kept for compat
+  const img = document.getElementById(prevId);
+  if (!img) return;
+  const val = inp.value;
+  if (val) { img.src = val; img.style.display = 'block'; }
+  else img.style.display = 'none';
+}
+function setLoading(btn, loading, label) {
+  if (loading) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>';
+  } else {
+    btn.disabled = false;
+    btn.innerHTML = `<span>${label}</span>`;
+  }
+}
+</script>
+</body>
+</html>
