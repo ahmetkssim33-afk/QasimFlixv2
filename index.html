@@ -163,12 +163,67 @@ body::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:3px}
 .sub-select-wrap{display:flex;align-items:center;gap:6px;font-size:.8rem;color:var(--muted)}
 .sub-select-wrap select{background:#1a1a1a;border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:4px;font-family:var(--font);font-size:.78rem;outline:none;cursor:pointer}
 
-@media(max-width:600px){
+@media(max-width:768px){  /* NAVBAR */
+  .navbar{padding:0 3%;height:56px}
   .nav-links{display:none}
-  .search-box input{width:110px}
-  .hero-title{font-size:2.2rem}
-  .card{flex:0 0 130px}
-  .skeleton-card{flex:0 0 130px}
+  .logo{font-size:1.5rem}
+  .search-box input{width:90px}
+  .search-box{padding:5px 8px}
+  .google-btn{font-size:.72rem;padding:6px 10px}
+  .google-btn svg{width:14px;height:14px}
+  .user-name{display:none}
+
+  /* HERO */
+  .hero{height:65vh;min-height:380px}
+  .hero-content{padding:0 3% 4%;max-width:100%}
+  .hero-title{font-size:2rem}
+  .hero-desc{font-size:.82rem;-webkit-line-clamp:2}
+  .hero-actions{gap:8px}
+  .btn-play,.btn-info{font-size:.82rem;padding:8px 16px}
+
+  /* SECTIONS */
+  .section{padding:0 3%}
+  .section-title{font-size:1.1rem}
+
+  /* CARDS */
+  .card{flex:0 0 120px}
+  .skeleton-card{flex:0 0 120px}
+  .card-overlay-title{font-size:.72rem}
+  .cards-row{gap:6px}
+
+  /* MODAL */
+  .modal-box{width:98vw;max-height:95vh}
+  .modal-hero-img{height:180px}
+  .modal-title{font-size:1.5rem}
+  .modal-body{padding:0 14px 14px}
+  .modal-actions{gap:8px}
+  .btn-play,.btn-info{font-size:.78rem;padding:7px 14px}
+
+  /* SEARCH */
+  #search-results{padding:0 3%}
+  .search-grid{grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
+
+  /* PLAYER */
+  .player-modal-box{width:100vw;border-radius:0}
+  .player-bar{padding:8px 12px;flex-direction:column;align-items:flex-start;gap:6px}
+
+  /* EPISODE LIST */
+  .ep-thumb-img{width:70px;height:42px}
+  .ep-title{font-size:.8rem}
+  .ep-desc{display:none}
+
+  /* DROPDOWN */
+  .user-dropdown{min-width:180px}
+
+  /* MAIN CONTENT */
+  .main-content{margin-top:-60px}
+}
+
+@media(max-width:400px){
+  .card{flex:0 0 100px}
+  .skeleton-card{flex:0 0 100px}
+  .hero-title{font-size:1.7rem}
+  .search-box input{width:70px}
 }
 </style>
 </head>
@@ -207,9 +262,9 @@ body::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:3px}
           <div class="user-dropdown-item" onclick="signOut()" style="color:#ff6b6b">🚪 Çıkış Yap</div>
         </div>
       </div>
-    </div>
-  </div>
+    </div>  </div>
 </nav>
+
 
 <div class="hero" id="hero">
   <div class="hero-content">
