@@ -1,17 +1,10 @@
 // ═══════════════════════════════════════════════════════════
 // api/index.js — Vercel Serverless Function
-//
-// ÖNEMLİ: Bu dosya server.js'in Vercel uyumlu halidir.
-// Fark: app.listen() KALDIRILDI → module.exports = app ile değiştirildi.
-// Vercel, Node.js sunucusunu kendisi başlatır; biz sadece app'i export ederiz.
 // ═══════════════════════════════════════════════════════════
 
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-const multer = require("multer");
-const path = require("path");
-const fs = require("fs");
 
 const app = express();
 
@@ -27,46 +20,12 @@ app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 // ───────────────────────────────────────────────────────────
-// UPLOAD — Multer (lokal: /uploads klasörü, Vercel: /tmp)
-// ───────────────────────────────────────────────────────────
-const uploadsDir = process.env.VERCEL
-  ? "/tmp/uploads"
-  : path.join(__dirname, "..", "uploads");
-
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadsDir),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    cb(null, Date.now() + "-" + Math.round(Math.random() * 1e6) + ext);
-  }
-});
-const upload = multer({
-  storage,
-  limits: { fileSize: 20 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith("image/")) cb(null, true);
-    else cb(new Error("Sadece görsel dosyaları kabul edilir"));
-  }
-});
-
-// Yüklenen dosyaları serve et (lokal için)
-if (!process.env.VERCEL) {
-  app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
-}
-
-// ───────────────────────────────────────────────────────────
 // VERİTABANI BAĞLANTISI
-//
-// Vercel'de process.env.MONGODB_URI environment variable'ından okur.
-// Vercel Dashboard → Settings → Environment Variables'a eklemen gerekir.
-// Örnek değer: mongodb+srv://user:password@cluster.mongodb.net/streamingDB
 // ───────────────────────────────────────────────────────────
-let isConnected = false; // Bağlantıyı tekrar tekrar açmamak için kontrol
+let isConnected = false;
 
 async function connectDB() {
-  if (isConnected) return; // Zaten bağlıysa tekrar bağlanma
+  if (isConnected) return;
 
   const uri = process.env.MONGODB_URI;
   if (!uri) {
@@ -76,25 +35,25 @@ async function connectDB() {
 
   try {
     await mongoose.connect(uri, {
-      // Vercel serverless için önerilen ayarlar:
-      bufferCommands: false,      // Bağlantı yokken sorguyu kuyruğa alma
-      serverSelectionTimeoutMS: 5000, // 5 saniye bekle, sonra hata ver
+      bufferCommands: false,
+      serverSelectionTimeoutMS: 5000,
     });
     isConnected = true;
     console.log("✅ MongoDB Atlas bağlantısı kuruldu");
   } catch (err) {
     console.error("❌ MongoDB bağlantı hatası:", err.message);
+    isConnected = false;
   }
 }
 
 // ───────────────────────────────────────────────────────────
-// SCHEMAS (Veri Şemaları)
+// SCHEMAS
 // ───────────────────────────────────────────────────────────
 
 const seriesSchema = new mongoose.Schema({
   title:       { type: String, required: true, unique: true },
   description: String,
-  poster:      String,          // base64 veya URL
+  poster:      String,
   categories:  [String],
   releaseYear: Number,
   rating:      { type: Number, default: 0, min: 0, max: 10 },
@@ -140,17 +99,16 @@ const categorySchema = new mongoose.Schema({
 });
 
 // ───────────────────────────────────────────────────────────
-// MODELS (mongoose.models önbelleği — serverless ortamında
-// modellerin tekrar tanımlanmasını engeller)
+// MODELS
 // ───────────────────────────────────────────────────────────
-const Series       = mongoose.models.Series       || mongoose.model("Series",       seriesSchema);
-const Season       = mongoose.models.Season       || mongoose.model("Season",       seasonSchema);
-const Episode      = mongoose.models.Episode      || mongoose.model("Episode",      episodeSchema);
-const WatchProgress= mongoose.models.WatchProgress|| mongoose.model("WatchProgress",watchProgressSchema);
-const Category     = mongoose.models.Category     || mongoose.model("Category",     categorySchema);
+const Series        = mongoose.models.Series        || mongoose.model("Series",        seriesSchema);
+const Season        = mongoose.models.Season        || mongoose.model("Season",        seasonSchema);
+const Episode       = mongoose.models.Episode       || mongoose.model("Episode",       episodeSchema);
+const WatchProgress = mongoose.models.WatchProgress || mongoose.model("WatchProgress", watchProgressSchema);
+const Category      = mongoose.models.Category      || mongoose.model("Category",      categorySchema);
 
 // ───────────────────────────────────────────────────────────
-// DB MIDDLEWARE — Her istekte bağlantıyı kontrol et
+// DB MIDDLEWARE
 // ───────────────────────────────────────────────────────────
 app.use(async (req, res, next) => {
   await connectDB();
@@ -161,7 +119,7 @@ app.use(async (req, res, next) => {
 // API ENDPOINTS — SERİ / FİLM
 // ═══════════════════════════════════════════════════════════
 
-// Tüm serileri getir (sayfalama destekli)
+// Tüm serileri getir
 app.get("/api/series", async (req, res) => {
   try {
     const page  = parseInt(req.query.page)  || 1;
@@ -187,30 +145,51 @@ app.get("/api/series", async (req, res) => {
   }
 });
 
-// Tek seri getir (sezonlar ve bölümler dahil)
+// ─── TEK SERİ — sezonlar ve bölümler dahil ───────────────
+// app.js'deki openDetail() fonksiyonu series.seasons[].episodes[]
+// yapısını bekliyor. Bu endpoint tüm ağacı birleştirip döndürür.
 app.get("/api/series/:id", async (req, res) => {
   try {
-    const series = await Series.findById(req.params.id);
+    const series = await Series.findById(req.params.id).lean();
     if (!series) return res.status(404).json({ error: "Seri bulunamadı" });
 
-    // Sezonları ve bölümleri de çek
-    const seasons = await Season.find({ seriesId: series._id }).sort({ seasonNumber: 1 });
-    const seasonIds = seasons.map(s => s._id);
-    const episodes = await Episode.find({ seasonId: { $in: seasonIds } }).sort({ episodeNumber: 1 });
+    // Sezonları çek ve sırala
+    const seasons = await Season.find({ seriesId: series._id })
+      .sort({ seasonNumber: 1 })
+      .lean();
 
-    // Her sezona bölümlerini ekle
-    const seasonsWithEpisodes = seasons.map(season => ({
-      ...season.toObject(),
-      episodes: episodes.filter(ep => ep.seasonId.toString() === season._id.toString())
-    }));
+    // Her sezon için bölümleri çek
+    const seasonsWithEpisodes = await Promise.all(
+      seasons.map(async (season) => {
+        const episodes = await Episode.find({ seasonId: season._id })
+          .sort({ episodeNumber: 1 })
+          .lean();
+        return { ...season, episodes };
+      })
+    );
 
-    res.json({ ...series.toObject(), seasons: seasonsWithEpisodes });
+    // Film tipinde doğrudan bölüm arama (sezon olmadan eklenmiş olabilir)
+    if (series.type === "movie" && seasonsWithEpisodes.length === 0) {
+      const directEpisodes = await Episode.find({ seriesId: series._id })
+        .sort({ episodeNumber: 1 })
+        .lean();
+      if (directEpisodes.length > 0) {
+        seasonsWithEpisodes.push({
+          _id: null,
+          seasonNumber: 1,
+          title: series.title,
+          episodes: directEpisodes
+        });
+      }
+    }
+
+    res.json({ ...series, seasons: seasonsWithEpisodes });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Seri ekle (Admin)
+// Seri ekle
 app.post("/api/series", async (req, res) => {
   try {
     const { title, description, poster, categories, releaseYear, rating, type } = req.body;
@@ -222,7 +201,7 @@ app.post("/api/series", async (req, res) => {
   }
 });
 
-// Seri güncelle (Admin)
+// Seri güncelle
 app.put("/api/series/:id", async (req, res) => {
   try {
     const updated = await Series.findByIdAndUpdate(req.params.id, req.body, { new: true });
@@ -232,14 +211,16 @@ app.put("/api/series/:id", async (req, res) => {
   }
 });
 
-// Seri sil (Admin) — cascade: sezon ve bölümleri de sil
+// Seri sil (sezon ve bölümleri de temizle)
 app.delete("/api/series/:id", async (req, res) => {
   try {
-    const id = req.params.id;
-    await Series.findByIdAndDelete(id);
-    await Season.deleteMany({ seriesId: id });
-    await Episode.deleteMany({ seriesId: id });
-    res.json({ message: "Seri silindi" });
+    const seriesId = req.params.id;
+    const seasons = await Season.find({ seriesId }).lean();
+    const seasonIds = seasons.map(s => s._id);
+    await Episode.deleteMany({ seasonId: { $in: seasonIds } });
+    await Season.deleteMany({ seriesId });
+    await Series.findByIdAndDelete(seriesId);
+    res.json({ message: "Seri ve tüm sezon/bölümler silindi" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -280,10 +261,10 @@ app.put("/api/seasons/:id", async (req, res) => {
 
 app.delete("/api/seasons/:id", async (req, res) => {
   try {
-    const id = req.params.id;
-    await Season.findByIdAndDelete(id);
-    await Episode.deleteMany({ seasonId: id });
-    res.json({ message: "Sezon silindi" });
+    const seasonId = req.params.id;
+    await Episode.deleteMany({ seasonId });
+    await Season.findByIdAndDelete(seasonId);
+    res.json({ message: "Sezon ve bölümleri silindi" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -293,20 +274,7 @@ app.delete("/api/seasons/:id", async (req, res) => {
 // API ENDPOINTS — BÖLÜMLER
 // ═══════════════════════════════════════════════════════════
 
-// Tek bölüm getir — /api/episodes/:id
-// app.js bu endpoint'i kullanıyor, her zaman tek obje dönmeli
-app.get("/api/episodes/:id", async (req, res) => {
-  try {
-    const episode = await Episode.findById(req.params.id);
-    if (!episode) return res.status(404).json({ error: "Bölüm bulunamadı" });
-    res.json(episode);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Sezona göre bölüm listesi — /api/episodes/by-season/:seasonId
-app.get("/api/episodes/by-season/:seasonId", async (req, res) => {
+app.get("/api/episodes/:seasonId", async (req, res) => {
   try {
     const episodes = await Episode.find({ seasonId: req.params.seasonId }).sort({ episodeNumber: 1 });
     res.json(episodes);
@@ -315,7 +283,6 @@ app.get("/api/episodes/by-season/:seasonId", async (req, res) => {
   }
 });
 
-// Geriye dönük uyumluluk
 app.get("/api/episode/:id", async (req, res) => {
   try {
     const episode = await Episode.findById(req.params.id);
@@ -434,42 +401,31 @@ app.post("/api/categories", async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════
-// UPLOAD — Poster / Thumbnail yükleme
-// ═══════════════════════════════════════════════════════════
-app.post("/api/upload", upload.single("image"), (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ error: "Dosya seçilmedi" });
-    // Vercel'de /tmp geçici; lokal'de /uploads kalıcı
-    const filePath = "/uploads/" + req.file.filename;
-    res.json({ ok: true, path: filePath });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ═══════════════════════════════════════════════════════════
-// SAĞLIK KONTROLÜ — /api endpoint'i çalışıyor mu?
+// SAĞLIK KONTROLÜ
 // ═══════════════════════════════════════════════════════════
 app.get("/api", (req, res) => {
   res.json({
     status: "ok",
     message: "🎬 Streaming Platform API çalışıyor",
-    version: "1.0.0",
+    version: "1.1.0",
     endpoints: [
-      "GET  /api/series",
-      "POST /api/series",
-      "GET  /api/seasons/:seriesId",
-      "GET  /api/episodes/:seasonId",
-      "GET  /api/categories"
+      "GET  /api/series              — tüm içerikler (sayfalama)",
+      "GET  /api/series/:id          — seri + sezonlar + bölümler",
+      "POST /api/series              — seri ekle",
+      "PUT  /api/series/:id          — seri güncelle",
+      "DELETE /api/series/:id        — seri + sezon + bölüm sil",
+      "GET  /api/seasons/:seriesId   — sezonlar",
+      "POST /api/seasons             — sezon ekle",
+      "DELETE /api/seasons/:id       — sezon + bölümleri sil",
+      "GET  /api/episodes/:seasonId  — bölümler",
+      "GET  /api/episode/:id         — tek bölüm",
+      "POST /api/episodes            — bölüm ekle",
+      "GET  /api/categories          — kategoriler"
     ]
   });
 });
 
 // ═══════════════════════════════════════════════════════════
-// EXPORT — app.listen() YOK!
-//
-// Vercel serverless'ta app.listen() KULLANILMAZ.
-// Vercel kendi HTTP sunucusunu kurar ve bu dosyayı çağırır.
-// Biz sadece Express app'i export ediyoruz.
+// EXPORT — Vercel için app.listen() YOK
 // ═══════════════════════════════════════════════════════════
 module.exports = app;
