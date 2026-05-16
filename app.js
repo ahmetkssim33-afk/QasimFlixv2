@@ -9,6 +9,7 @@ let currentSeries = null;
 let currentSeason = null;
 let currentEpisode = null;
 let currentFilter = null; // null=all, 'series', 'movie'
+let allData = []; // global cache for all content
 
 // ═══════════════════════════════════════════
 // INIT
@@ -29,15 +30,17 @@ async function loadAll() {
         const res = await fetch(API + '/series?page=1&limit=100');
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
-        const all = data.series || [];
+        allData = data.series || [];
 
-        renderHero(all);
-        renderRow('popular-row', all.slice(0, 12));
-        renderRow('series-row', all.filter(s => s.type === 'series'));
-        renderRow('movies-row', all.filter(s => s.type === 'movie'));
+        renderHero(allData);
+        renderRow('popular-row', allData.slice(0, 12));
+        renderRow('series-row', allData.filter(s => s.type === 'series'));
+        renderRow('movies-row', allData.filter(s => s.type === 'movie'));
 
-        toggleSection('series-section', all.some(s => s.type === 'series'));
-        toggleSection('movies-section', all.some(s => s.type === 'movie'));
+        // Always show sections; show empty state inside row if no content
+        document.getElementById('series-section').style.display = '';
+        document.getElementById('movies-section').style.display = '';
+        document.getElementById('popular-section').style.display = '';
     } catch (err) {
         console.error('Load error:', err);
         document.getElementById('api-notice').classList.add('show');
@@ -196,6 +199,13 @@ function showCategory(type, btn) {
     document.getElementById('popular-section').style.display = type ? 'none' : '';
     document.getElementById('series-section').style.display = type === 'series' ? '' : 'none';
     document.getElementById('movies-section').style.display = type === 'movie' ? '' : 'none';
+
+    // Re-render rows from cached data to ensure content shows
+    if (type === 'series') {
+        renderRow('series-row', allData.filter(s => s.type === 'series'));
+    } else if (type === 'movie') {
+        renderRow('movies-row', allData.filter(s => s.type === 'movie'));
+    }
 }
 
 function showAll(btn) {
@@ -207,6 +217,11 @@ function showAll(btn) {
     document.getElementById('popular-section').style.display = '';
     document.getElementById('series-section').style.display = '';
     document.getElementById('movies-section').style.display = '';
+
+    // Re-render all rows from cached data
+    renderRow('popular-row', allData.slice(0, 12));
+    renderRow('series-row', allData.filter(s => s.type === 'series'));
+    renderRow('movies-row', allData.filter(s => s.type === 'movie'));
 }
 
 function setActiveNavBtn(btn) {
