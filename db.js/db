@@ -1,12 +1,23 @@
-import mongoose from "mongoose";
+const mongoose = require("mongoose");
+
+let isConnected = false;
 
 const connectDB = async () => {
+  if (isConnected) return;
+
+  const uri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/streamingDB";
+
   try {
-    await mongoose.connect(process.env.MONGODB_URI);
-    console.log("MongoDB connected");
+    await mongoose.connect(uri, {
+      bufferCommands: false,
+      serverSelectionTimeoutMS: 5000,
+    });
+    isConnected = true;
+    console.log("✅ MongoDB bağlandı");
   } catch (err) {
-    console.log("Mongo error:", err);
+    console.error("❌ MongoDB bağlantı hatası:", err.message);
+    throw err;
   }
 };
 
-export default connectDB;
+module.exports = connectDB;
