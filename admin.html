@@ -613,9 +613,9 @@ select{
             </div>
           </div>
           <div class="form-group">
-            <label>Poster URL</label>
-            <input type="text" id="s-poster" placeholder="https://i.imgur.com/xxxx.jpg veya https://imgur.com/a/xxxx" oninput="handlePosterInput(this,'s-poster-prev')">
-            <div class="imgur-hint">Imgur album linki (<code>imgur.com/a/xxxx</code>) otomatik dönüştürülür. Doğrudan resim linki de kullanabilirsiniz.</div>
+            <label>Poster Görseli</label>
+            <input type="file" id="s-poster-file" accept="image/*" onchange="previewLocalFile(this,'s-poster-prev')" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:10px 12px;border-radius:var(--radius);font-family:var(--font-head);font-size:.85rem;width:100%;cursor:pointer;">
+            <div class="hint">JPG, PNG, WebP — maks. 20 MB</div>
             <div class="poster-preview-wrap"><img id="s-poster-prev" alt="poster önizleme"></div>
           </div>
           <button class="btn btn-red" id="btn-add-series" onclick="addSeries()">
@@ -725,8 +725,8 @@ select{
             </div>
           </div>
           <div class="form-group">
-            <label>Küçük Resim URL</label>
-            <input type="text" id="ep-thumb" placeholder="https://.../thumb.jpg" oninput="previewImg(this,'ep-thumb-prev')">
+            <label>Küçük Resim (Thumbnail)</label>
+            <input type="file" id="ep-thumb-file" accept="image/*" onchange="previewLocalFile(this,'ep-thumb-prev')" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:10px 12px;border-radius:var(--radius);font-family:var(--font-head);font-size:.85rem;width:100%;cursor:pointer;">
             <img id="ep-thumb-prev" class="preview-img">
           </div>
           <button class="btn btn-red" id="btn-add-ep" onclick="addEpisode()">
@@ -876,10 +876,13 @@ function confirm2(title, body) {
   document.getElementById('modal-overlay').classList.add('open');
   return new Promise(r => { _resolve = r; });
 }
-document.getElementById('modal-confirm').onclick = () => { closeModal(); _resolve && _resolve(true); };
+document.getElementById('modal-confirm').onclick = () => {
+  document.getElementById('modal-overlay').classList.remove('open');
+  const r = _resolve; _resolve = null; r && r(true);
+};
 function closeModal() {
   document.getElementById('modal-overlay').classList.remove('open');
-  _resolve && _resolve(false);
+  const r = _resolve; _resolve = null; r && r(false);
 }
 document.getElementById('modal-overlay').addEventListener('click', e => {
   if (e.target === document.getElementById('modal-overlay')) { closeModal(); }
@@ -1045,6 +1048,13 @@ async function addSeries() {
   const btn = document.getElementById('btn-add-series');
   setLoading(btn, true);
   try {
+    // Önce posteri yükle (varsa)
+    let posterPath = '';
+    const posterFile = document.getElementById('s-poster-file')?.files?.[0];
+    if (posterFile) {
+      posterPath = await uploadImage(posterFile);
+    }
+
     await api('POST', '/series', {
       title,
       type: v('s-type'),
@@ -1052,11 +1062,13 @@ async function addSeries() {
       releaseYear: parseInt(v('s-year')) || null,
       rating: parseFloat(v('s-rating')) || 0,
       categories: v('s-cats').split(',').map(c=>c.trim()).filter(Boolean),
-      poster: getPosterUrl('s-poster'),
+      poster: posterPath,
     });
     toast('✓ Seri eklendi: ' + title, 'success');
-    ['s-title','s-desc','s-year','s-cats','s-poster','s-rating'].forEach(id => reset(id));
+    ['s-title','s-desc','s-year','s-cats','s-rating'].forEach(id => reset(id));
     document.getElementById('s-rating').value = '0';
+    const pf = document.getElementById('s-poster-file');
+    if (pf) pf.value = '';
     document.getElementById('s-poster-prev').style.display = 'none';
     await loadAllSeries();
     renderSeriesList();
@@ -1212,16 +1224,25 @@ async function addEpisode() {
   const btn = document.getElementById('btn-add-ep');
   setLoading(btn, true);
   try {
+    // Thumbnail dosyası varsa yükle
+    let thumbPath = '';
+    const thumbFile = document.getElementById('ep-thumb-file')?.files?.[0];
+    if (thumbFile) {
+      thumbPath = await uploadImage(thumbFile);
+    }
+
     const result = await api('POST', '/episodes', {
       seasonId, seriesId, episodeNumber: num, title,
       description: v('ep-desc'),
       videoUrl: video,
       duration: parseInt(v('ep-dur')) || 0,
-      thumbnail: v('ep-thumb'),
+      thumbnail: thumbPath,
     });
     console.log('Bölüm eklendi:', result);
     toast('✓ Bölüm eklendi: ' + title, 'success');
-    ['ep-num','ep-title','ep-desc','ep-video','ep-dur','ep-thumb'].forEach(id => reset(id));
+    ['ep-num','ep-title','ep-desc','ep-video','ep-dur'].forEach(id => reset(id));
+    const tf = document.getElementById('ep-thumb-file');
+    if (tf) tf.value = '';
     const thumbPrev = document.getElementById('ep-thumb-prev');
     if (thumbPrev) thumbPrev.style.display = 'none';
     await loadEpisodesList(seriesId);
@@ -1319,38 +1340,33 @@ function onGlobalSearch(val) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// IMGUR HELPER
+// GÖRSEL YÜKLEME YARDIMCILARı
 // ═══════════════════════════════════════════════════════════════
-function imgurToDirectUrl(url) {
-  if (!url) return '';
-  url = url.trim();
-  // Zaten direkt resim linki (i.imgur.com)
-  if (url.includes('i.imgur.com')) return url;
-  // Album linki: https://imgur.com/a/XXXXX → https://i.imgur.com/XXXXX.jpg dönüştür
-  // Not: album ID direkt resme çevrilemez, kullanıcıya doğru linki alma talimatı ver
-  // Galeri: https://imgur.com/gallery/XXXXX
-  // Tekil resim: https://imgur.com/XXXXX → https://i.imgur.com/XXXXX.jpg
-  const singleMatch = url.match(/imgur\.com\/([a-zA-Z0-9]+)$/);
-  if (singleMatch) return `https://i.imgur.com/${singleMatch[1]}.jpg`;
-  // Zaten direkt URL ise olduğu gibi kullan
-  return url;
+
+/**
+ * Bir File nesnesini /api/upload'a yükler, dönen path'i döndürür.
+ * Hata olursa exception fırlatır (toast üst fonksiyon tarafından yakalanır).
+ */
+async function uploadImage(file) {
+  const formData = new FormData();
+  formData.append('image', file);
+  const res = await fetch(API + '/upload', { method: 'POST', body: formData });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Görsel yükleme başarısız');
+  return data.path; // örn. "/uploads/1717000000-123456.jpg"
 }
 
-function handlePosterInput(inp, prevId) {
-  let val = imgurToDirectUrl(inp.value);
-  // Eğer dönüşüm olduysa input'u güncelle
-  if (val !== inp.value && val) {
-    // Sadece önizleme için kullan, değeri değiştirme (kullanıcı farkında olsun)
-  }
+/**
+ * Dosya input'undan seçilen görseli anlık önizler (upload etmeden).
+ */
+function previewLocalFile(input, prevId) {
   const img = document.getElementById(prevId);
   if (!img) return;
-  if (val) { img.src = val; img.style.display = 'block'; }
-  else img.style.display = 'none';
-}
-
-// poster kaydedilirken dönüştür
-function getPosterUrl(inputId) {
-  return imgurToDirectUrl(v(inputId));
+  const file = input.files?.[0];
+  if (!file) { img.style.display = 'none'; return; }
+  const reader = new FileReader();
+  reader.onload = e => { img.src = e.target.result; img.style.display = 'block'; };
+  reader.readAsDataURL(file);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1409,10 +1425,11 @@ async function openEditSeries(id) {
       </div>
     </div>
     <div class="form-group">
-      <label>Poster URL</label>
-      <input type="text" id="edit-s-poster" value="${esc(s.poster||'')}" placeholder="https://i.imgur.com/xxxx.jpg" oninput="handlePosterInput(this,'edit-s-poster-prev')">
-      <div class="imgur-hint">Imgur: <code>imgur.com/a/xxxx</code> → resim sayfasını açıp sağ tık → "Resim linkini kopyala" kullanın.</div>
-      <div class="poster-preview-wrap"><img id="edit-s-poster-prev" alt="önizleme" ${s.poster?`src="${esc(s.poster)}" style="display:block"`:''} ></div>
+      <label>Poster Görseli</label>
+      ${s.poster ? `<div style="margin-bottom:8px"><img src="${esc(s.poster)}" style="width:100px;height:140px;object-fit:cover;border-radius:4px;border:1px solid var(--border2);" onerror="this.style.display='none'"><br><small style="color:var(--muted);font-size:.75rem">Mevcut poster</small></div>` : ''}
+      <input type="file" id="edit-s-poster-file" accept="image/*" onchange="previewLocalFile(this,'edit-s-poster-prev')" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:10px 12px;border-radius:var(--radius);font-family:var(--font-head);font-size:.85rem;width:100%;cursor:pointer;">
+      <div class="hint">Yeni bir görsel seçin (boş bırakırsanız mevcut poster korunur)</div>
+      <div class="poster-preview-wrap"><img id="edit-s-poster-prev" alt="önizleme"></div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeEditModal()">İptal</button>
@@ -1424,8 +1441,18 @@ async function openEditSeries(id) {
 async function saveEditSeries(id) {
   const title = (document.getElementById('edit-s-title')?.value||'').trim();
   if (!title) { toast('Seri adı zorunludur', 'error'); return; }
-  const posterRaw = (document.getElementById('edit-s-poster')?.value||'').trim();
-  const poster = imgurToDirectUrl(posterRaw);
+
+  // Yeni poster dosyası seçildiyse yükle; yoksa mevcut posteri koru
+  let poster;
+  const posterFile = document.getElementById('edit-s-poster-file')?.files?.[0];
+  if (posterFile) {
+    poster = await uploadImage(posterFile);
+  } else {
+    // Mevcut posteri DB'den çek (allSeries'dan)
+    const existing = allSeries.find(s => s._id === id);
+    poster = existing?.poster || '';
+  }
+
   try {
     await api('PUT', '/series/' + id, {
       title,
@@ -1525,9 +1552,11 @@ async function openEditEpisode(id, seriesId) {
       </div>
     </div>
     <div class="form-group">
-      <label>Küçük Resim URL</label>
-      <input type="text" id="edit-ep-thumb" value="${esc(episode.thumbnail||'')}" oninput="handlePosterInput(this,'edit-ep-thumb-prev')">
-      <div class="poster-preview-wrap"><img id="edit-ep-thumb-prev" alt="önizleme" ${episode.thumbnail?`src="${esc(episode.thumbnail)}" style="display:block;width:120px;height:68px"`:''}></div>
+      <label>Küçük Resim (Thumbnail)</label>
+      ${episode.thumbnail ? `<div style="margin-bottom:8px"><img src="${esc(episode.thumbnail)}" style="width:120px;height:68px;object-fit:cover;border-radius:4px;border:1px solid var(--border2);" onerror="this.style.display='none'"><br><small style="color:var(--muted);font-size:.75rem">Mevcut thumbnail</small></div>` : ''}
+      <input type="file" id="edit-ep-thumb-file" accept="image/*" onchange="previewLocalFile(this,'edit-ep-thumb-prev')" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:10px 12px;border-radius:var(--radius);font-family:var(--font-head);font-size:.85rem;width:100%;cursor:pointer;">
+      <div class="hint">Yeni görsel seçin (boş bırakırsanız mevcut korunur)</div>
+      <div class="poster-preview-wrap"><img id="edit-ep-thumb-prev" alt="önizleme"></div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeEditModal()">İptal</button>
@@ -1541,15 +1570,28 @@ async function saveEditEpisode(id, seriesId) {
   const video = (document.getElementById('edit-ep-video')?.value||'').trim();
   if (!title) { toast('Başlık zorunlu', 'error'); return; }
   if (!video) { toast('Video URL zorunlu', 'error'); return; }
+
+  // Yeni thumbnail seçildiyse yükle; yoksa mevcut thumbnail DB'de kalır
+  let thumbnail;
+  const thumbFile = document.getElementById('edit-ep-thumb-file')?.files?.[0];
+  if (thumbFile) {
+    thumbnail = await uploadImage(thumbFile);
+  } else {
+    // Mevcut değeri koru (API PUT ile göndermemek yerine boş string'den kaçın)
+    thumbnail = undefined;
+  }
+
   try {
-    await api('PUT', '/episodes/' + id, {
+    const body = {
       episodeNumber: parseInt(document.getElementById('edit-ep-num')?.value)||1,
       title,
       description: (document.getElementById('edit-ep-desc')?.value||'').trim(),
       videoUrl: video,
       duration: parseInt(document.getElementById('edit-ep-dur')?.value)||0,
-      thumbnail: imgurToDirectUrl((document.getElementById('edit-ep-thumb')?.value||'').trim()),
-    });
+    };
+    if (thumbnail !== undefined) body.thumbnail = thumbnail;
+
+    await api('PUT', '/episodes/' + id, body);
     toast('✓ Bölüm güncellendi', 'success');
     closeEditModal();
     await loadEpisodesList(seriesId);
@@ -1560,10 +1602,10 @@ function reset(id) { const el = document.getElementById(id); if(el) el.value = '
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function pad(n) { return String(n||0).padStart(2,'0'); }
 function fmtDur(s) { const m=Math.floor(s/60),sec=s%60; return m+'dk'+sec+'sn'; }
-function previewImg(inp, prevId) {
+function previewImg(inp, prevId) { // deprecated, kept for compat
   const img = document.getElementById(prevId);
   if (!img) return;
-  const val = imgurToDirectUrl(inp.value);
+  const val = inp.value;
   if (val) { img.src = val; img.style.display = 'block'; }
   else img.style.display = 'none';
 }

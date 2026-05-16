@@ -1,11 +1,40 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
 
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// ═══════════════════════════════════════════════════════════
+// UPLOADS — Multer config
+// ═══════════════════════════════════════════════════════════
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadsDir),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const name = Date.now() + '-' + Math.round(Math.random() * 1e6) + ext;
+    cb(null, name);
+  }
+});
+const upload = multer({
+  storage,
+  limits: { fileSize: 20 * 1024 * 1024 }, // 20 MB
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) cb(null, true);
+    else cb(new Error('Sadece görsel dosyaları kabul edilir'));
+  }
+});
+
+// Serve uploaded files
+app.use('/uploads', express.static(uploadsDir));
 
 // ═══════════════════════════════════════════════════════════
 // DATABASE CONNECTION
@@ -467,9 +496,25 @@ app.get('/api/progress/continue/:userId', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════
-// STATIC & SERVE
+// UPLOAD ENDPOINT
 // ═══════════════════════════════════════════════════════════
-app.use(express.static('public'));
+
+app.post('/api/upload', upload.single('image'), (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'Dosya seçilmedi' });
+    const filePath = '/uploads/' + req.file.filename;
+    res.json({ ok: true, path: filePath });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// STATIC & SERVE — root dizininden serve et (public/ değil)
+// ═══════════════════════════════════════════════════════════
+app.use(express.static(path.join(__dirname)));
+app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
 // ═══════════════════════════════════════════════════════════
 // START SERVER
