@@ -145,27 +145,9 @@ app.get("/api/series", async (req, res) => {
   }
 });
 
-<<<<<<< Updated upstream
-<<<<<<< HEAD
 // ─── TEK SERİ — sezonlar ve bölümler dahil ───────────────
 // app.js'deki openDetail() fonksiyonu series.seasons[].episodes[]
 // yapısını bekliyor. Bu endpoint tüm ağacı birleştirip döndürür.
-=======
-// Tek seri getir
->>>>>>> dcca801 (firebase auth entegrasyonu eklendi)
-=======
-// ─── TEK SERİ — sezonlar ve bölümler dahil ───────────────
-// app.js'deki openDetail() fonksiyonu series.seasons[].episodes[]
-// yapısını bekliyor. Bu endpoint tüm ağacı birleştirip döndürür.
->>>>>>> Stashed changes
-app.get("/api/series/:id", async (req, res) => {
-  try {
-    const series = await Series.findById(req.params.id).lean();
-    if (!series) return res.status(404).json({ error: "Seri bulunamadı" });
-<<<<<<< Updated upstream
-<<<<<<< HEAD
-=======
->>>>>>> Stashed changes
 
     // Sezonları çek ve sırala
     const seasons = await Season.find({ seriesId: series._id })
@@ -212,9 +194,7 @@ app.get("/api/series/:id", async (req, res) => {
 
     res.json({ ...series, seasons: seasonsWithEpisodes });
 <<<<<<< Updated upstream
-=======
-    res.json(series);
->>>>>>> dcca801 (firebase auth entegrasyonu eklendi)
+<<<<<<< HEAD
 =======
 >>>>>>> Stashed changes
   } catch (err) {
