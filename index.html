@@ -294,6 +294,11 @@ body::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:3px}
   </div>
 
   <div id="main-sections">
+    <div class="section" id="continue-section" style="display:none">
+      <div class="section-title">⏯ Kaldığın Yerden Devam Et</div>
+      <div class="cards-row" id="continue-row"></div>
+    </div>
+
     <div class="section" id="popular-section">
       <div class="section-title">🔥 Popüler İçerikler</div>
       <div class="cards-row" id="popular-row">
@@ -371,52 +376,81 @@ body::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:3px}
 
 <!-- Firebase / Google Auth -->
 <script type="module">
-  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-  import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut as fbSignOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-  import { getFirestore, collection, addDoc, query, where, orderBy, getDocs, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+  import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut as fbSignOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+  import { getFirestore, collection, addDoc, query, where, orderBy, getDocs, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-  // ⚠️ Firebase projenizin config bilgilerini buraya girin
   const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_AUTH_DOMAIN",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_STORAGE_BUCKET",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
+    apiKey: "AIzaSyAtHW7UW3-ftQq9loSHPJkkbSeDSONI2KE",
+    authDomain: "qasimflix-8ba04.firebaseapp.com",
+    projectId: "qasimflix-8ba04",
+    storageBucket: "qasimflix-8ba04.firebasestorage.app",
+    messagingSenderId: "958468258867",
+    appId: "1:958468258867:web:08395af3f9a39f9fcf3746",
+    measurementId: "G-ZD0XCX5XEN"
   };
 
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
-  const db = getFirestore(app);
+  let db = null;
+  try { db = getFirestore(app); } catch(e) { db = null; }
   const provider = new GoogleAuthProvider();
 
-  // Auth durumunu global'e aktar
+  // Expose auth/db to global scope for compatibility
   window._auth = auth;
   window._db = db;
   window._fbSignOut = fbSignOut;
 
-  window.signInWithGoogle = async () => {
+  // Sign-in (Google) — global function
+  window.firebaseSignIn = async () => {
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
-      // Giriş kaydını Firestore'a yaz
-      await addDoc(collection(db, 'loginHistory'), {
-        uid: user.uid,
-        email: user.email,
-        displayName: user.displayName,
-        photoURL: user.photoURL,
-        loginAt: serverTimestamp(),
-        userAgent: navigator.userAgent.substring(0, 120)
-      });
+      // keep both names for compatibility
+      window.currentUser = user || null;
+      window.currentFirebaseUser = user || null;
+      window.currentUserUid = user?.uid || null;
+
+      // optionally write login history if Firestore is available
+      if (db && user) {
+        try {
+          await addDoc(collection(db, 'loginHistory'), {
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName,
+            photoURL: user.photoURL,
+            loginAt: serverTimestamp(),
+            userAgent: navigator.userAgent.substring(0, 120)
+          });
+        } catch (e) {
+          console.warn('Login history write failed', e);
+        }
+      }
+      return result;
     } catch (e) {
       console.error('Giriş hatası:', e);
-      alert('Giriş yapılamadı: ' + e.message);
+      alert('Giriş yapılamadı: ' + (e?.message || e));
+      throw e;
     }
   };
 
-  window.signOut = async () => {
-    await fbSignOut(auth);
+  // keep old name as alias for UI hooks
+  window.signInWithGoogle = window.firebaseSignIn;
+
+  // Sign-out — global
+  window.firebaseSignOut = async () => {
+    try {
+      await fbSignOut(auth);
+      window.currentUser = null;
+      window.currentFirebaseUser = null;
+      window.currentUserUid = null;
+    } catch (e) {
+      console.error('Çıkış hatası:', e);
+    }
   };
+
+  // keep old name as alias
+  window.signOut = window.firebaseSignOut;
 
   window.openLoginHistory = async () => {
     const modal = document.getElementById('login-modal');
@@ -425,7 +459,10 @@ body::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:3px}
     list.innerHTML = '<div class="login-empty">Yükleniyor...</div>';
     try {
       const user = auth.currentUser;
-      if (!user) return;
+      if (!user || !db) {
+        list.innerHTML = '<div class="login-empty">Giriş geçmişi bulunmuyor veya desteklenmiyor.</div>';
+        return;
+      }
       const q = query(
         collection(db, 'loginHistory'),
         where('uid', '==', user.uid),
@@ -460,20 +497,26 @@ body::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:3px}
     document.getElementById('login-modal').classList.remove('open');
   };
 
-  // Auth state listener
+  // Auth state listener — set window.currentUser and dispatch event for app.js
   onAuthStateChanged(auth, user => {
+    window.currentUser = user || null;
+    window.currentFirebaseUser = user || null; // backward compatibility
+    window.currentUserUid = user ? user.uid : null;
+    window.dispatchEvent(new CustomEvent('qasimflix-auth-changed', { detail: { user } }));
     const signinBtn = document.getElementById('google-signin-btn');
     const userInfo = document.getElementById('user-info');
-    if (user) {
-      signinBtn.style.display = 'none';
-      userInfo.style.display = 'flex';
-      document.getElementById('user-photo').src = user.photoURL || '';
-      document.getElementById('user-display-name').textContent = user.displayName?.split(' ')[0] || 'Kullanıcı';
-      document.getElementById('dd-name').textContent = user.displayName || '';
-      document.getElementById('dd-email').textContent = user.email || '';
-    } else {
-      signinBtn.style.display = 'flex';
-      userInfo.style.display = 'none';
+    if (signinBtn && userInfo) {
+      if (user) {
+        signinBtn.style.display = 'none';
+        userInfo.style.display = 'flex';
+        document.getElementById('user-photo').src = user.photoURL || '';
+        document.getElementById('user-display-name').textContent = user.displayName?.split(' ')[0] || 'Kullanıcı';
+        document.getElementById('dd-name').textContent = user.displayName || '';
+        document.getElementById('dd-email').textContent = user.email || '';
+      } else {
+        signinBtn.style.display = 'flex';
+        userInfo.style.display = 'none';
+      }
     }
   });
 </script>
