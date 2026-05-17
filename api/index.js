@@ -87,7 +87,7 @@ const episodeSchema = new mongoose.Schema({
 });
 
 const watchProgressSchema = new mongoose.Schema({
-  userId:        String,
+  userId:        { type: String, required: true },
   seriesId:      { type: mongoose.Schema.Types.ObjectId, ref: "Series" },
   episodeId:     { type: mongoose.Schema.Types.ObjectId, ref: "Episode" },
   progress:      Number,
@@ -145,6 +145,7 @@ app.get("/api/series", async (req, res) => {
   }
 });
 
+<<<<<<< Updated upstream
 <<<<<<< HEAD
 // ─── TEK SERİ — sezonlar ve bölümler dahil ───────────────
 // app.js'deki openDetail() fonksiyonu series.seasons[].episodes[]
@@ -152,11 +153,19 @@ app.get("/api/series", async (req, res) => {
 =======
 // Tek seri getir
 >>>>>>> dcca801 (firebase auth entegrasyonu eklendi)
+=======
+// ─── TEK SERİ — sezonlar ve bölümler dahil ───────────────
+// app.js'deki openDetail() fonksiyonu series.seasons[].episodes[]
+// yapısını bekliyor. Bu endpoint tüm ağacı birleştirip döndürür.
+>>>>>>> Stashed changes
 app.get("/api/series/:id", async (req, res) => {
   try {
     const series = await Series.findById(req.params.id).lean();
     if (!series) return res.status(404).json({ error: "Seri bulunamadı" });
+<<<<<<< Updated upstream
 <<<<<<< HEAD
+=======
+>>>>>>> Stashed changes
 
     // Sezonları çek ve sırala
     const seasons = await Season.find({ seriesId: series._id })
@@ -202,9 +211,12 @@ app.get("/api/series/:id", async (req, res) => {
     }
 
     res.json({ ...series, seasons: seasonsWithEpisodes });
+<<<<<<< Updated upstream
 =======
     res.json(series);
 >>>>>>> dcca801 (firebase auth entegrasyonu eklendi)
+=======
+>>>>>>> Stashed changes
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -364,12 +376,29 @@ app.delete("/api/episodes/:id", async (req, res) => {
 app.post("/api/progress", async (req, res) => {
   try {
     const { userId, seriesId, episodeId, progress } = req.body;
+    if (!userId || !seriesId || !episodeId) {
+      return res.status(400).json({ error: "userId, seriesId ve episodeId gerekli" });
+    }
+
     const updated = await WatchProgress.findOneAndUpdate(
       { userId, episodeId },
-      { userId, seriesId, episodeId, progress, lastWatchedAt: new Date() },
+      { userId, seriesId, episodeId, progress: Number(progress) || 0, lastWatchedAt: new Date() },
       { upsert: true, new: true }
     );
     res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/progress/continue/:userId", async (req, res) => {
+  try {
+    const recentWatches = await WatchProgress.find({ userId: req.params.userId })
+      .sort({ lastWatchedAt: -1 })
+      .limit(10)
+      .populate("seriesId")
+      .populate("episodeId");
+    res.json(recentWatches);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -382,16 +411,6 @@ app.get("/api/progress/:userId/:episodeId", async (req, res) => {
       episodeId: req.params.episodeId
     });
     res.json(progress || { progress: 0 });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.get("/api/progress/continue/:userId", async (req, res) => {
-  try {
-    const recentWatches = await WatchProgress.find({ userId: req.params.userId })
-      .sort({ lastWatchedAt: -1 }).limit(10).populate("seriesId");
-    res.json(recentWatches);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

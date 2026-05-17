@@ -1250,3 +1250,18 @@ body.scrolled .navbar {
     .hero-title { font-size: 2rem; }
     .search-box input { width: 100px; }
 }
+
+/* Continue Watching */
+.badge-continue{
+  background:rgba(229,9,20,.92);
+  color:#fff;
+}
+.continue-card .continue-progress{
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:0;
+  height:4px;
+  background:#e50914;
+  z-index:3;
+}

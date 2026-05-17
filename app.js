@@ -2,7 +2,22 @@
 // CONFIG
 // ═══════════════════════════════════════════
 const API = window.location.origin + '/api';
-const USER_ID = 'user_' + Math.random().toString(36).substr(2, 9);
+
+// Firebase Google Auth kullanıcısı. Artık random USER_ID yok; progress kalıcı Firebase UID ile tutulur.
+let currentAuthUser = null;
+
+function getCurrentUser() {
+    return currentAuthUser || window.currentFirebaseUser || window._auth?.currentUser || null;
+}
+
+function getUserId() {
+    return getCurrentUser()?.uid || null;
+}
+
+window.addEventListener('qasimflix-auth-changed', (e) => {
+    currentAuthUser = e.detail?.user || null;
+    loadContinueWatching();
+});
 
 let heroData = null;
 let currentSeries = null;
@@ -16,6 +31,7 @@ let allData = []; // global cache for all content
 // ═══════════════════════════════════════════
 window.addEventListener('load', async () => {
     await loadAll();
+    loadContinueWatching();
 });
 
 window.addEventListener('scroll', () => {
@@ -33,6 +49,10 @@ async function loadAll() {
         allData = data.series || [];
 
         renderHero(allData);
+<<<<<<< Updated upstream
+=======
+        loadContinueWatching();
+>>>>>>> Stashed changes
         renderRow('popular-row', allData.slice(0, 12));
         renderRow('series-row', allData.filter(s => s.type === 'series'));
         renderRow('movies-row', allData.filter(s => s.type === 'movie'));
@@ -149,6 +169,79 @@ function createCard(item) {
         <div class="card-overlay-meta">${cat}${cat && rating ? ' • ' : ''}${rating ? '⭐ ' + rating : ''}</div>
       </div>
     </div>`;
+}
+
+function formatSeconds(seconds) {
+    const s = Math.max(0, Number(seconds) || 0);
+    const m = Math.floor(s / 60);
+    const sec = String(s % 60).padStart(2, '0');
+    return `${m}:${sec}`;
+}
+
+function createContinueCard(watch) {
+    const item = watch.seriesId;
+    if (!item || !item._id) return '';
+    const episode = watch.episodeId;
+    const progressText = formatSeconds(watch.progress);
+    const episodeTitle = episode?.title ? ` • ${esc(episode.title)}` : '';
+    const imgHtml = item.poster
+        ? `<img class="card-img" src="${esc(item.poster)}" alt="${esc(item.title)}" loading="lazy" onerror="this.style.display='none';this.nextSibling.style.display='flex'">`
+        : '';
+    const placeholderStyle = item.poster ? 'display:none' : '';
+
+    const episodeId = episode?._id || watch.episodeId || '';
+
+    return `
+    <div class="card continue-card" onclick="openContinueWatch('${item._id}', '${episodeId}')">
+      ${imgHtml}
+      <div class="card-placeholder" style="${placeholderStyle}">
+        <span class="icon">▶</span>
+        <span>${esc(item.title)}</span>
+      </div>
+      <span class="badge-type badge-continue">Kaldığın yer</span>
+      <div class="continue-progress"></div>
+      <div class="card-overlay">
+        <button class="card-overlay-play" onclick="event.stopPropagation();openContinueWatch('${item._id}', '${episodeId}')">▶</button>
+        <div class="card-overlay-title">${esc(item.title)}</div>
+        <div class="card-overlay-meta">${progressText}${episodeTitle}</div>
+      </div>
+    </div>`;
+}
+
+async function openContinueWatch(seriesId, episodeId) {
+    if (!episodeId) return openDetail(seriesId, true);
+    await openDetail(seriesId, false);
+    await playEpisode(episodeId);
+}
+
+async function loadContinueWatching() {
+    const section = document.getElementById('continue-section');
+    const row = document.getElementById('continue-row');
+    if (!section || !row) return;
+
+    const userId = getUserId();
+    if (!userId) {
+        section.style.display = 'none';
+        row.innerHTML = '';
+        return;
+    }
+
+    try {
+        const res = await fetch(API + '/progress/continue/' + encodeURIComponent(userId));
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const watches = await res.json();
+        const html = (watches || []).map(createContinueCard).filter(Boolean).join('');
+        if (!html) {
+            section.style.display = 'none';
+            row.innerHTML = '';
+            return;
+        }
+        row.innerHTML = html;
+        section.style.display = '';
+    } catch (err) {
+        console.error('Continue watching error:', err);
+        section.style.display = 'none';
+    }
 }
 
 // ═══════════════════════════════════════════
@@ -479,7 +572,7 @@ async function playEpisode(episodeId, isMovie = false) {
             document.getElementById('sub-wrap').style.display = '';
             loadSubtitles(episode.subtitles || []);
             await loadProgress(episodeId);
-            videoPlayer.addEventListener('timeupdate', () => saveProgress(episodeId));
+            videoPlayer.ontimeupdate = () => saveProgress(episodeId);
         } else if (src) {
             showIframe(src);
         } else {
@@ -513,6 +606,8 @@ function closePlayer() {
     embed.style.display = 'none';
     video.style.display = 'block';
     document.getElementById('sub-wrap').style.display = '';
+    video.ontimeupdate = null;
+    loadContinueWatching();
 }
 
 // ═══════════════════════════════════════════
@@ -551,16 +646,20 @@ function changeSubtitle() {
 // PROGRESS
 // ═══════════════════════════════════════════
 async function saveProgress(episodeId) {
+    const userId = getUserId();
+    if (!userId) return;
+
     const video = document.getElementById('video-player');
     const progress = Math.floor(video.currentTime);
-    if (!progress) return;
+    if (!progress || !currentSeries?._id || !episodeId) return;
+
     try {
         await fetch(API + '/progress', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                userId: USER_ID,
-                seriesId: currentSeries?._id,
+                userId,
+                seriesId: currentSeries._id,
                 episodeId,
                 progress
             })
@@ -569,8 +668,11 @@ async function saveProgress(episodeId) {
 }
 
 async function loadProgress(episodeId) {
+    const userId = getUserId();
+    if (!userId) return;
+
     try {
-        const res = await fetch(API + '/progress/' + USER_ID + '/' + episodeId);
+        const res = await fetch(API + '/progress/' + encodeURIComponent(userId) + '/' + encodeURIComponent(episodeId));
         const data = await res.json();
         if (data.progress > 0) {
             document.getElementById('video-player').currentTime = data.progress;
