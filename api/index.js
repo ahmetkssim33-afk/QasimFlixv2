@@ -187,7 +187,11 @@ app.get("/api/series/:id", async (req, res) => {
           _id: null,
           seasonNumber: 1,
           title: series.title,
-          episodes: directEpisodes
+          episodes: directEpisodes.map(ep => ({
+            ...ep,
+            _id: String(ep._id),
+            seriesId: String(ep.seriesId)
+          }))
         });
       }
     }
