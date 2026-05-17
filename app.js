@@ -354,8 +354,8 @@ function playMovieDirect() {
             return;
         }
     }
-    // Bölüm yoksa seri ID'si ile dene (eski davranış)
-    playEpisode(currentSeries._id, true);
+    // Bölüm bulunamadı — seri ID'sini episode ID olarak kullanmak yanlış
+    console.warn('[playMovieDirect] Bu film için oynatılacak bölüm bulunamadı. Lütfen admin panelinden en az bir bölüm ekleyin.');
 }
 
 async function playFirstEpisode() {
