@@ -3,40 +3,201 @@
 // ═══════════════════════════════════════════
 const API = window.location.origin + '/api';
 
-// Firebase Google Auth kullanıcısı. Artık random USER_ID yok; progress kalıcı Firebase UID ile tutulur.
-let currentAuthUser = null;
+// Mevcut giriş yapmış kullanıcı
+let currentAuthUser = null;  // { id, username, email }
+let authToken = null;
 
-function getCurrentUser() {
-    return currentAuthUser || window.currentFirebaseUser || window._auth?.currentUser || null;
+// LocalStorage'dan token ve kullanıcıyı yükle
+function loadStoredAuth() {
+    try {
+        const stored = localStorage.getItem('qasimflix_auth');
+        if (stored) {
+            const data = JSON.parse(stored);
+            authToken = data.token || null;
+            currentAuthUser = data.user || null;
+        }
+    } catch (e) {
+        authToken = null;
+        currentAuthUser = null;
+    }
+}
+
+function saveAuth(token, user) {
+    authToken = token;
+    currentAuthUser = user;
+    localStorage.setItem('qasimflix_auth', JSON.stringify({ token, user }));
+}
+
+function clearAuth() {
+    authToken = null;
+    currentAuthUser = null;
+    localStorage.removeItem('qasimflix_auth');
+}
+
+function getAuthHeaders() {
+    if (!authToken) return { 'Content-Type': 'application/json' };
+    return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken };
 }
 
 function getUserId() {
-    return getCurrentUser()?.uid || null;
+    return currentAuthUser?.id || null;
 }
-
-window.addEventListener('qasimflix-auth-changed', (e) => {
-    currentAuthUser = e.detail?.user || null;
-    loadContinueWatching();
-});
 
 let heroData = null;
 let currentSeries = null;
 let currentSeason = null;
 let currentEpisode = null;
-let currentFilter = null; // null=all, 'series', 'movie'
-let allData = []; // global cache for all content
+let currentFilter = null;
+let allData = [];
 
 // ═══════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════
 window.addEventListener('load', async () => {
+    loadStoredAuth();
+    updateAuthUI();
     await loadAll();
-    loadContinueWatching();
+    if (currentAuthUser) {
+        loadContinueWatching();
+    }
 });
 
 window.addEventListener('scroll', () => {
     document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 50);
 });
+
+// ═══════════════════════════════════════════
+// AUTH UI
+// ═══════════════════════════════════════════
+function updateAuthUI() {
+    const authSection = document.getElementById('auth-section');
+    const userSection = document.getElementById('user-section');
+    const userNameEl  = document.getElementById('user-display-name');
+
+    if (currentAuthUser) {
+        if (authSection) authSection.style.display = 'none';
+        if (userSection) userSection.style.display = 'flex';
+        if (userNameEl)  userNameEl.textContent = currentAuthUser.username;
+        loadContinueWatching();
+    } else {
+        if (authSection) authSection.style.display = 'flex';
+        if (userSection) userSection.style.display = 'none';
+        const section = document.getElementById('continue-section');
+        if (section) section.style.display = 'none';
+    }
+}
+
+// Giriş / Kayıt modal aç-kapat
+function openAuthModal(tab) {
+    document.getElementById('auth-modal').classList.add('open');
+    switchAuthTab(tab || 'login');
+    clearAuthError();
+}
+
+function closeAuthModal() {
+    document.getElementById('auth-modal').classList.remove('open');
+    clearAuthError();
+}
+
+function switchAuthTab(tab) {
+    document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.auth-form').forEach(f => f.style.display = 'none');
+    document.querySelector(`.auth-tab[data-tab="${tab}"]`).classList.add('active');
+    document.getElementById(`${tab}-form`).style.display = 'block';
+    clearAuthError();
+}
+
+function showAuthError(msg) {
+    const el = document.getElementById('auth-error');
+    if (el) { el.textContent = msg; el.style.display = 'block'; }
+}
+
+function clearAuthError() {
+    const el = document.getElementById('auth-error');
+    if (el) { el.textContent = ''; el.style.display = 'none'; }
+}
+
+// Kayıt ol
+async function handleRegister() {
+    const username = document.getElementById('reg-username').value.trim();
+    const email    = document.getElementById('reg-email').value.trim();
+    const password = document.getElementById('reg-password').value;
+    const password2= document.getElementById('reg-password2').value;
+
+    clearAuthError();
+
+    if (!username || !email || !password) return showAuthError('Tüm alanları doldurun');
+    if (password !== password2) return showAuthError('Şifreler eşleşmiyor');
+    if (password.length < 6) return showAuthError('Şifre en az 6 karakter olmalı');
+
+    const btn = document.getElementById('reg-btn');
+    btn.disabled = true;
+    btn.textContent = 'Kaydediliyor...';
+
+    try {
+        const res = await fetch(API + '/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, email, password })
+        });
+        const data = await res.json();
+        if (!res.ok) return showAuthError(data.error || 'Kayıt başarısız');
+
+        saveAuth(data.token, data.user);
+        closeAuthModal();
+        updateAuthUI();
+    } catch (err) {
+        showAuthError('Sunucu hatası, tekrar deneyin');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Kayıt Ol';
+    }
+}
+
+// Giriş yap
+async function handleLogin() {
+    const username = document.getElementById('login-username').value.trim();
+    const password = document.getElementById('login-password').value;
+
+    clearAuthError();
+    if (!username || !password) return showAuthError('Kullanıcı adı ve şifre zorunlu');
+
+    const btn = document.getElementById('login-btn');
+    btn.disabled = true;
+    btn.textContent = 'Giriş yapılıyor...';
+
+    try {
+        const res = await fetch(API + '/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+        if (!res.ok) return showAuthError(data.error || 'Giriş başarısız');
+
+        saveAuth(data.token, data.user);
+        closeAuthModal();
+        updateAuthUI();
+    } catch (err) {
+        showAuthError('Sunucu hatası, tekrar deneyin');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Giriş Yap';
+    }
+}
+
+// Çıkış yap
+function handleLogout() {
+    clearAuth();
+    updateAuthUI();
+    const section = document.getElementById('continue-section');
+    if (section) section.style.display = 'none';
+}
+
+// Enter tuşu ile form gönder
+function authKeyDown(e, action) {
+    if (e.key === 'Enter') action();
+}
 
 // ═══════════════════════════════════════════
 // DATA LOADING
@@ -49,15 +210,10 @@ async function loadAll() {
         allData = data.series || [];
 
         renderHero(allData);
-<<<<<<< Updated upstream
-=======
-        loadContinueWatching();
->>>>>>> Stashed changes
         renderRow('popular-row', allData.slice(0, 12));
         renderRow('series-row', allData.filter(s => s.type === 'series'));
         renderRow('movies-row', allData.filter(s => s.type === 'movie'));
 
-        // Always show sections; show empty state inside row if no content
         document.getElementById('series-section').style.display = '';
         document.getElementById('movies-section').style.display = '';
         document.getElementById('popular-section').style.display = '';
@@ -73,11 +229,6 @@ function clearSkeletons() {
         const el = document.getElementById(id);
         if (el) el.innerHTML = '<div class="empty-state"><div class="icon">📭</div><p>İçerik yüklenemedi</p></div>';
     });
-}
-
-function toggleSection(id, show) {
-    const el = document.getElementById(id);
-    if (el) el.style.display = show ? '' : 'none';
 }
 
 // ═══════════════════════════════════════════
@@ -114,13 +265,8 @@ function renderHero(list) {
     document.getElementById('hero-info-btn').style.display = '';
 }
 
-function heroPlay() {
-    if (heroData) openDetail(heroData._id, true);
-}
-
-function heroInfo() {
-    if (heroData) openDetail(heroData._id, false);
-}
+function heroPlay() { if (heroData) openDetail(heroData._id, true); }
+function heroInfo() { if (heroData) openDetail(heroData._id, false); }
 
 // ═══════════════════════════════════════════
 // CARD RENDER
@@ -135,9 +281,7 @@ function renderRow(rowId, list) {
         return;
     }
 
-    list.forEach(item => {
-        row.innerHTML += createCard(item);
-    });
+    list.forEach(item => { row.innerHTML += createCard(item); });
 }
 
 function createCard(item) {
@@ -188,7 +332,6 @@ function createContinueCard(watch) {
         ? `<img class="card-img" src="${esc(item.poster)}" alt="${esc(item.title)}" loading="lazy" onerror="this.style.display='none';this.nextSibling.style.display='flex'">`
         : '';
     const placeholderStyle = item.poster ? 'display:none' : '';
-
     const episodeId = episode?._id || watch.episodeId || '';
 
     return `
@@ -199,7 +342,6 @@ function createContinueCard(watch) {
         <span>${esc(item.title)}</span>
       </div>
       <span class="badge-type badge-continue">Kaldığın yer</span>
-      <div class="continue-progress"></div>
       <div class="card-overlay">
         <button class="card-overlay-play" onclick="event.stopPropagation();openContinueWatch('${item._id}', '${episodeId}')">▶</button>
         <div class="card-overlay-title">${esc(item.title)}</div>
@@ -219,21 +361,21 @@ async function loadContinueWatching() {
     const row = document.getElementById('continue-row');
     if (!section || !row) return;
 
-    const userId = getUserId();
-    if (!userId) {
+    if (!currentAuthUser) {
         section.style.display = 'none';
         row.innerHTML = '';
         return;
     }
 
     try {
-        const res = await fetch(API + '/progress/continue/' + encodeURIComponent(userId));
+        const res = await fetch(API + '/progress/continue/list', {
+            headers: getAuthHeaders()
+        });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const watches = await res.json();
         const html = (watches || []).map(createContinueCard).filter(Boolean).join('');
         if (!html) {
             section.style.display = 'none';
-            row.innerHTML = '';
             return;
         }
         row.innerHTML = html;
@@ -293,12 +435,8 @@ function showCategory(type, btn) {
     document.getElementById('series-section').style.display = type === 'series' ? '' : 'none';
     document.getElementById('movies-section').style.display = type === 'movie' ? '' : 'none';
 
-    // Re-render rows from cached data to ensure content shows
-    if (type === 'series') {
-        renderRow('series-row', allData.filter(s => s.type === 'series'));
-    } else if (type === 'movie') {
-        renderRow('movies-row', allData.filter(s => s.type === 'movie'));
-    }
+    if (type === 'series') renderRow('series-row', allData.filter(s => s.type === 'series'));
+    else if (type === 'movie') renderRow('movies-row', allData.filter(s => s.type === 'movie'));
 }
 
 function showAll(btn) {
@@ -310,8 +448,6 @@ function showAll(btn) {
     document.getElementById('popular-section').style.display = '';
     document.getElementById('series-section').style.display = '';
     document.getElementById('movies-section').style.display = '';
-
-    // Re-render all rows from cached data
     renderRow('popular-row', allData.slice(0, 12));
     renderRow('series-row', allData.filter(s => s.type === 'series'));
     renderRow('movies-row', allData.filter(s => s.type === 'movie'));
@@ -332,9 +468,6 @@ async function openDetail(seriesId, autoPlay = false) {
         currentSeries = series;
         currentSeason = null;
 
-        console.log('[openDetail] series:', series.title, 'seasons:', series.seasons?.length, series.seasons?.map(s => ({seasonNumber: s.seasonNumber, episodes: s.episodes?.length})));
-
-        // Hero image
         const heroImg = document.getElementById('modal-hero-img');
         heroImg.style.backgroundImage = series.poster
             ? `url('${series.poster}')`
@@ -351,17 +484,13 @@ async function openDetail(seriesId, autoPlay = false) {
 
         document.getElementById('modal-desc').textContent = series.description || 'Açıklama yok.';
 
-        // Action buttons
         const actions = document.getElementById('modal-actions');
         if (series.type === 'movie') {
-            actions.innerHTML = `
-                <button class="btn-play" onclick="playMovieDirect()">▶ İzle</button>`;
+            actions.innerHTML = `<button class="btn-play" onclick="playMovieDirect()">▶ İzle</button>`;
         } else {
-            actions.innerHTML = `
-                <button class="btn-play" onclick="playFirstEpisode()">▶ İzle</button>`;
+            actions.innerHTML = `<button class="btn-play" onclick="playFirstEpisode()">▶ İzle</button>`;
         }
 
-        // Seasons / Episodes
         const area = document.getElementById('seasons-area');
         if (series.type === 'series' && series.seasons?.length) {
             renderSeasonsArea(series.seasons);
@@ -374,11 +503,8 @@ async function openDetail(seriesId, autoPlay = false) {
         document.getElementById('detail-modal').classList.add('open');
 
         if (autoPlay) {
-            if (series.type === 'movie') {
-                playMovieDirect();
-            } else {
-                playFirstEpisode();
-            }
+            if (series.type === 'movie') playMovieDirect();
+            else playFirstEpisode();
         }
     } catch (err) {
         console.error('Detail error:', err);
@@ -439,7 +565,6 @@ function showSeasonEpisodes(season) {
 
 function playMovieDirect() {
     if (!currentSeries) return;
-    // Film için: sezon ve bölüm var mı kontrol et
     const seasons = currentSeries.seasons || [];
     for (const s of seasons) {
         if (s.episodes && s.episodes.length) {
@@ -447,8 +572,6 @@ function playMovieDirect() {
             return;
         }
     }
-    // Bölüm bulunamadı — seri ID'sini episode ID olarak kullanmak yanlış
-    console.warn('[playMovieDirect] Bu film için oynatılacak bölüm bulunamadı. Lütfen admin panelinden en az bir bölüm ekleyin.');
 }
 
 async function playFirstEpisode() {
@@ -467,7 +590,6 @@ function closeDetailModal() {
 // ═══════════════════════════════════════════
 async function playEpisode(episodeId, isMovie = false) {
     try {
-        // Önce cache'deki (currentSeries.seasons) episode'u bul — API'ye istek atmaya gerek yok
         let episode = null;
         const seasons = currentSeries?.seasons || [];
         for (const s of seasons) {
@@ -475,26 +597,20 @@ async function playEpisode(episodeId, isMovie = false) {
             if (found) { episode = found; break; }
         }
 
-        // Cache'de bulunamazsa API'den çek
         if (!episode) {
             const res = await fetch(API + '/episode/' + episodeId + '?_=' + Date.now());
             episode = await res.json();
         }
 
-        if (Array.isArray(episode)) {
-            console.error('[playEpisode] array geldi, episode ID yanlış:', episodeId);
-            return;
-        }
         if (!episode || !episode.videoUrl) {
             console.error('[playEpisode] videoUrl yok:', episode);
             return;
         }
 
         currentEpisode = episode;
-        console.log('[playEpisode] videoUrl:', episode.videoUrl);
 
-        const videoPlayer = document.getElementById('video-player');
-        const videoSource = document.getElementById('video-source');
+        const videoPlayer    = document.getElementById('video-player');
+        const videoSource    = document.getElementById('video-source');
         const embedContainer = document.getElementById('embed-player');
 
         embedContainer.innerHTML = '';
@@ -503,14 +619,10 @@ async function playEpisode(episodeId, isMovie = false) {
 
         const src = episode.videoUrl || '';
 
-        // Google Drive: convert share link to preview embed URL
         function toDriveEmbed(url) {
-            // Already an embed URL
             if (url.includes('/preview')) return url;
-            // Share URL: https://drive.google.com/file/d/FILE_ID/view
             const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
             if (m) return `https://drive.google.com/file/d/${m[1]}/preview`;
-            // Old format: ?id=FILE_ID
             const m2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
             if (m2) return `https://drive.google.com/file/d/${m2[1]}/preview`;
             return url;
@@ -550,16 +662,12 @@ async function playEpisode(episodeId, isMovie = false) {
             document.getElementById('sub-wrap').style.display = 'none';
         }
 
-        // Raw iframe tag in the field
         if (/^\s*</.test(src) && src.includes('iframe')) {
             videoPlayer.pause();
             videoPlayer.style.display = 'none';
             embedContainer.innerHTML = src;
-            // Make any iframe inside fill the container
             const iframeEl = embedContainer.querySelector('iframe');
-            if (iframeEl) {
-                iframeEl.style.cssText = 'width:100%;height:100%;border:none;position:absolute;top:0;left:0';
-            }
+            if (iframeEl) iframeEl.style.cssText = 'width:100%;height:100%;border:none;position:absolute;top:0;left:0';
             embedContainer.style.display = 'block';
             document.getElementById('sub-wrap').style.display = 'none';
         } else if (isGoogleDrive(src)) {
@@ -571,15 +679,14 @@ async function playEpisode(episodeId, isMovie = false) {
             videoPlayer.load();
             document.getElementById('sub-wrap').style.display = '';
             loadSubtitles(episode.subtitles || []);
-            await loadProgress(episodeId);
-            videoPlayer.ontimeupdate = () => saveProgress(episodeId);
+            if (currentAuthUser) {
+                await loadProgress(episodeId);
+                videoPlayer.ontimeupdate = () => saveProgress(episodeId);
+            }
         } else if (src) {
             showIframe(src);
-        } else {
-            console.warn('No video URL for episode', episodeId);
         }
 
-        // Episode info label
         let infoText = '';
         if (currentSeason) {
             infoText = `S${pad(currentSeason.seasonNumber)}E${pad(episode.episodeNumber)}: ${episode.title}`;
@@ -607,7 +714,7 @@ function closePlayer() {
     video.style.display = 'block';
     document.getElementById('sub-wrap').style.display = '';
     video.ontimeupdate = null;
-    loadContinueWatching();
+    if (currentAuthUser) loadContinueWatching();
 }
 
 // ═══════════════════════════════════════════
@@ -643,11 +750,10 @@ function changeSubtitle() {
 }
 
 // ═══════════════════════════════════════════
-// PROGRESS
+// PROGRESS — Kaldığın Yerden Devam
 // ═══════════════════════════════════════════
 async function saveProgress(episodeId) {
-    const userId = getUserId();
-    if (!userId) return;
+    if (!currentAuthUser) return;
 
     const video = document.getElementById('video-player');
     const progress = Math.floor(video.currentTime);
@@ -656,9 +762,8 @@ async function saveProgress(episodeId) {
     try {
         await fetch(API + '/progress', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getAuthHeaders(),
             body: JSON.stringify({
-                userId,
                 seriesId: currentSeries._id,
                 episodeId,
                 progress
@@ -668,11 +773,12 @@ async function saveProgress(episodeId) {
 }
 
 async function loadProgress(episodeId) {
-    const userId = getUserId();
-    if (!userId) return;
+    if (!currentAuthUser) return;
 
     try {
-        const res = await fetch(API + '/progress/' + encodeURIComponent(userId) + '/' + encodeURIComponent(episodeId));
+        const res = await fetch(API + '/progress/' + encodeURIComponent(episodeId), {
+            headers: getAuthHeaders()
+        });
         const data = await res.json();
         if (data.progress > 0) {
             document.getElementById('video-player').currentTime = data.progress;
