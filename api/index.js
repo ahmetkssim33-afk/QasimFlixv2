@@ -112,6 +112,9 @@ const Category      = mongoose.models.Category      || mongoose.model("Category"
 // ───────────────────────────────────────────────────────────
 app.use(async (req, res, next) => {
   await connectDB();
+  if (!isConnected) {
+    return res.status(503).json({ error: 'MongoDB bağlantısı yok. Lütfen `MONGODB_URI` veya MongoDB servisini kontrol edin.' });
+  }
   next();
 });
 
