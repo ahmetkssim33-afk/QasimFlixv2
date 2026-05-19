@@ -108,6 +108,19 @@ const Season = mongoose.model('Season', seasonSchema);
 const Episode = mongoose.model('Episode', episodeSchema);
 const WatchProgress = mongoose.model('WatchProgress', watchProgressSchema);
 const Category = mongoose.model('Category', categorySchema);
+// ═══════════════════════════════════════════════════════════
+// FILM MODEL
+// ═══════════════════════════════════════════════════════════
+const filmSchema = new mongoose.Schema({
+  ad:       { type: String, required: true },
+  type:     { type: String },
+  kategori: { type: String },
+  video:    { type: String },
+  thumb:    { type: String },
+  puan:     { type: Number, default: 0 }
+});
+const Film = mongoose.model('Film', filmSchema);
+
 
 // ═══════════════════════════════════════════════════════════
 // INITIALIZE DEFAULT CATEGORIES
