@@ -2,7 +2,9 @@
 // CONFIG
 // ═══════════════════════════════════════════
 const API = window.location.origin + '/api';
-const USER_ID = 'user_' + Math.random().toString(36).substr(2, 9);
+let TOKEN = localStorage.getItem('token') || null;
+let USER_ID = localStorage.getItem('userId') || ('user_' + Math.random().toString(36).substr(2, 9));
+let AUTH_USER = null; // populated after auth
 
 let heroData = null;
 let currentSeries = null;
@@ -14,14 +16,147 @@ let allData = []; // global cache for all content
 // ═══════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════
-window.addEventListener('load', async () => {
-    await loadAll();
-});
+// ═══════════════════════════════════════════════════════════════════
+// AUTH HELPERS & UI
+// ═══════════════════════════════════════════════════════════════════
 
-window.addEventListener('scroll', () => {
-    document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 50);
-});
+async function initAuth() {
+    if (TOKEN) {
+        try {
+            const res = await fetch(API + '/auth/me', { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+            if (res.ok) {
+                AUTH_USER = await res.json();
+                USER_ID = AUTH_USER._id;
+                localStorage.setItem('token', TOKEN);
+                localStorage.setItem('userId', USER_ID);
+            } else {
+                TOKEN = null;
+                localStorage.removeItem('token');
+                localStorage.removeItem('userId');
+            }
+        } catch (e) {
+            TOKEN = null;
+        }
+    }
+    updateAuthUI();
+}
 
+function updateAuthUI() {
+    const googleBtn = document.getElementById('google-signin-btn');
+    const userInfo = document.getElementById('user-info');
+    if (AUTH_USER) {
+        if (googleBtn) googleBtn.style.display = 'none';
+        if (userInfo) userInfo.style.display = '';
+        document.getElementById('user-display-name').textContent = AUTH_USER.name || AUTH_USER.email;
+        document.getElementById('dd-name').textContent = AUTH_USER.name || AUTH_USER.email;
+        document.getElementById('dd-email').textContent = AUTH_USER.email || '';
+    } else {
+        if (googleBtn) googleBtn.style.display = '';
+        if (userInfo) userInfo.style.display = 'none';
+    }
+}
+
+async function openAuthPrompt() {
+    const mode = prompt('İşlem: "login" veya "register" (iptal için boş bırakın)');
+    if (!mode) return;
+    if (mode.toLowerCase() === 'login') return await loginFlow();
+    if (mode.toLowerCase() === 'register') return await registerFlow();
+    alert('Geçersiz seçenek');
+}
+
+async function loginFlow() {
+    const email = prompt('Email adresiniz:');
+    if (!email) return;
+    const password = prompt('Şifreniz:');
+    if (!password) return;
+    try {
+        const res = await fetch(API + '/auth/login', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (!res.ok) { alert(data.error || 'Giriş başarısız'); return; }
+        TOKEN = data.token;
+        await initAuth();
+        await loadContinueWatching();
+        alert('Giriş başarılı');
+    } catch (e) { console.error(e); alert('Giriş hatası'); }
+}
+
+async function registerFlow() {
+    const email = prompt('Kayıt için email:');
+    if (!email) return;
+    const name = prompt('İsim (opsiyonel):');
+    const password = prompt('Şifre:');
+    if (!password) return;
+    try {
+        const res = await fetch(API + '/auth/register', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password, name })
+        });
+        const data = await res.json();
+        if (!res.ok) { alert(data.error || 'Kayıt başarısız'); return; }
+        TOKEN = data.token;
+        await initAuth();
+        await loadContinueWatching();
+        alert('Kayıt başarılı, hoş geldiniz');
+    } catch (e) { console.error(e); alert('Kayıt hatası'); }
+}
+
+function signOut() {
+    TOKEN = null;
+    AUTH_USER = null;
+    USER_ID = 'user_' + Math.random().toString(36).substr(2, 9);
+    localStorage.removeItem('token');
+    localStorage.removeItem('userId');
+    updateAuthUI();
+    loadContinueWatching();
+}
+
+async function toggleSave(type, itemId) {
+    if (!TOKEN) { alert('Lütfen önce giriş yapın'); return; }
+    try {
+        const res = await fetch(API + '/user/saved', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
+            body: JSON.stringify({ type, itemId })
+        });
+        if (!res.ok) { const e = await res.json(); alert(e.error || 'Hata'); return; }
+        alert('Kaydedildi');
+    } catch (e) { console.error(e); alert('Sunucu hatası'); }
+}
+
+async function loadContinueWatching() {
+    try {
+        const row = document.getElementById('continue-row');
+        if (!row) return;
+        const headers = {};
+        let url;
+        if (TOKEN) { headers['Authorization'] = 'Bearer ' + TOKEN; url = API + '/progress/continue/me'; }
+        else { url = API + '/progress/continue/' + USER_ID; }
+        const res = await fetch(url, { headers });
+        if (!res.ok) { row.innerHTML = ''; document.getElementById('continue-section').style.display = 'none'; return; }
+        const data = await res.json();
+        if (!data || !data.length) { row.innerHTML = ''; document.getElementById('continue-section').style.display = 'none'; return; }
+        document.getElementById('continue-section').style.display = '';
+        row.innerHTML = '';
+        for (const w of data) {
+            const s = w.seriesId;
+            if (s) row.innerHTML += createCard(s);
+        }
+    } catch (e) { console.error(e); }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════════════════
+function esc(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function pad(n) {
+    return String(n || 0).padStart(2, '0');
+}
 // ═══════════════════════════════════════════
 // DATA LOADING
 // ═══════════════════════════════════════════
@@ -278,10 +413,12 @@ async function openDetail(seriesId, autoPlay = false) {
         const actions = document.getElementById('modal-actions');
         if (series.type === 'movie') {
             actions.innerHTML = `
-                <button class="btn-play" onclick="playMovieDirect()">▶ İzle</button>`;
+                <button class="btn-play" onclick="playMovieDirect()">▶ İzle</button>
+                <button class="btn-info" onclick="toggleSave('film','${series._id}')">★ Kaydet</button>`;
         } else {
             actions.innerHTML = `
-                <button class="btn-play" onclick="playFirstEpisode()">▶ İzle</button>`;
+                <button class="btn-play" onclick="playFirstEpisode()">▶ İzle</button>
+                <button class="btn-info" onclick="toggleSave('series','${series._id}')">★ Kaydet</button>`;
         }
 
         // Seasons / Episodes
@@ -572,24 +709,30 @@ async function saveProgress(episodeId) {
     const progress = Math.floor(video.currentTime);
     if (!progress) return;
     try {
+        const headers = { 'Content-Type': 'application/json' };
+        if (TOKEN) headers['Authorization'] = 'Bearer ' + TOKEN;
+        const body = { seriesId: currentSeries?._id, episodeId, progress };
+        if (!TOKEN) body.userId = USER_ID;
         await fetch(API + '/progress', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                userId: USER_ID,
-                seriesId: currentSeries?._id,
-                episodeId,
-                progress
-            })
+            headers,
+            body: JSON.stringify(body)
         });
     } catch (err) { /* silent */ }
 }
 
 async function loadProgress(episodeId) {
     try {
-        const res = await fetch(API + '/progress/' + USER_ID + '/' + episodeId);
+        let res;
+        const headers = {};
+        if (TOKEN) headers['Authorization'] = 'Bearer ' + TOKEN;
+        if (TOKEN) {
+            res = await fetch(API + '/progress/me/' + episodeId, { headers });
+        } else {
+            res = await fetch(API + '/progress/' + USER_ID + '/' + episodeId);
+        }
         const data = await res.json();
-        if (data.progress > 0) {
+        if (data && data.progress > 0) {
             document.getElementById('video-player').currentTime = data.progress;
         }
     } catch (err) { /* silent */ }

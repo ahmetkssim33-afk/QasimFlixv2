@@ -5,6 +5,10 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const JWT_SECRET = process.env.JWT_SECRET || 'dev_jwt_secret_change_me';
+
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
@@ -120,6 +124,31 @@ const filmSchema = new mongoose.Schema({
   puan:     { type: Number, default: 0 }
 });
 const Film = mongoose.model('Film', filmSchema);
+
+// USER MODEL
+const userSchema = new mongoose.Schema({
+  email: { type: String, required: true, unique: true },
+  passwordHash: String,
+  name: String,
+  savedSeries: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Series' }],
+  savedFilms: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Film' }],
+  createdAt: { type: Date, default: Date.now }
+});
+const User = mongoose.model('User', userSchema);
+
+// Helper: try to extract user id from Authorization header (Bearer token)
+function getUserIdFromReq(req) {
+  try {
+    const auth = req.headers && req.headers.authorization;
+    if (!auth) return null;
+    const parts = auth.split(' ');
+    if (parts.length !== 2) return null;
+    const payload = jwt.verify(parts[1], JWT_SECRET);
+    return payload && (payload.id || payload._id || payload.userId) ? String(payload.id || payload._id || payload.userId) : null;
+  } catch (e) {
+    return null;
+  }
+}
 
 
 // ═══════════════════════════════════════════════════════════
@@ -473,10 +502,14 @@ app.delete('/api/episodes/:id', async (req, res) => {
 // API ENDPOINTS - WATCH PROGRESS
 // ═══════════════════════════════════════════════════════════
 
-// Save watch progress
+// Save watch progress - accepts `userId` in body OR Bearer token in Authorization header
 app.post('/api/progress', async (req, res) => {
   try {
-    const { userId, seriesId, episodeId, progress } = req.body;
+    let { userId, seriesId, episodeId, progress } = req.body;
+    const headerUser = getUserIdFromReq(req);
+    if (headerUser) userId = headerUser;
+
+    if (!userId) return res.status(400).json({ error: 'userId missing' });
 
     const updated = await WatchProgress.findOneAndUpdate(
       { userId, episodeId },
@@ -490,7 +523,7 @@ app.post('/api/progress', async (req, res) => {
   }
 });
 
-// Get watch progress for episode
+// Get watch progress for episode (by explicit userId)
 app.get('/api/progress/:userId/:episodeId', async (req, res) => {
   try {
     const progress = await WatchProgress.findOne({
@@ -503,17 +536,142 @@ app.get('/api/progress/:userId/:episodeId', async (req, res) => {
   }
 });
 
-// Get continue watching (recent series)
+// Get watch progress for currently authenticated user (uses Bearer token)
+app.get('/api/progress/me/:episodeId', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const progress = await WatchProgress.findOne({ userId, episodeId: req.params.episodeId });
+    res.json(progress || { progress: 0 });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get continue watching (recent series) for explicit userId
 app.get('/api/progress/continue/:userId', async (req, res) => {
   try {
-    const recentWatches = await WatchProgress.find({
-      userId: req.params.userId
-    })
+    const recentWatches = await WatchProgress.find({ userId: req.params.userId })
       .sort({ lastWatchedAt: -1 })
       .limit(10)
       .populate('seriesId');
 
     res.json(recentWatches);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get continue watching for authenticated user (Bearer token)
+app.get('/api/progress/continue/me', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const recentWatches = await WatchProgress.find({ userId })
+      .sort({ lastWatchedAt: -1 })
+      .limit(10)
+      .populate('seriesId');
+    res.json(recentWatches);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// AUTH & USER-SAVED ENDPOINTS
+// ═══════════════════════════════════════════════════════════
+
+// Register
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { email, password, name } = req.body;
+    if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+    const exists = await User.findOne({ email });
+    if (exists) return res.status(400).json({ error: 'Email already registered' });
+    const hash = await bcrypt.hash(password, 10);
+    const user = new User({ email, passwordHash: hash, name });
+    await user.save();
+    const token = jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
+    res.json({ token, user: { _id: user._id, email: user.email, name: user.name } });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Login
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+    const user = await User.findOne({ email });
+    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+    const ok = await bcrypt.compare(password, user.passwordHash);
+    if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
+    const token = jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
+    res.json({ token, user: { _id: user._id, email: user.email, name: user.name } });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Me
+app.get('/api/auth/me', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const user = await User.findById(userId).select('-passwordHash');
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get saved items for user
+app.get('/api/user/saved', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const user = await User.findById(userId).populate('savedSeries').populate('savedFilms');
+    res.json({ savedSeries: user.savedSeries || [], savedFilms: user.savedFilms || [] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Add saved item (type: 'series' or 'film')
+app.post('/api/user/saved', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const { type, itemId } = req.body;
+    if (!type || !itemId) return res.status(400).json({ error: 'type and itemId required' });
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (type === 'series') {
+      if (!user.savedSeries.includes(itemId)) user.savedSeries.push(itemId);
+    } else if (type === 'film') {
+      if (!user.savedFilms.includes(itemId)) user.savedFilms.push(itemId);
+    }
+    await user.save();
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Remove saved item
+app.delete('/api/user/saved', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const { type, itemId } = req.body;
+    if (!type || !itemId) return res.status(400).json({ error: 'type and itemId required' });
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (type === 'series') user.savedSeries = user.savedSeries.filter(id => String(id) !== String(itemId));
+    else if (type === 'film') user.savedFilms = user.savedFilms.filter(id => String(id) !== String(itemId));
+    await user.save();
+    res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
