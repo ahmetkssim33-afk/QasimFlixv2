@@ -520,6 +520,10 @@ select{
       <div class="nav-item" data-view="subtitles" onclick="navigate(this,'subtitles')">
         <span class="icon">⊟</span> Altyazılar
       </div>
+      <div class="nav-item" data-view="documentaries" onclick="navigate(this,'documentaries')">
+        <span class="icon">🎞</span> Belgeseller
+        <span class="nav-badge" id="nb-documentaries">0</span>
+      </div>
     </nav>
     <div class="sidebar-footer">
       API: <span id="api-indicator" style="color:var(--success)">●</span> Vercel API
@@ -632,6 +636,7 @@ select{
             <select id="filter-type" onchange="renderSeriesList()" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:7px 28px 7px 10px;border-radius:var(--radius);font-family:var(--font-head);font-size:.78rem">
               <option value="">Tümü</option>
               <option value="series">Sadece Diziler</option>
+              <option value="documentary">Sadece Belgeseller</option>
               <option value="movie">Sadece Filmler</option>
             </select>
           </div>
@@ -639,6 +644,23 @@ select{
         <div id="series-list-wrap">
           <div class="skeleton skeleton-item"></div>
           <div class="skeleton skeleton-item" style="opacity:.7"></div>
+        </div>
+      </div>
+
+      <!-- DOCUMENTARIES VIEW -->
+      <div class="view" id="view-documentaries">
+        <div class="section-header">
+          <div>
+            <h2>Belgeseller</h2>
+            <div class="sub" id="documentaries-count-label">yükleniyor...</div>
+          </div>
+          <div style="display:flex;gap:8px"></div>
+        </div>
+        <div id="documentaries-list-wrap">
+          <div class="empty-state">
+            <div class="empty-icon">🎞</div>
+            <p>Belgesel bulunamadı</p>
+          </div>
         </div>
       </div>
 
@@ -914,6 +936,7 @@ const pageTitles = {
   seasons: ['Sezon Yönetimi', 'Sezonlar'],
   episodes: ['Bölüm Yönetimi', 'Bölümler'],
   subtitles: ['Altyazı Yönetimi', 'Altyazılar'],
+  documentaries: ['Belgeseller', 'Belgeseller'],
 };
 
 function navigate(el, view) {
@@ -926,6 +949,7 @@ function navigate(el, view) {
   document.getElementById('page-breadcrumb').textContent = `CineAdmin / ${crumb}`;
   if (view === 'dashboard') loadDashboard();
   if (view === 'series')    loadSeriesList();
+  if (view === 'documentaries') loadDocumentariesList();
   if (view === 'seasons')   populateSeriesSelects();
   if (view === 'episodes')  populateSeriesSelects();
   if (view === 'subtitles') populateSeriesSelects();
@@ -960,6 +984,10 @@ async function loadAllSeries() {
     const d = await api('GET', '/series?page=1&limit=500&_=' + Date.now());
     allSeries = d.series || [];
     document.getElementById('nb-series').textContent = allSeries.length;
+    // update documentaries counter if present
+    const docCount = allSeries.filter(s => (s.categories||[]).some(c => ['documentary','belgesel'].includes((c||'').toLowerCase()))).length;
+    const nbDocEl = document.getElementById('nb-documentaries');
+    if (nbDocEl) nbDocEl.textContent = docCount;
     populateSeriesSelects();
   } catch (e) {
     toast(e.message, 'error');
@@ -1004,13 +1032,34 @@ async function loadSeriesList() {
 
 function renderSeriesList() {
   const filter = document.getElementById('filter-type')?.value || '';
-  let list = allSeries.filter(s => !filter || s.type === filter);
+  let list;
+  if (!filter) list = allSeries.slice();
+  else if (filter === 'documentary') list = allSeries.filter(s => (s.categories||[]).some(c => ['documentary','belgesel'].includes((c||'').toLowerCase())));
+  else list = allSeries.filter(s => s.type === filter);
   if (searchTerm) list = list.filter(s => s.title.toLowerCase().includes(searchTerm));
   const lbl = document.getElementById('series-count-label');
   if (lbl) lbl.textContent = `${list.length} içerik listeleniyor`;
   const wrap = document.getElementById('series-list-wrap');
   if (!list.length) {
     wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">▦</div><p>Sonuç bulunamadı</p></div>';
+    return;
+  }
+  wrap.innerHTML = `<div class="list-container">${list.map(s => seriesItemHTML(s)).join('')}</div>`;
+}
+
+async function loadDocumentariesList() {
+  await loadAllSeries();
+  renderDocumentariesList();
+}
+
+function renderDocumentariesList() {
+  let list = allSeries.filter(s => (s.categories||[]).some(c => ['documentary','belgesel'].includes((c||'').toLowerCase())));
+  if (searchTerm) list = list.filter(s => s.title.toLowerCase().includes(searchTerm));
+  const lbl = document.getElementById('documentaries-count-label');
+  if (lbl) lbl.textContent = `${list.length} içerik listeleniyor`;
+  const wrap = document.getElementById('documentaries-list-wrap');
+  if (!list.length) {
+    wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">🎞</div><p>Sonuç bulunamadı</p></div>';
     return;
   }
   wrap.innerHTML = `<div class="list-container">${list.map(s => seriesItemHTML(s)).join('')}</div>`;

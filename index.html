@@ -231,10 +231,11 @@ body::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:3px}
 
 <nav class="navbar" id="navbar">
   <div class="nav-left">
-    <a href="index.html" class="logo">Qasimflix</a>
+    <a href="#" class="logo" onclick="showAll();return false;">Qasimflix</a>
     <ul class="nav-links">
       <li><button class="nav-link active" onclick="showAll(this)">Ana Sayfa</button></li>
       <li><button class="nav-link" onclick="showCategory('series',this)">Diziler</button></li>
+      <li><button class="nav-link" onclick="showDocumentaries(this)">Belgeseller</button></li>
       <li><button class="nav-link" onclick="showCategory('movie',this)">Filmler</button></li>
     </ul>
   </div>
@@ -313,6 +314,10 @@ body::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:3px}
     <div class="section" id="series-section">
       <div class="section-title">📺 Diziler</div>
       <div class="cards-row" id="series-row"></div>
+    </div>
+    <div class="section" id="documentaries-section" style="display:none">
+      <div class="section-title">🎞️ Belgeseller</div>
+      <div class="cards-row" id="documentaries-row"></div>
     </div>
     <div class="section" id="movies-section">
       <div class="section-title">🎬 Filmler</div>

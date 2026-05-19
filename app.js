@@ -35,6 +35,7 @@ async function loadAll() {
         renderHero(allData);
         renderRow('popular-row', allData.slice(0, 12));
         renderRow('series-row', allData.filter(s => s.type === 'series'));
+        renderRow('documentaries-row', allData.filter(s => (s.categories||[]).some(c => (c||'').toLowerCase() === 'documentary' || (c||'').toLowerCase() === 'belgesel')));
         renderRow('movies-row', allData.filter(s => s.type === 'movie'));
 
         // Always show sections; show empty state inside row if no content
@@ -49,7 +50,7 @@ async function loadAll() {
 }
 
 function clearSkeletons() {
-    ['popular-row', 'series-row', 'movies-row'].forEach(id => {
+    ['popular-row', 'series-row', 'documentaries-row', 'movies-row'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.innerHTML = '<div class="empty-state"><div class="icon">📭</div><p>İçerik yüklenemedi</p></div>';
     });
@@ -216,12 +217,27 @@ function showAll(btn) {
     document.getElementById('main-sections').style.display = '';
     document.getElementById('popular-section').style.display = '';
     document.getElementById('series-section').style.display = '';
+    document.getElementById('documentaries-section').style.display = '';
     document.getElementById('movies-section').style.display = '';
 
     // Re-render all rows from cached data
     renderRow('popular-row', allData.slice(0, 12));
     renderRow('series-row', allData.filter(s => s.type === 'series'));
+    renderRow('documentaries-row', allData.filter(s => (s.categories||[]).some(c => (c||'').toLowerCase() === 'documentary' || (c||'').toLowerCase() === 'belgesel')));
     renderRow('movies-row', allData.filter(s => s.type === 'movie'));
+}
+
+function showDocumentaries(btn) {
+    currentFilter = 'documentaries';
+    setActiveNavBtn(btn);
+    document.getElementById('search-input').value = '';
+    document.getElementById('search-results').style.display = 'none';
+    document.getElementById('main-sections').style.display = '';
+    document.getElementById('popular-section').style.display = 'none';
+    document.getElementById('series-section').style.display = 'none';
+    document.getElementById('movies-section').style.display = 'none';
+    document.getElementById('documentaries-section').style.display = '';
+    renderRow('documentaries-row', allData.filter(s => (s.categories||[]).some(c => (c||'').toLowerCase() === 'documentary' || (c||'').toLowerCase() === 'belgesel')));
 }
 
 function setActiveNavBtn(btn) {
