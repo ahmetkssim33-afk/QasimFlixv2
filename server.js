@@ -88,7 +88,7 @@ const episodeSchema = new mongoose.Schema({
 
 // WATCH PROGRESS SCHEMA (for continue watching feature)
 const watchProgressSchema = new mongoose.Schema({
-  userId: { type: String, required: true }, // Firebase Auth UID
+  userId: String, // simple user ID (can be improved with auth)
   seriesId: { type: mongoose.Schema.Types.ObjectId, ref: 'Series' },
   episodeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Episode' },
   progress: Number, // in seconds
@@ -464,32 +464,14 @@ app.delete('/api/episodes/:id', async (req, res) => {
 app.post('/api/progress', async (req, res) => {
   try {
     const { userId, seriesId, episodeId, progress } = req.body;
-    if (!userId || !seriesId || !episodeId) {
-      return res.status(400).json({ error: 'userId, seriesId ve episodeId gerekli' });
-    }
 
     const updated = await WatchProgress.findOneAndUpdate(
       { userId, episodeId },
-      { userId, seriesId, episodeId, progress: Number(progress) || 0, lastWatchedAt: new Date() },
+      { userId, seriesId, episodeId, progress, lastWatchedAt: new Date() },
       { upsert: true, new: true }
     );
 
     res.json(updated);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Get continue watching (recent series) - generic /:userId/:episodeId rotasından önce durmalı
-app.get('/api/progress/continue/:userId', async (req, res) => {
-  try {
-    const recentWatches = await WatchProgress.find({ userId: req.params.userId })
-      .sort({ lastWatchedAt: -1 })
-      .limit(10)
-      .populate('seriesId')
-      .populate('episodeId');
-
-    res.json(recentWatches);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -503,6 +485,22 @@ app.get('/api/progress/:userId/:episodeId', async (req, res) => {
       episodeId: req.params.episodeId
     });
     res.json(progress || { progress: 0 });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get continue watching (recent series)
+app.get('/api/progress/continue/:userId', async (req, res) => {
+  try {
+    const recentWatches = await WatchProgress.find({
+      userId: req.params.userId
+    })
+      .sort({ lastWatchedAt: -1 })
+      .limit(10)
+      .populate('seriesId');
+
+    res.json(recentWatches);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
