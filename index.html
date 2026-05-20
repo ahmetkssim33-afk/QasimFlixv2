@@ -245,13 +245,8 @@ body::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:3px}
       <input type="text" id="search-input" placeholder="Ara..." oninput="handleSearch(this.value)">
     </div>
     <a href="admin.html" class="admin-btn" id="admin-link" style="display:none">⚙ Admin</a>
-    <!-- Google Sign-In -->
     <div id="auth-section">
-      <button class="google-btn" id="google-signin-btn" onclick="signInWithGoogle()">
-        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-        Google ile Kayıt Ol
-      </button>
-        <button class="google-btn" id="local-auth-btn" style="background:#2b2b2b;color:#fff;margin-left:8px" onclick="openAuthPrompt()">Giriş / Kayıt</button>
+      <button class="google-btn" id="local-auth-btn" style="background:#2b2b2b;color:#fff;margin-left:8px" onclick="window.location.href='/auth'">Giriş / Kayıt</button>
       <div class="user-avatar-wrap" id="user-info" style="display:none">
         <img id="user-photo" src="" alt="avatar">
         <span class="user-name" id="user-display-name"></span>
@@ -380,151 +375,20 @@ body::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:3px}
   </div>
 </div>
 
-<!-- Firebase / Google Auth -->
-<script type="module">
-  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-  import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut as fbSignOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-  import { getFirestore, collection, addDoc, query, where, orderBy, getDocs, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-
-  const firebaseConfig = {
-    apiKey: "AIzaSyAtHW7UW3-ftQq9loSHPJkkbSeDSONI2KE",
-    authDomain: "qasimflix-8ba04.firebaseapp.com",
-    projectId: "qasimflix-8ba04",
-    storageBucket: "qasimflix-8ba04.firebasestorage.app",
-    messagingSenderId: "958468258867",
-    appId: "1:958468258867:web:08395af3f9a39f9fcf3746",
-    measurementId: "G-ZD0XCX5XEN"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  let db = null;
-  try { db = getFirestore(app); } catch(e) { db = null; }
-  const provider = new GoogleAuthProvider();
-
-  // Expose auth/db to global scope for compatibility
-  window._auth = auth;
-  window._db = db;
-  window._fbSignOut = fbSignOut;
-
-  // Sign-in (Google) — global function
-  window.firebaseSignIn = async () => {
-    try {
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-      // keep both names for compatibility
-      window.currentUser = user || null;
-      window.currentFirebaseUser = user || null;
-      window.currentUserUid = user?.uid || null;
-
-      // optionally write login history if Firestore is available
-      if (db && user) {
-        try {
-          await addDoc(collection(db, 'loginHistory'), {
-            uid: user.uid,
-            email: user.email,
-            displayName: user.displayName,
-            photoURL: user.photoURL,
-            loginAt: serverTimestamp(),
-            userAgent: navigator.userAgent.substring(0, 120)
-          });
-        } catch (e) {
-          console.warn('Login history write failed', e);
-        }
-      }
-      return result;
-    } catch (e) {
-      console.error('Giriş hatası:', e);
-      alert('Giriş yapılamadı: ' + (e?.message || e));
-      throw e;
-    }
-  };
-
-  // keep old name as alias for UI hooks
-  window.signInWithGoogle = window.firebaseSignIn;
-
-  // Sign-out — global
-  window.firebaseSignOut = async () => {
-    try {
-      await fbSignOut(auth);
-      window.currentUser = null;
-      window.currentFirebaseUser = null;
-      window.currentUserUid = null;
-    } catch (e) {
-      console.error('Çıkış hatası:', e);
-    }
-  };
-
-  // keep old name as alias
-  window.signOut = window.firebaseSignOut;
-
+<script>
+  // Removed Google/Firebase integration per request.
+  // Provide a minimal login-history modal helper that informs the user
+  // that server-side login history is not enabled.
   window.openLoginHistory = async () => {
     const modal = document.getElementById('login-modal');
     const list = document.getElementById('login-history-list');
     modal.classList.add('open');
-    list.innerHTML = '<div class="login-empty">Yükleniyor...</div>';
-    try {
-      const user = auth.currentUser;
-      if (!user || !db) {
-        list.innerHTML = '<div class="login-empty">Giriş geçmişi bulunmuyor veya desteklenmiyor.</div>';
-        return;
-      }
-      const q = query(
-        collection(db, 'loginHistory'),
-        where('uid', '==', user.uid),
-        orderBy('loginAt', 'desc')
-      );
-      const snap = await getDocs(q);
-      if (snap.empty) {
-        list.innerHTML = '<div class="login-empty">Henüz giriş kaydı yok.</div>';
-        return;
-      }
-      list.innerHTML = '';
-      snap.forEach(doc => {
-        const d = doc.data();
-        const date = d.loginAt?.toDate ? d.loginAt.toDate() : new Date();
-        const formatted = date.toLocaleString('tr-TR', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
-        list.innerHTML += `
-          <div class="login-entry">
-            <div class="login-entry-icon">🔑</div>
-            <div class="login-entry-info">
-              <div class="login-entry-date">${formatted}</div>
-              <div class="login-entry-sub">${d.email}</div>
-            </div>
-          </div>`;
-      });
-    } catch(e) {
-      list.innerHTML = '<div class="login-empty">Geçmiş yüklenemedi.</div>';
-      console.error(e);
-    }
+    list.innerHTML = '<div class="login-empty">Giriş geçmişi sunucu tarafından tutulmuyor.</div>';
   };
 
   window.closeLoginHistory = () => {
     document.getElementById('login-modal').classList.remove('open');
   };
-
-  // Auth state listener — set window.currentUser and dispatch event for app.js
-  onAuthStateChanged(auth, user => {
-    window.currentUser = user || null;
-    window.currentFirebaseUser = user || null; // backward compatibility
-    window.currentUserUid = user ? user.uid : null;
-    window.dispatchEvent(new CustomEvent('qasimflix-auth-changed', { detail: { user } }));
-    const signinBtn = document.getElementById('google-signin-btn');
-    const userInfo = document.getElementById('user-info');
-    if (signinBtn && userInfo) {
-      if (user) {
-        signinBtn.style.display = 'none';
-        userInfo.style.display = 'flex';
-        document.getElementById('user-photo').src = user.photoURL || '';
-        document.getElementById('user-display-name').textContent = user.displayName?.split(' ')[0] || 'Kullanıcı';
-        document.getElementById('dd-name').textContent = user.displayName || '';
-        document.getElementById('dd-email').textContent = user.email || '';
-      } else {
-        signinBtn.style.display = 'flex';
-        userInfo.style.display = 'none';
-      }
-    }
-  });
 </script>
 <script src="app.js"></script>
 </body>

@@ -42,16 +42,16 @@ async function initAuth() {
 }
 
 function updateAuthUI() {
-    const googleBtn = document.getElementById('google-signin-btn');
+    const localBtn = document.getElementById('local-auth-btn');
     const userInfo = document.getElementById('user-info');
     if (AUTH_USER) {
-        if (googleBtn) googleBtn.style.display = 'none';
+        if (localBtn) localBtn.style.display = 'none';
         if (userInfo) userInfo.style.display = '';
         document.getElementById('user-display-name').textContent = AUTH_USER.name || AUTH_USER.email;
         document.getElementById('dd-name').textContent = AUTH_USER.name || AUTH_USER.email;
         document.getElementById('dd-email').textContent = AUTH_USER.email || '';
     } else {
-        if (googleBtn) googleBtn.style.display = '';
+        if (localBtn) localBtn.style.display = '';
         if (userInfo) userInfo.style.display = 'none';
     }
 }
@@ -157,6 +157,13 @@ function esc(s) {
 function pad(n) {
     return String(n || 0).padStart(2, '0');
 }
+
+// Initialize app on page load: auth, data and continue-watching
+(async function boot() {
+    try { await initAuth(); } catch (e) { console.warn('initAuth error', e); }
+    try { await loadAll(); } catch (e) { console.warn('loadAll error', e); }
+    try { await loadContinueWatching(); } catch (e) { /* ignore */ }
+})();
 // ═══════════════════════════════════════════
 // DATA LOADING
 // ═══════════════════════════════════════════
