@@ -5,9 +5,12 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 
+require('dotenv').config();
+
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_jwt_secret_change_me';
+const nodemailer = require('nodemailer');
 
 const app = express();
 app.use(cors());
@@ -39,102 +42,9 @@ const upload = multer({
 
 // Serve uploaded files
 app.use('/uploads', express.static(uploadsDir));
-
-// ═══════════════════════════════════════════════════════════
-// DATABASE CONNECTION
-// ═══════════════════════════════════════════════════════════
-mongoose.connect("mongodb://127.0.0.1:27017/streamingDB")
-  .then(() => console.log('✅ MongoDB Connected'))
-  .catch(err => console.error('❌ MongoDB Error:', err));
-
-// ═══════════════════════════════════════════════════════════
-// SCHEMAS
-// ═══════════════════════════════════════════════════════════
-
-// SERIES SCHEMA
-const seriesSchema = new mongoose.Schema({
-  title: { type: String, required: true, unique: true },
-  description: String,
-  poster: String, // base64 or URL
-  categories: [String],
-  releaseYear: Number,
-  rating: { type: Number, default: 0, min: 0, max: 10 },
-  type: { type: String, enum: ['series', 'movie'], default: 'series' },
-  createdAt: { type: Date, default: Date.now }
-});
-
-// SEASON SCHEMA
-const seasonSchema = new mongoose.Schema({
-  seriesId: { type: mongoose.Schema.Types.ObjectId, ref: 'Series', required: true },
-  seasonNumber: { type: Number, required: true },
-  title: String,
-  description: String,
-  releaseDate: Date,
-  createdAt: { type: Date, default: Date.now }
-});
-
-// EPISODE SCHEMA
-const episodeSchema = new mongoose.Schema({
-  seasonId: { type: mongoose.Schema.Types.ObjectId, ref: 'Season', required: true },
-  seriesId: { type: mongoose.Schema.Types.ObjectId, ref: 'Series', required: true },
-  episodeNumber: { type: Number, required: true },
-  title: { type: String, required: true },
-  description: String,
-  videoUrl: { type: String, required: true }, // URL to video
-  subtitles: [{
-    language: { type: String, default: 'TR' }, // TR, EN, etc.
-    vttContent: String // .vtt file content
-  }],
-  duration: Number, // in seconds
-  thumbnail: String,
-  createdAt: { type: Date, default: Date.now }
-});
-
-// WATCH PROGRESS SCHEMA (for continue watching feature)
-const watchProgressSchema = new mongoose.Schema({
-  userId: String, // simple user ID (can be improved with auth)
-  seriesId: { type: mongoose.Schema.Types.ObjectId, ref: 'Series' },
-  episodeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Episode' },
-  progress: Number, // in seconds
-  lastWatchedAt: { type: Date, default: Date.now }
-});
-
-// CATEGORY SCHEMA
-const categorySchema = new mongoose.Schema({
-  name: { type: String, unique: true, required: true }
-});
-
-// ═══════════════════════════════════════════════════════════
-// MODELS
-// ═══════════════════════════════════════════════════════════
-const Series = mongoose.model('Series', seriesSchema);
-const Season = mongoose.model('Season', seasonSchema);
-const Episode = mongoose.model('Episode', episodeSchema);
-const WatchProgress = mongoose.model('WatchProgress', watchProgressSchema);
-const Category = mongoose.model('Category', categorySchema);
-// ═══════════════════════════════════════════════════════════
-// FILM MODEL
-// ═══════════════════════════════════════════════════════════
-const filmSchema = new mongoose.Schema({
-  ad:       { type: String, required: true },
-  type:     { type: String },
-  kategori: { type: String },
-  video:    { type: String },
-  thumb:    { type: String },
-  puan:     { type: Number, default: 0 }
-});
-const Film = mongoose.model('Film', filmSchema);
-
-// USER MODEL
-const userSchema = new mongoose.Schema({
-  email: { type: String, required: true, unique: true },
-  passwordHash: String,
-  name: String,
-  savedSeries: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Series' }],
-  savedFilms: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Film' }],
-  createdAt: { type: Date, default: Date.now }
-});
-const User = mongoose.model('User', userSchema);
+// Use shared DB connector and centralized models
+const { connectDB } = require('./lib/db');
+const { Series, Season, Episode, WatchProgress, Category, Film, User } = require('./lib/models');
 
 // Helper: try to extract user id from Authorization header (Bearer token)
 function getUserIdFromReq(req) {
@@ -146,6 +56,36 @@ function getUserIdFromReq(req) {
     const payload = jwt.verify(parts[1], JWT_SECRET);
     return payload && (payload.id || payload._id || payload.userId) ? String(payload.id || payload._id || payload.userId) : null;
   } catch (e) {
+    return null;
+  }
+}
+
+// Email helper for password reset
+async function sendResetEmail(toEmail, token) {
+  try {
+    const appUrl = process.env.APP_URL || `http://localhost:${process.env.PORT || 3000}`;
+    const resetLink = `${String(appUrl).replace(/\/$/, '')}/auth?resetToken=${token}`;
+    if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+      const transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: parseInt(process.env.SMTP_PORT || '587', 10),
+        secure: process.env.SMTP_SECURE === 'true',
+        auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+      });
+      const info = await transporter.sendMail({
+        from: process.env.EMAIL_FROM || process.env.SMTP_USER,
+        to: toEmail,
+        subject: 'Şifre sıfırlama isteği',
+        html: `<p>Şifre sıfırlama isteği alındı. Bu bağlantı 1 saat geçerlidir:</p><p><a href="${resetLink}">${resetLink}</a></p>`
+      });
+      console.log('Reset email sent:', info.messageId);
+    } else {
+      // No SMTP configured — fallback to logging the link for developer testing
+      console.log('Reset link (no SMTP configured):', resetLink);
+    }
+    return resetLink;
+  } catch (err) {
+    console.error('Failed to send reset email:', err);
     return null;
   }
 }
@@ -168,7 +108,6 @@ async function initializeCategories() {
     );
   }
 }
-initializeCategories();
 
 // ═══════════════════════════════════════════════════════════
 // API ENDPOINTS - CATEGORIES
@@ -584,17 +523,20 @@ app.get('/api/progress/continue/me', async (req, res) => {
 // Register
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { email, password, name } = req.body;
-    if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+    const { email, password, name, username, passwordConfirm } = req.body;
+    const displayName = name || username || '';
+    if (!email || !password) return res.status(400).json({ error: 'Email and password required', message: 'Email and password required' });
+    if (passwordConfirm && password !== passwordConfirm) return res.status(400).json({ error: 'Passwords do not match', message: 'Şifreler eşleşmiyor' });
+    if (password.length < 6) return res.status(400).json({ error: 'Password too short', message: 'Şifre en az 6 karakter olmalıdır' });
     const exists = await User.findOne({ email });
-    if (exists) return res.status(400).json({ error: 'Email already registered' });
+    if (exists) return res.status(400).json({ error: 'Email already registered', message: 'Bu e-posta zaten kayıtlı' });
     const hash = await bcrypt.hash(password, 10);
-    const user = new User({ email, passwordHash: hash, name });
+    const user = new User({ email, passwordHash: hash, name: displayName });
     await user.save();
     const token = jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
     res.json({ token, user: { _id: user._id, email: user.email, name: user.name } });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message, message: err.message });
   }
 });
 
@@ -602,15 +544,51 @@ app.post('/api/auth/register', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+    if (!email || !password) return res.status(400).json({ error: 'Email and password required', message: 'Email and password required' });
     const user = await User.findOne({ email });
-    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+    if (!user) return res.status(401).json({ error: 'Invalid credentials', message: 'Invalid credentials' });
     const ok = await bcrypt.compare(password, user.passwordHash);
-    if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
+    if (!ok) return res.status(401).json({ error: 'Invalid credentials', message: 'Invalid credentials' });
     const token = jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
     res.json({ token, user: { _id: user._id, email: user.email, name: user.name } });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message, message: err.message });
+  }
+});
+
+// Forgot password (simulated)
+app.post('/api/auth/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email required', message: 'E-posta gerekli' });
+    const user = await User.findOne({ email });
+    if (user) {
+      const token = jwt.sign({ id: user._id, action: 'reset' }, JWT_SECRET, { expiresIn: '1h' });
+      // Send reset email if possible (falls back to console.log)
+      await sendResetEmail(email, token);
+    }
+    res.json({ message: 'Eğer e-posta kayıtlıysa sıfırlama bağlantısı gönderildi' });
+  } catch (err) {
+    res.status(500).json({ error: err.message, message: err.message });
+  }
+});
+
+// Reset password using token
+app.post('/api/auth/reset-password', async (req, res) => {
+  try {
+    const { token, password, passwordConfirm } = req.body;
+    if (!token || !password) return res.status(400).json({ error: 'token and password required', message: 'Token ve şifre gerekli' });
+    if (passwordConfirm && password !== passwordConfirm) return res.status(400).json({ error: 'Passwords do not match', message: 'Şifreler eşleşmiyor' });
+    if (password.length < 6) return res.status(400).json({ error: 'Password too short', message: 'Şifre en az 6 karakter olmalıdır' });
+    let payload;
+    try { payload = jwt.verify(token, JWT_SECRET); } catch (e) { return res.status(400).json({ error: 'Invalid or expired token', message: 'Geçersiz veya süresi dolmuş token' }); }
+    const user = await User.findById(payload.id);
+    if (!user) return res.status(404).json({ error: 'User not found', message: 'Kullanıcı bulunamadı' });
+    user.passwordHash = await bcrypt.hash(password, 10);
+    await user.save();
+    res.json({ message: 'Şifre başarıyla yenilendi' });
+  } catch (err) {
+    res.status(500).json({ error: err.message, message: err.message });
   }
 });
 
@@ -697,16 +675,26 @@ app.post('/api/upload', upload.single('image'), (req, res) => {
 app.use(express.static(path.join(__dirname)));
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+app.get('/auth', (req, res) => res.sendFile(path.join(__dirname, 'auth.html')));
 
 // ═══════════════════════════════════════════════════════════
-// START SERVER
+// START SERVER — önce DB'ye bağlan ve kategorileri başlat
 // ═══════════════════════════════════════════════════════════
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`\n🎬 Streaming Platform Server Running on http://localhost:${PORT}`);
-  console.log(`📝 Admin Panel: http://localhost:${PORT}/admin.html`);
-  console.log(`🎭 Frontend: http://localhost:${PORT}/index.html\n`);
-});
+(async () => {
+  try {
+    await connectDB();
+    await initializeCategories();
+    app.listen(PORT, () => {
+      console.log(`\n🎬 Streaming Platform Server Running on http://localhost:${PORT}`);
+      console.log(`📝 Admin Panel: http://localhost:${PORT}/admin.html`);
+      console.log(`🎭 Frontend: http://localhost:${PORT}/index.html\n`);
+    });
+  } catch (err) {
+    console.error('Sunucu başlatılırken hata:', err);
+    process.exit(1);
+  }
+})();
 
 // Kategori ekle (Admin)
 app.post('/kategori-ekle', async (req, res) => {

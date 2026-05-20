@@ -30,97 +30,22 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 // Vercel Dashboard → Settings → Environment Variables'a eklemen gerekir.
 // Örnek değer: mongodb+srv://user:password@cluster.mongodb.net/streamingDB
 // ───────────────────────────────────────────────────────────
-let isConnected = false; // Bağlantıyı tekrar tekrar açmamak için kontrol
+// Use shared DB connector and models
+const { connectDB } = require('./lib/db');
+const { Series, Season, Episode, WatchProgress, Category } = require('./lib/models');
 
-async function connectDB() {
-  if (isConnected) return; // Zaten bağlıysa tekrar bağlanma
-
-  const uri = process.env.MONGODB_URI;
-  if (!uri) {
-    console.error("❌ MONGODB_URI environment variable tanımlı değil!");
-    return;
-  }
-
-  try {
-    await mongoose.connect(uri, {
-      // Vercel serverless için önerilen ayarlar:
-      bufferCommands: false,      // Bağlantı yokken sorguyu kuyruğa alma
-      serverSelectionTimeoutMS: 5000, // 5 saniye bekle, sonra hata ver
-    });
-    isConnected = true;
-    console.log("✅ MongoDB Atlas bağlantısı kuruldu");
-  } catch (err) {
-    console.error("❌ MongoDB bağlantı hatası:", err.message);
-  }
-}
-
-// ───────────────────────────────────────────────────────────
-// SCHEMAS (Veri Şemaları)
-// ───────────────────────────────────────────────────────────
-
-const seriesSchema = new mongoose.Schema({
-  title:       { type: String, required: true, unique: true },
-  description: String,
-  poster:      String,          // base64 veya URL
-  categories:  [String],
-  releaseYear: Number,
-  rating:      { type: Number, default: 0, min: 0, max: 10 },
-  type:        { type: String, enum: ["series", "movie"], default: "series" },
-  createdAt:   { type: Date, default: Date.now }
-});
-
-const seasonSchema = new mongoose.Schema({
-  seriesId:     { type: mongoose.Schema.Types.ObjectId, ref: "Series", required: true },
-  seasonNumber: { type: Number, required: true },
-  title:        String,
-  description:  String,
-  releaseDate:  Date,
-  createdAt:    { type: Date, default: Date.now }
-});
-
-const episodeSchema = new mongoose.Schema({
-  seasonId:      { type: mongoose.Schema.Types.ObjectId, ref: "Season", required: true },
-  seriesId:      { type: mongoose.Schema.Types.ObjectId, ref: "Series", required: true },
-  episodeNumber: { type: Number, required: true },
-  title:         { type: String, required: true },
-  description:   String,
-  videoUrl:      { type: String, required: true },
-  subtitles: [{
-    language:   { type: String, default: "TR" },
-    vttContent: String
-  }],
-  duration:    Number,
-  thumbnail:   String,
-  createdAt:   { type: Date, default: Date.now }
-});
-
-const watchProgressSchema = new mongoose.Schema({
-  userId:        String,
-  seriesId:      { type: mongoose.Schema.Types.ObjectId, ref: "Series" },
-  episodeId:     { type: mongoose.Schema.Types.ObjectId, ref: "Episode" },
-  progress:      Number,
-  lastWatchedAt: { type: Date, default: Date.now }
-});
-
-const categorySchema = new mongoose.Schema({
-  name: { type: String, unique: true, required: true }
-});
-
-// ───────────────────────────────────────────────────────────
-// MODELS (mongoose.models önbelleği — serverless ortamında
-// modellerin tekrar tanımlanmasını engeller)
-// ───────────────────────────────────────────────────────────
-const Series       = mongoose.models.Series       || mongoose.model("Series",       seriesSchema);
-const Season       = mongoose.models.Season       || mongoose.model("Season",       seasonSchema);
-const Episode      = mongoose.models.Episode      || mongoose.model("Episode",      episodeSchema);
-const WatchProgress= mongoose.models.WatchProgress|| mongoose.model("WatchProgress",watchProgressSchema);
-const Category     = mongoose.models.Category     || mongoose.model("Category",     categorySchema);
+// Local schema definitions removed — models are imported from ./lib/models
+// (prevents duplicate model registration across files)
 
 // ───────────────────────────────────────────────────────────
 // DB MIDDLEWARE — Her istekte bağlantıyı kontrol et
 // ───────────────────────────────────────────────────────────
 app.use(async (req, res, next) => {
   await connectDB();
+  const mongoose = require('mongoose');
+  if (mongoose.connection.readyState !== 1) {
+    return res.status(503).json({ error: 'MongoDB bağlantısı yok' });
+  }
   next();
 });
 
@@ -394,4 +319,4 @@ app.get("/api", (req, res) => {
 // Vercel kendi HTTP sunucusunu kurar ve bu dosyayı çağırır.
 // Biz sadece Express app'i export ediyoruz.
 // ═══════════════════════════════════════════════════════════
-module.exports = app;
+module.exports = app;

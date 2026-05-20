@@ -19,100 +19,20 @@ app.use(cors({
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-// ───────────────────────────────────────────────────────────
-// VERİTABANI BAĞLANTISI
-// ───────────────────────────────────────────────────────────
-let isConnected = false;
+// Use shared DB connector & centralized models
+const { connectDB } = require('../lib/db');
+const { Series, Season, Episode, WatchProgress, Category } = require('../lib/models');
 
-async function connectDB() {
-  if (isConnected) return;
-
-  const uri = process.env.MONGODB_URI;
-  if (!uri) {
-    console.error("❌ MONGODB_URI environment variable tanımlı değil!");
-    return;
-  }
-
-  try {
-    await mongoose.connect(uri, {
-      bufferCommands: false,
-      serverSelectionTimeoutMS: 5000,
-    });
-    isConnected = true;
-    console.log("✅ MongoDB Atlas bağlantısı kuruldu");
-  } catch (err) {
-    console.error("❌ MongoDB bağlantı hatası:", err.message);
-    isConnected = false;
-  }
-}
-
-// ───────────────────────────────────────────────────────────
-// SCHEMAS
-// ───────────────────────────────────────────────────────────
-
-const seriesSchema = new mongoose.Schema({
-  title:       { type: String, required: true, unique: true },
-  description: String,
-  poster:      String,
-  categories:  [String],
-  releaseYear: Number,
-  rating:      { type: Number, default: 0, min: 0, max: 10 },
-  type:        { type: String, enum: ["series", "movie"], default: "series" },
-  createdAt:   { type: Date, default: Date.now }
-});
-
-const seasonSchema = new mongoose.Schema({
-  seriesId:     { type: mongoose.Schema.Types.ObjectId, ref: "Series", required: true },
-  seasonNumber: { type: Number, required: true },
-  title:        String,
-  description:  String,
-  releaseDate:  Date,
-  createdAt:    { type: Date, default: Date.now }
-});
-
-const episodeSchema = new mongoose.Schema({
-  seasonId:      { type: mongoose.Schema.Types.ObjectId, ref: "Season", required: true },
-  seriesId:      { type: mongoose.Schema.Types.ObjectId, ref: "Series", required: true },
-  episodeNumber: { type: Number, required: true },
-  title:         { type: String, required: true },
-  description:   String,
-  videoUrl:      { type: String, required: true },
-  subtitles: [{
-    language:   { type: String, default: "TR" },
-    vttContent: String
-  }],
-  duration:    Number,
-  thumbnail:   String,
-  createdAt:   { type: Date, default: Date.now }
-});
-
-const watchProgressSchema = new mongoose.Schema({
-  userId:        String,
-  seriesId:      { type: mongoose.Schema.Types.ObjectId, ref: "Series" },
-  episodeId:     { type: mongoose.Schema.Types.ObjectId, ref: "Episode" },
-  progress:      Number,
-  lastWatchedAt: { type: Date, default: Date.now }
-});
-
-const categorySchema = new mongoose.Schema({
-  name: { type: String, unique: true, required: true }
-});
-
-// ───────────────────────────────────────────────────────────
-// MODELS
-// ───────────────────────────────────────────────────────────
-const Series        = mongoose.models.Series        || mongoose.model("Series",        seriesSchema);
-const Season        = mongoose.models.Season        || mongoose.model("Season",        seasonSchema);
-const Episode       = mongoose.models.Episode       || mongoose.model("Episode",       episodeSchema);
-const WatchProgress = mongoose.models.WatchProgress || mongoose.model("WatchProgress", watchProgressSchema);
-const Category      = mongoose.models.Category      || mongoose.model("Category",      categorySchema);
+// Local schema definitions removed — models are imported from ../lib/models
+// (keeps serverless redeploys and hot reloads from re-defining models)
 
 // ───────────────────────────────────────────────────────────
 // DB MIDDLEWARE
 // ───────────────────────────────────────────────────────────
 app.use(async (req, res, next) => {
   await connectDB();
-  if (!isConnected) {
+  const mongoose = require('mongoose');
+  if (mongoose.connection.readyState !== 1) {
     return res.status(503).json({ error: 'MongoDB bağlantısı yok. Lütfen `MONGODB_URI` veya MongoDB servisini kontrol edin.' });
   }
   next();
