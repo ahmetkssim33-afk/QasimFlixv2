@@ -493,7 +493,8 @@ app.get('/api/progress/continue/:userId', async (req, res) => {
     const recentWatches = await WatchProgress.find({ userId: req.params.userId })
       .sort({ lastWatchedAt: -1 })
       .limit(10)
-      .populate('seriesId');
+      .populate('seriesId')
+      .populate('episodeId');
 
     res.json(recentWatches);
   } catch (err) {
@@ -509,7 +510,8 @@ app.get('/api/progress/continue/me', async (req, res) => {
     const recentWatches = await WatchProgress.find({ userId })
       .sort({ lastWatchedAt: -1 })
       .limit(10)
-      .populate('seriesId');
+      .populate('seriesId')
+      .populate('episodeId');
     res.json(recentWatches);
   } catch (err) {
     res.status(500).json({ error: err.message });

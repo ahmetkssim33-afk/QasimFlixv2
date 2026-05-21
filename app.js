@@ -141,10 +141,48 @@ async function loadContinueWatching() {
         document.getElementById('continue-section').style.display = '';
         row.innerHTML = '';
         for (const w of data) {
-            const s = w.seriesId;
-            if (s) row.innerHTML += createCard(s);
+            // w is a WatchProgress doc; server now populates seriesId and episodeId when available
+            try {
+                row.innerHTML += createResumeCard(w);
+            } catch (err) {
+                const s = w.seriesId;
+                if (s) row.innerHTML += createCard(s);
+            }
         }
     } catch (e) { console.error(e); }
+}
+
+function formatTime(sec) {
+    sec = Number(sec) || 0;
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = Math.floor(sec % 60);
+    if (h) return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    return `${m}:${String(s).padStart(2,'0')}`;
+}
+
+function createResumeCard(watch) {
+    const s = watch.seriesId || {};
+    const ep = watch.episodeId || {};
+    const posterHtml = s.poster ? `<img class="card-img" src="${esc(s.poster)}" alt="${esc(s.title)}" loading="lazy" onerror="this.style.display='none';this.nextSibling.style.display='flex'">` : '';
+    const placeholderStyle = s.poster ? 'display:none' : '';
+    const epLabel = ep.episodeNumber ? `E${ep.episodeNumber}` : '';
+    const epTitle = ep.title || '';
+    const progressLabel = formatTime(watch.progress || 0);
+
+    return `
+    <div class="card" onclick="openDetail('${s._id}')">
+      ${posterHtml}
+      <div class="card-placeholder" style="${placeholderStyle}">
+        <span class="icon">${s.type === 'movie' ? '🎬' : '📺'}</span>
+        <span>${esc(s.title)}</span>
+      </div>
+      <div class="card-overlay">
+        <button class="card-overlay-play" onclick="event.stopPropagation();playEpisode('${ep._id}')">▶</button>
+        <div class="card-overlay-title">${esc(s.title)}</div>
+        <div class="card-overlay-meta">${epLabel ? epLabel + (epTitle ? ' • ' + esc(epTitle) : '') : esc(s.type || '')} • ${progressLabel}</div>
+      </div>
+    </div>`;
 }
 
 // ═══════════════════════════════════════════════════════════════════
