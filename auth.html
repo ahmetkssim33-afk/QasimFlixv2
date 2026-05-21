@@ -77,6 +77,8 @@
       border-radius: 20px;
       padding: 36px 32px;
       box-shadow: 0 24px 64px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03);
+      position: relative;
+      padding-bottom: 120px;
     }
 
     /* Tab geçişi */
@@ -262,6 +264,17 @@
 
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* Sticky/call-to-action for register form: center at bottom of card */
+    #registerBtn {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: 18px;
+      width: min(420px, calc(100% - 48px));
+      z-index: 6;
+      box-shadow: 0 8px 30px var(--accent-glow);
+    }
+
     /* Alert */
     .alert {
       padding: 12px 14px;
@@ -362,7 +375,8 @@
     }
 
     @media (max-width: 480px) {
-      .card { padding: 28px 20px; border-radius: 16px; }
+      .card { padding: 28px 20px 160px; border-radius: 16px; }
+      #registerBtn { bottom: 12px; width: calc(100% - 40px); }
     }
   </style>
 </head>
@@ -631,8 +645,15 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password }),
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message);
+        const ct = (res.headers.get('content-type') || '');
+        let data;
+        if (ct.includes('application/json')) {
+          data = await res.json();
+        } else {
+          const text = await res.text();
+          throw new Error('Sunucudan JSON gelmedi: ' + (text && text.substr ? text.substr(0, 300) : String(text)));
+        }
+        if (!res.ok) throw new Error(data.message || data.error || 'Sunucu hatası');
         localStorage.setItem('token', data.token);
         showAlert('login-alert', 'Giriş başarılı! Yönlendiriliyorsunuz...', 'success');
         setTimeout(() => window.location.href = '/index.html', 1200);
@@ -662,8 +683,15 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, email, password, passwordConfirm }),
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message);
+        const ct = (res.headers.get('content-type') || '');
+        let data;
+        if (ct.includes('application/json')) {
+          data = await res.json();
+        } else {
+          const text = await res.text();
+          throw new Error('Sunucudan JSON gelmedi: ' + (text && text.substr ? text.substr(0, 300) : String(text)));
+        }
+        if (!res.ok) throw new Error(data.message || data.error || 'Sunucu hatası');
         localStorage.setItem('token', data.token);
         document.getElementById('registerForm').style.display = 'none';
         document.getElementById('registerSuccess').classList.add('show');
