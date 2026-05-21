@@ -5,6 +5,9 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const JWT_SECRET = process.env.JWT_SECRET || 'dev_jwt_secret_change_me';
 
 const app = express();
 
@@ -14,14 +17,14 @@ const app = express();
 app.use(cors({
   origin: "*",
   methods: ["GET","POST","PUT","DELETE"],
-  allowedHeaders: ["Content-Type"]
+  allowedHeaders: ["Content-Type", "Authorization"]
 }));
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 // Use shared DB connector & centralized models
 const { connectDB } = require('../lib/db');
-const { Series, Season, Episode, WatchProgress, Category } = require('../lib/models');
+const { Series, Season, Episode, WatchProgress, Category, Film, User } = require('../lib/models');
 
 // Local schema definitions removed — models are imported from ../lib/models
 // (keeps serverless redeploys and hot reloads from re-defining models)
@@ -355,6 +358,69 @@ app.get("/api", (req, res) => {
       "GET  /api/categories          — kategoriler"
     ]
   });
+});
+
+// ═══════════════════════════════════════════════════════════
+// AUTH helpers & endpoints (register/login/me)
+// Added so serverless `/api` routes include authentication handlers
+// ═══════════════════════════════════════════════════════════
+
+function getUserIdFromReq(req) {
+  try {
+    const auth = req.headers && req.headers.authorization;
+    if (!auth) return null;
+    const parts = auth.split(' ');
+    if (parts.length !== 2) return null;
+    const payload = jwt.verify(parts[1], JWT_SECRET);
+    return payload && (payload.id || payload._id || payload.userId) ? String(payload.id || payload._id || payload.userId) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { email, password, name, username, passwordConfirm } = req.body;
+    const displayName = name || username || '';
+    if (!email || !password) return res.status(400).json({ error: 'Email and password required', message: 'Email and password required' });
+    if (passwordConfirm && password !== passwordConfirm) return res.status(400).json({ error: 'Passwords do not match', message: 'Şifreler eşleşmiyor' });
+    if (password.length < 6) return res.status(400).json({ error: 'Password too short', message: 'Şifre en az 6 karakter olmalıdır' });
+    const exists = await User.findOne({ email });
+    if (exists) return res.status(400).json({ error: 'Email already registered', message: 'Bu e-posta zaten kayıtlı' });
+    const hash = await bcrypt.hash(password, 10);
+    const user = new User({ email, passwordHash: hash, name: displayName });
+    await user.save();
+    const token = jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
+    res.json({ token, user: { _id: user._id, email: user.email, name: user.name } });
+  } catch (err) {
+    res.status(500).json({ error: err.message, message: err.message });
+  }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ error: 'Email and password required', message: 'Email and password required' });
+    const user = await User.findOne({ email });
+    if (!user) return res.status(401).json({ error: 'Invalid credentials', message: 'Invalid credentials' });
+    const ok = await bcrypt.compare(password, user.passwordHash);
+    if (!ok) return res.status(401).json({ error: 'Invalid credentials', message: 'Invalid credentials' });
+    const token = jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
+    res.json({ token, user: { _id: user._id, email: user.email, name: user.name } });
+  } catch (err) {
+    res.status(500).json({ error: err.message, message: err.message });
+  }
+});
+
+app.get('/api/auth/me', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const user = await User.findById(userId).select('-passwordHash');
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ═══════════════════════════════════════════════════════════
