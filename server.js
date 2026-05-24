@@ -463,6 +463,19 @@ app.post('/api/progress', async (req, res) => {
   }
 });
 
+// Get watch progress for currently authenticated user (uses Bearer token)
+// NOTE: Must be registered BEFORE /:userId/:episodeId to avoid "me" being treated as a userId
+app.get('/api/progress/me/:episodeId', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const progress = await WatchProgress.findOne({ userId, episodeId: req.params.episodeId });
+    res.json(progress || { progress: 0 });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Get watch progress for episode (by explicit userId)
 app.get('/api/progress/:userId/:episodeId', async (req, res) => {
   try {
@@ -476,13 +489,18 @@ app.get('/api/progress/:userId/:episodeId', async (req, res) => {
   }
 });
 
-// Get watch progress for currently authenticated user (uses Bearer token)
-app.get('/api/progress/me/:episodeId', async (req, res) => {
+// Get continue watching for authenticated user (Bearer token)
+// NOTE: Must be registered BEFORE /continue/:userId to avoid "me" being treated as a userId
+app.get('/api/progress/continue/me', async (req, res) => {
   try {
     const userId = getUserIdFromReq(req);
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-    const progress = await WatchProgress.findOne({ userId, episodeId: req.params.episodeId });
-    res.json(progress || { progress: 0 });
+    const recentWatches = await WatchProgress.find({ userId })
+      .sort({ lastWatchedAt: -1 })
+      .limit(10)
+      .populate('seriesId')
+      .populate('episodeId');
+    res.json(recentWatches);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -497,22 +515,6 @@ app.get('/api/progress/continue/:userId', async (req, res) => {
       .populate('seriesId')
       .populate('episodeId');
 
-    res.json(recentWatches);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Get continue watching for authenticated user (Bearer token)
-app.get('/api/progress/continue/me', async (req, res) => {
-  try {
-    const userId = getUserIdFromReq(req);
-    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-    const recentWatches = await WatchProgress.find({ userId })
-      .sort({ lastWatchedAt: -1 })
-      .limit(10)
-      .populate('seriesId')
-      .populate('episodeId');
     res.json(recentWatches);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -702,8 +704,8 @@ const PORT = process.env.PORT || 3000;
 // Kategori ekle (Admin)
 app.post('/kategori-ekle', async (req, res) => {
   try {
-    const { name, types } = req.body;
-    const c = new Category({ name, types });
+    const { name } = req.body;
+    const c = new Category({ name });
     await c.save();
     res.json({ ok: true, c });
   } catch (e) {

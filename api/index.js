@@ -320,6 +320,18 @@ app.post("/api/progress", async (req, res) => {
   }
 });
 
+app.get("/api/progress/me/:episodeId", async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const progress = await WatchProgress.findOne({ userId, episodeId: req.params.episodeId });
+    res.json(progress || { progress: 0 });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// NOTE: /me/:episodeId must be registered BEFORE /:userId/:episodeId
 app.get("/api/progress/:userId/:episodeId", async (req, res) => {
   try {
     const progress = await WatchProgress.findOne({
@@ -327,6 +339,20 @@ app.get("/api/progress/:userId/:episodeId", async (req, res) => {
       episodeId: req.params.episodeId
     });
     res.json(progress || { progress: 0 });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// NOTE: /continue/me must be registered BEFORE /continue/:userId
+app.get("/api/progress/continue/me", async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const recentWatches = await WatchProgress.find({ userId })
+      .sort({ lastWatchedAt: -1 }).limit(10)
+      .populate("seriesId").populate("episodeId");
+    res.json(recentWatches);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -392,33 +418,6 @@ app.get("/api/series/category/:category", async (req, res) => {
       categories: { $regex: req.params.category, $options: 'i' }
     }).limit(30);
     res.json(series);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ═══════════════════════════════════════════════════════════
-// PROGRESS — Authenticated user endpoints
-// ═══════════════════════════════════════════════════════════
-app.get("/api/progress/me/:episodeId", async (req, res) => {
-  try {
-    const userId = getUserIdFromReq(req);
-    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-    const progress = await WatchProgress.findOne({ userId, episodeId: req.params.episodeId });
-    res.json(progress || { progress: 0 });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.get("/api/progress/continue/me", async (req, res) => {
-  try {
-    const userId = getUserIdFromReq(req);
-    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-    const recentWatches = await WatchProgress.find({ userId })
-      .sort({ lastWatchedAt: -1 }).limit(10)
-      .populate("seriesId").populate("episodeId");
-    res.json(recentWatches);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
