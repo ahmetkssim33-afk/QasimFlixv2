@@ -127,9 +127,33 @@ app.get("/api/series/:id", async (req, res) => {
 // Seri ekle
 app.post("/api/series", async (req, res) => {
   try {
-    const { title, description, poster, categories, releaseYear, rating, type } = req.body;
+    const { title, description, poster, categories, releaseYear, rating, type, videoUrl, duration } = req.body;
     const newSeries = new Series({ title, description, poster, categories, releaseYear, rating, type });
     const saved = await newSeries.save();
+
+    // Film veya Belgesel ise otomatik Sezon 1 ve Bölüm 1 oluştur
+    if ((type === 'movie' || type === 'documentary') && videoUrl) {
+      const season = new Season({
+        seriesId: saved._id,
+        seasonNumber: 1,
+        title: title,
+        description: description || ''
+      });
+      const savedSeason = await season.save();
+
+      const episode = new Episode({
+        seasonId: savedSeason._id,
+        seriesId: saved._id,
+        episodeNumber: 1,
+        title: title,
+        description: description || '',
+        videoUrl: videoUrl,
+        duration: duration || 0,
+        subtitles: []
+      });
+      await episode.save();
+    }
+
     res.status(201).json(saved);
   } catch (err) {
     res.status(500).json({ error: err.message });

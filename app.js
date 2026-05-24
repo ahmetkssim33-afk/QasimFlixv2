@@ -216,7 +216,7 @@ async function loadAll() {
         renderRow('popular-row', allData.slice(0, 12));
         renderRow('series-row', allData.filter(s => s.type === 'series'));
         renderRow('documentaries-row', allData.filter(s => (s.categories||[]).some(c => (c||'').toLowerCase() === 'documentary' || (c||'').toLowerCase() === 'belgesel')));
-        renderRow('movies-row', allData.filter(s => s.type === 'movie'));
+        renderRow('movies-row', allData.filter(s => s.type === 'movie' || s.type === 'documentary'));
 
         // Always show sections; show empty state inside row if no content
         document.getElementById('series-section').style.display = '';
@@ -302,9 +302,9 @@ function renderRow(rowId, list) {
 }
 
 function createCard(item) {
-    const type = item.type === 'movie' ? 'movie' : 'series';
-    const typeLabel = type === 'movie' ? 'Film' : 'Dizi';
-    const typeCls = type === 'movie' ? 'badge-movie' : 'badge-series';
+    const type = item.type === 'movie' ? 'movie' : item.type === 'documentary' ? 'documentary' : 'series';
+    const typeLabel = type === 'movie' ? '🎬 Film' : type === 'documentary' ? '🎞 Belgesel' : '📺 Dizi';
+    const typeCls = type === 'movie' ? 'badge-movie' : type === 'documentary' ? 'badge-documentary' : 'badge-series';
     const cat = item.categories?.[0] || '';
     const rating = item.rating ? item.rating : '';
 
@@ -317,7 +317,7 @@ function createCard(item) {
     <div class="card" onclick="openDetail('${item._id}')">
       ${imgHtml}
       <div class="card-placeholder" style="${placeholderStyle}">
-        <span class="icon">${type === 'movie' ? '🎬' : '📺'}</span>
+        <span class="icon">${type === 'movie' ? '🎬' : type === 'documentary' ? '🎞' : '📺'}</span>
         <span>${esc(item.title)}</span>
       </div>
       <span class="badge-type ${typeCls}">${typeLabel}</span>
@@ -385,7 +385,7 @@ function showCategory(type, btn) {
     if (type === 'series') {
         renderRow('series-row', allData.filter(s => s.type === 'series'));
     } else if (type === 'movie') {
-        renderRow('movies-row', allData.filter(s => s.type === 'movie'));
+        renderRow('movies-row', allData.filter(s => s.type === 'movie' || s.type === 'documentary'));
     }
 }
 
@@ -404,7 +404,7 @@ function showAll(btn) {
     renderRow('popular-row', allData.slice(0, 12));
     renderRow('series-row', allData.filter(s => s.type === 'series'));
     renderRow('documentaries-row', allData.filter(s => (s.categories||[]).some(c => (c||'').toLowerCase() === 'documentary' || (c||'').toLowerCase() === 'belgesel')));
-    renderRow('movies-row', allData.filter(s => s.type === 'movie'));
+    renderRow('movies-row', allData.filter(s => s.type === 'movie' || s.type === 'documentary'));
 }
 
 function showDocumentaries(btn) {
@@ -448,7 +448,7 @@ async function openDetail(seriesId, autoPlay = false) {
         const meta = [];
         if (series.rating) meta.push(`<span class="rating">⭐ ${series.rating}/10</span>`);
         if (series.releaseYear) meta.push(`<span>${series.releaseYear}</span>`);
-        if (series.type) meta.push(`<span>${series.type === 'movie' ? '🎬 Film' : '📺 Dizi'}</span>`);
+        if (series.type) meta.push(`<span>${series.type === 'movie' ? '🎬 Film' : series.type === 'documentary' ? '🎞 Belgesel' : '📺 Dizi'}</span>`);
         if (series.categories?.length) meta.push(`<span>${series.categories.join(', ')}</span>`);
         document.getElementById('modal-meta').innerHTML = meta.join('<span style="color:#444">•</span>');
 
@@ -456,9 +456,10 @@ async function openDetail(seriesId, autoPlay = false) {
 
         // Action buttons
         const actions = document.getElementById('modal-actions');
-        if (series.type === 'movie') {
+        if (series.type === 'movie' || series.type === 'documentary') {
+            const watchLabel = series.type === 'documentary' ? '▶ İzle' : '▶ İzle';
             actions.innerHTML = `
-                <button class="btn-play" onclick="playMovieDirect()">▶ İzle</button>
+                <button class="btn-play" onclick="playMovieDirect()">${watchLabel}</button>
                 <button class="btn-info" onclick="toggleSave('film','${series._id}')">★ Kaydet</button>`;
         } else {
             actions.innerHTML = `
@@ -470,7 +471,7 @@ async function openDetail(seriesId, autoPlay = false) {
         const area = document.getElementById('seasons-area');
         if (series.type === 'series' && series.seasons?.length) {
             renderSeasonsArea(series.seasons);
-        } else if (series.type === 'movie') {
+        } else if (series.type === 'movie' || series.type === 'documentary') {
             area.innerHTML = '';
         } else {
             area.innerHTML = '<p style="color:var(--muted2);font-size:.85rem">Sezon bulunamadı.</p>';
@@ -479,7 +480,7 @@ async function openDetail(seriesId, autoPlay = false) {
         document.getElementById('detail-modal').classList.add('open');
 
         if (autoPlay) {
-            if (series.type === 'movie') {
+            if (series.type === 'movie' || series.type === 'documentary') {
                 playMovieDirect();
             } else {
                 playFirstEpisode();

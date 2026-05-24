@@ -323,6 +323,7 @@ main{flex:1;overflow-y:auto;display:flex;flex-direction:column}
 }
 .badge-red{background:rgba(229,9,26,.15);color:var(--accent)}
 .badge-blue{background:var(--info-bg);color:var(--info)}
+.badge-green{background:rgba(46,213,115,.15);color:#2ed573}
 .badge-green{background:var(--success-bg);color:var(--success)}
 .badge-gray{background:rgba(122,127,152,.12);color:var(--muted)}
 .item-actions{display:flex;gap:8px;align-items:center;flex-shrink:0}
@@ -591,9 +592,10 @@ select{
             </div>
             <div class="form-group">
               <label>Tür <span class="required">*</span></label>
-              <select id="s-type">
-                <option value="series">Seri / Dizi</option>
+              <select id="s-type" onchange="onContentTypeChange()">
+                <option value="series">Dizi</option>
                 <option value="movie">Film</option>
+                <option value="documentary">Belgesel</option>
               </select>
             </div>
           </div>
@@ -622,8 +624,18 @@ select{
             <div class="hint">JPG, PNG, WebP — maks. 20 MB</div>
             <div class="poster-preview-wrap"><img id="s-poster-prev" alt="poster önizleme"></div>
           </div>
+          <div class="form-group" id="s-video-group" style="display:none">
+            <label>Video URL <span class="required">*</span></label>
+            <input type="text" id="s-video" placeholder="https://.../video.mp4 veya embed linki">
+            <div class="hint">Film/Belgesel için doğrudan video adresi (MP4, M3U8, iframe embed vb.)</div>
+          </div>
+          <div class="form-group" id="s-duration-group" style="display:none">
+            <label>Süre (saniye)</label>
+            <input type="number" id="s-duration" min="0" placeholder="5400">
+            <div class="hint">Orn: 90 dakika = 5400 saniye</div>
+          </div>
           <button class="btn btn-red" id="btn-add-series" onclick="addSeries()">
-            <span>+ Seri Ekle</span>
+            <span id="btn-add-series-label">+ İçerik Ekle</span>
           </button>
         </div>
 
@@ -1034,7 +1046,7 @@ function renderSeriesList() {
   const filter = document.getElementById('filter-type')?.value || '';
   let list;
   if (!filter) list = allSeries.slice();
-  else if (filter === 'documentary') list = allSeries.filter(s => (s.categories||[]).some(c => ['documentary','belgesel'].includes((c||'').toLowerCase())));
+  else if (filter === 'documentary') list = allSeries.filter(s => s.type === 'documentary');
   else list = allSeries.filter(s => s.type === filter);
   if (searchTerm) list = list.filter(s => s.title.toLowerCase().includes(searchTerm));
   const lbl = document.getElementById('series-count-label');
@@ -1053,7 +1065,7 @@ async function loadDocumentariesList() {
 }
 
 function renderDocumentariesList() {
-  let list = allSeries.filter(s => (s.categories||[]).some(c => ['documentary','belgesel'].includes((c||'').toLowerCase())));
+  let list = allSeries.filter(s => s.type === 'documentary');
   if (searchTerm) list = list.filter(s => s.title.toLowerCase().includes(searchTerm));
   const lbl = document.getElementById('documentaries-count-label');
   if (lbl) lbl.textContent = `${list.length} içerik listeleniyor`;
@@ -1067,7 +1079,7 @@ function renderDocumentariesList() {
 
 function seriesItemHTML(s) {
   const cats = (s.categories||[]).join(', ') || '—';
-  const typeBadge = s.type === 'movie' ? '<span class="badge badge-blue">Film</span>' : '<span class="badge badge-red">Dizi</span>';
+  const typeBadge = s.type === 'movie' ? '<span class="badge badge-blue">🎬 Film</span>' : s.type === 'documentary' ? '<span class="badge badge-green">🎞 Belgesel</span>' : '<span class="badge badge-red">📺 Dizi</span>';
   const poster = s.poster
     ? `<img class="list-thumb" src="${esc(s.poster)}" alt="" onerror="this.style.display='none';this.nextSibling.style.display='flex'">`
     : '';
@@ -1091,38 +1103,59 @@ function seriesItemHTML(s) {
   </div>`;
 }
 
+// ─── İçerik türü değişince form alanlarını göster/gizle ──────
+function onContentTypeChange() {
+  const type = v('s-type');
+  const isFilm = type === 'movie' || type === 'documentary';
+  document.getElementById('s-video-group').style.display = isFilm ? '' : 'none';
+  document.getElementById('s-duration-group').style.display = isFilm ? '' : 'none';
+  const label = document.getElementById('btn-add-series-label');
+  if (type === 'movie') label.textContent = '+ Film Ekle';
+  else if (type === 'documentary') label.textContent = '+ Belgesel Ekle';
+  else label.textContent = '+ Dizi Ekle';
+}
+
 async function addSeries() {
   const title = v('s-title');
-  if (!title) { toast('Seri adı zorunludur', 'error'); return; }
+  const type = v('s-type');
+  if (!title) { toast('Başlık zorunludur', 'error'); return; }
+  const isFilm = type === 'movie' || type === 'documentary';
+  if (isFilm && !v('s-video').trim()) { toast('Film/Belgesel için Video URL zorunludur', 'error'); return; }
   const btn = document.getElementById('btn-add-series');
   setLoading(btn, true);
   try {
-    // Önce posteri yükle (varsa)
     let posterPath = '';
     const posterFile = document.getElementById('s-poster-file')?.files?.[0];
     if (posterFile) {
       posterPath = await uploadImage(posterFile);
     }
-
-    await api('POST', '/series', {
-      title,
-      type: v('s-type'),
+    const payload = {
+      title, type,
       description: v('s-desc'),
       releaseYear: parseInt(v('s-year')) || null,
       rating: parseFloat(v('s-rating')) || 0,
       categories: v('s-cats').split(',').map(c=>c.trim()).filter(Boolean),
       poster: posterPath,
+    };
+    if (isFilm) {
+      payload.videoUrl = v('s-video').trim();
+      payload.duration = parseInt(v('s-duration')) || 0;
+    }
+    await api('POST', '/series', payload);
+    const typeLabel = type === 'movie' ? 'Film' : type === 'documentary' ? 'Belgesel' : 'Dizi';
+    toast('\u2713 ' + typeLabel + ' eklendi: ' + title, 'success');
+    ['s-title','s-desc','s-year','s-cats','s-rating','s-video','s-duration'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = '';
     });
-    toast('✓ Seri eklendi: ' + title, 'success');
-    ['s-title','s-desc','s-year','s-cats','s-rating'].forEach(id => reset(id));
     document.getElementById('s-rating').value = '0';
     const pf = document.getElementById('s-poster-file');
     if (pf) pf.value = '';
-    document.getElementById('s-poster-prev').style.display = 'none';
+    const prev = document.getElementById('s-poster-prev');
+    if (prev) prev.style.display = 'none';
     await loadAllSeries();
     renderSeriesList();
   } catch(e) { toast(e.message, 'error'); }
-  finally { setLoading(btn, false, '+ Seri Ekle'); }
+  finally { setLoading(btn, false, '+ İçerik Ekle'); }
 }
 
 async function deleteSeries(id, title) {
@@ -1368,7 +1401,7 @@ function populateSeriesSelects() {
     allSeries.forEach(s => {
       const o = document.createElement('option');
       o.value = s._id;
-      o.textContent = s.title + (s.type === 'movie' ? ' [Film]' : '');
+      o.textContent = s.title + (s.type === 'movie' ? ' [🎬 Film]' : s.type === 'documentary' ? ' [🎞 Belgesel]' : '');
       el.appendChild(o);
     });
     if (cur) el.value = cur;
@@ -1475,8 +1508,9 @@ async function openEditSeries(id) {
       <div class="form-group">
         <label>Tür</label>
         <select id="edit-s-type">
-          <option value="series" ${s.type==='series'?'selected':''}>Seri / Dizi</option>
+          <option value="series" ${s.type==='series'?'selected':''}>Dizi</option>
           <option value="movie" ${s.type==='movie'?'selected':''}>Film</option>
+          <option value="documentary" ${s.type==='documentary'?'selected':''}>Belgesel</option>
         </select>
       </div>
     </div>
