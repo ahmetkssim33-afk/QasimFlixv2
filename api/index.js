@@ -127,8 +127,15 @@ app.get("/api/series/:id", async (req, res) => {
 // Seri ekle
 app.post("/api/series", async (req, res) => {
   try {
-    const { title, description, poster, categories, releaseYear, rating, type, videoUrl, duration } = req.body;
-    const newSeries = new Series({ title, description, poster, categories, releaseYear, rating, type });
+    const { title, description, description_tr, description_ar, poster, banner, categories = [], releaseYear, rating, type, videoUrl, duration } = req.body;
+
+    // If content is marked as 'yerli' (local), ensure it belongs to the "Yerli Diziler" category
+    const cats = Array.isArray(categories) ? categories.slice() : (typeof categories === 'string' ? categories.split(',').map(c=>c.trim()).filter(Boolean) : []);
+    if (type === 'yerli' && !cats.some(c => c.toLowerCase() === 'yerli diziler')) {
+      cats.push('Yerli Diziler');
+    }
+
+    const newSeries = new Series({ title, description, description_tr, description_ar, poster, banner, categories: cats, releaseYear, rating, type });
     const saved = await newSeries.save();
 
     // Film veya Belgesel ise otomatik Sezon 1 ve Bölüm 1 oluştur
@@ -137,7 +144,7 @@ app.post("/api/series", async (req, res) => {
         seriesId: saved._id,
         seasonNumber: 1,
         title: title,
-        description: description || ''
+        description: description || description_tr || description_ar || ''
       });
       const savedSeason = await season.save();
 
@@ -146,7 +153,7 @@ app.post("/api/series", async (req, res) => {
         seriesId: saved._id,
         episodeNumber: 1,
         title: title,
-        description: description || '',
+        description: description || description_tr || description_ar || '',
         videoUrl: videoUrl,
         duration: duration || 0,
         subtitles: []

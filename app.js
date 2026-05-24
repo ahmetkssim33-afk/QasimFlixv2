@@ -217,6 +217,11 @@ async function loadAll() {
         renderRow('series-row', allData.filter(s => s.type === 'series'));
         renderRow('documentaries-row', allData.filter(s => (s.categories||[]).some(c => (c||'').toLowerCase() === 'documentary' || (c||'').toLowerCase() === 'belgesel')));
         renderRow('movies-row', allData.filter(s => s.type === 'movie' || s.type === 'documentary'));
+        // Yerli diziler (local) bölümü
+        renderRow('local-series-row', allData.filter(s => s.type === 'yerli'));
+        // show local section if content exists
+        document.getElementById('local-series-section').style.display = (allData.some(s=>s.type==='yerli')) ? '' : 'none';
+        initCarousels();
 
         // Always show sections; show empty state inside row if no content
         document.getElementById('series-section').style.display = '';
@@ -260,7 +265,9 @@ function renderHero(list) {
     }
 
     document.getElementById('hero-title').textContent = item.title;
-    document.getElementById('hero-desc').textContent = item.description || 'Keşfet ve izle.';
+    const lang = localStorage.getItem('qfLang') || 'tr';
+    const descText = (lang === 'ar') ? (item.description_ar || item.description || item.description_tr || '') : (item.description_tr || item.description || item.description_ar || '');
+    document.getElementById('hero-desc').textContent = descText || (lang === 'ar' ? 'ابدأ بإضافة محتوى من لوحة التحكم.' : 'Keşfet ve izle.');
 
     const ratingEl = document.getElementById('hero-rating');
     if (item.rating) ratingEl.textContent = '⭐ ' + item.rating + '/10';
@@ -299,12 +306,17 @@ function renderRow(rowId, list) {
     list.forEach(item => {
         row.innerHTML += createCard(item);
     });
+    // ensure carousel UI is attached after rendering
+    try { initCarousels(); } catch(e) { /* silent */ }
 }
 
 function createCard(item) {
-    const type = item.type === 'movie' ? 'movie' : item.type === 'documentary' ? 'documentary' : 'series';
-    const typeLabel = type === 'movie' ? '🎬 Film' : type === 'documentary' ? '🎞 Belgesel' : '📺 Dizi';
-    const typeCls = type === 'movie' ? 'badge-movie' : type === 'documentary' ? 'badge-documentary' : 'badge-series';
+    const tKey = item.type || 'series';
+    let typeLabel = '📺 Dizi';
+    let typeCls = 'badge-series';
+    if (tKey === 'movie') { typeLabel = '🎬 Film'; typeCls = 'badge-movie'; }
+    else if (tKey === 'documentary') { typeLabel = '🎞 Belgesel'; typeCls = 'badge-documentary'; }
+    else if (tKey === 'yerli') { typeLabel = '🇸 Yerli Dizi'; typeCls = 'badge-red'; }
     const cat = item.categories?.[0] || '';
     const rating = item.rating ? item.rating : '';
 
@@ -357,7 +369,7 @@ async function doSearch(query) {
         // Local filtering
         let localResults = allData.filter(item => {
             const matchTitle = (item.title || '').toLowerCase().includes(queryLower);
-            const matchDesc = (item.description || '').toLowerCase().includes(queryLower);
+            const matchDesc = ((item.description || '') + ' ' + (item.description_tr||'') + ' ' + (item.description_ar||'')).toLowerCase().includes(queryLower);
             const matchCat = (item.categories || []).some(c => (c || '').toLowerCase().includes(queryLower));
             return matchTitle || matchDesc || matchCat;
         });
@@ -425,12 +437,14 @@ function showAll(btn) {
     document.getElementById('series-section').style.display = '';
     document.getElementById('documentaries-section').style.display = '';
     document.getElementById('movies-section').style.display = '';
+    document.getElementById('local-series-section').style.display = '';
 
     // Re-render all rows from cached data
     renderRow('popular-row', allData.slice(0, 12));
     renderRow('series-row', allData.filter(s => s.type === 'series'));
     renderRow('documentaries-row', allData.filter(s => (s.categories||[]).some(c => (c||'').toLowerCase() === 'documentary' || (c||'').toLowerCase() === 'belgesel')));
     renderRow('movies-row', allData.filter(s => s.type === 'movie' || s.type === 'documentary'));
+    renderRow('local-series-row', allData.filter(s => s.type === 'yerli'));
 }
 
 function showDocumentaries(btn) {
@@ -444,6 +458,78 @@ function showDocumentaries(btn) {
     document.getElementById('movies-section').style.display = 'none';
     document.getElementById('documentaries-section').style.display = '';
     renderRow('documentaries-row', allData.filter(s => (s.categories||[]).some(c => (c||'').toLowerCase() === 'documentary' || (c||'').toLowerCase() === 'belgesel')));
+}
+
+function showLocalSeries(btn) {
+    currentFilter = 'yerli';
+    setActiveNavBtn(btn);
+    document.getElementById('search-input').value = '';
+    document.getElementById('search-results').style.display = 'none';
+    document.getElementById('main-sections').style.display = '';
+    document.getElementById('popular-section').style.display = 'none';
+    document.getElementById('series-section').style.display = 'none';
+    document.getElementById('documentaries-section').style.display = 'none';
+    document.getElementById('movies-section').style.display = 'none';
+    document.getElementById('local-series-section').style.display = '';
+    renderRow('local-series-row', allData.filter(s => s.type === 'yerli'));
+}
+
+function initLocalCarousel() {
+    try {
+        const row = document.getElementById('local-series-row');
+        if (!row) return;
+        // create a gentle auto-scroll
+        if (row._carouselInit) return;
+        row._carouselInit = true;
+        let step = 0;
+        setInterval(() => {
+            if (!row || row.scrollWidth <= row.clientWidth) return;
+            step = (step + Math.round(row.clientWidth * 0.7));
+            if (step >= row.scrollWidth - row.clientWidth) step = 0;
+            row.scrollTo({ left: step, behavior: 'smooth' });
+        }, 4000);
+    } catch (e) { console.warn('carousel init failed', e); }
+}
+
+// General carousel initializer: adds arrows, autoplay (if data-autoplay), swipe is native via scroll-snap
+function initCarousels() {
+    document.querySelectorAll('.cards-row').forEach(row => {
+        if (row._carouselInit) return;
+        row._carouselInit = true;
+
+        // inject arrows container
+        const container = row.parentElement;
+        if (!container) return;
+        container.style.position = container.style.position || 'relative';
+
+        const left = document.createElement('button');
+        left.className = 'carousel-btn left';
+        left.innerHTML = '◀';
+        left.addEventListener('click', (e) => { e.stopPropagation(); row.scrollBy({ left: -Math.round(row.clientWidth * 0.7), behavior: 'smooth' }); });
+
+        const right = document.createElement('button');
+        right.className = 'carousel-btn right';
+        right.innerHTML = '▶';
+        right.addEventListener('click', (e) => { e.stopPropagation(); row.scrollBy({ left: Math.round(row.clientWidth * 0.7), behavior: 'smooth' }); });
+
+        container.appendChild(left);
+        container.appendChild(right);
+
+        // Autoplay for rows explicitly marked (e.g., local-series-row)
+        const autoplay = row.dataset.autoplay === 'true' || row.id === 'local-series-row';
+        let autoTimer = null;
+        if (autoplay) {
+            let step = 0;
+            autoTimer = setInterval(() => {
+                if (!row || row.scrollWidth <= row.clientWidth) return;
+                step = (step + Math.round(row.clientWidth * 0.7));
+                if (step >= row.scrollWidth - row.clientWidth) step = 0;
+                row.scrollTo({ left: step, behavior: 'smooth' });
+            }, 4200);
+            row.addEventListener('mouseenter', () => { if (autoTimer) clearInterval(autoTimer); });
+            row.addEventListener('mouseleave', () => { autoTimer = setInterval(() => { if (!row || row.scrollWidth <= row.clientWidth) return; step = (step + Math.round(row.clientWidth * 0.7)); if (step >= row.scrollWidth - row.clientWidth) step = 0; row.scrollTo({ left: step, behavior: 'smooth' }); }, 4200); });
+        }
+    });
 }
 
 function setActiveNavBtn(btn) {
@@ -478,7 +564,10 @@ async function openDetail(seriesId, autoPlay = false) {
         if (series.categories?.length) meta.push(`<span>${series.categories.join(', ')}</span>`);
         document.getElementById('modal-meta').innerHTML = meta.join('<span style="color:#444">•</span>');
 
-        document.getElementById('modal-desc').textContent = series.description || 'Açıklama yok.';
+        // Show description according to selected language
+        const lang2 = localStorage.getItem('qfLang') || 'tr';
+        const modalDesc = (lang2 === 'ar') ? (series.description_ar || series.description || series.description_tr || '') : (series.description_tr || series.description || series.description_ar || '');
+        document.getElementById('modal-desc').textContent = modalDesc || (lang2 === 'ar' ? 'لا يوجد وصف.' : 'Açıklama yok.');
 
         // Action buttons
         const actions = document.getElementById('modal-actions');

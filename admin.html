@@ -6,6 +6,8 @@
 <title>CineAdmin — Streaming Platform</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<!-- Arabic font for admin RTL support -->
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
@@ -46,19 +48,14 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 
 /* ── AUTH OVERLAY ── */
 #auth-overlay{
-  position:fixed;inset:0;z-index:999;
+  position:fixed;
+  inset:0;
+  z-index:999;
   background:var(--bg);
-  display:flex;align-items:center;justify-content:center;
-}
-.auth-card{
-  width:380px;padding:40px;
-  background:var(--surface);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:var(--glass-shadow);
-  border:1px solid var(--border2);
-  border-radius:var(--radius2);
-}
-.auth-card .logo{
-  font-size:1.6rem;font-weight:800;letter-spacing:-0.04em;
-  color:var(--accent);margin-bottom:8px;text-align:center;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
 }
 .auth-card .logo span{color:var(--text)}
 .auth-card p{color:var(--muted);font-size:.85rem;text-align:center;margin-bottom:28px;letter-spacing:.01em}
@@ -718,26 +715,26 @@ select{
       <span class="version">v2.0 — PROD</span>
     </div>
     <nav>
-      <div class="nav-section-label">Ana Menü</div>
+      <div class="nav-section-label" data-i18n="nav.menu">Ana Menü</div>
       <div class="nav-item active" data-view="dashboard" onclick="navigate(this,'dashboard')">
-        <span class="icon">◈</span> Dashboard
+        <span class="icon">◈</span> <span data-i18n="nav.dashboard">Dashboard</span>
       </div>
       <div class="nav-item" data-view="series" onclick="navigate(this,'series')">
-        <span class="icon">▦</span> Seriler
+        <span class="icon">▦</span> <span data-i18n="nav.series">Seriler</span>
         <span class="nav-badge" id="nb-series">0</span>
       </div>
       <div class="nav-item" data-view="seasons" onclick="navigate(this,'seasons')">
-        <span class="icon">▤</span> Sezonlar
+        <span class="icon">▤</span> <span data-i18n="nav.seasons">Sezonlar</span>
       </div>
       <div class="nav-item" data-view="episodes" onclick="navigate(this,'episodes')">
-        <span class="icon">▶</span> Bölümler
+        <span class="icon">▶</span> <span data-i18n="nav.episodes">Bölümler</span>
       </div>
-      <div class="nav-section-label" style="margin-top:8px">İçerik</div>
+      <div class="nav-section-label" style="margin-top:8px" data-i18n="nav.menu">İçerik</div>
       <div class="nav-item" data-view="subtitles" onclick="navigate(this,'subtitles')">
-        <span class="icon">⊟</span> Altyazılar
+        <span class="icon">⊟</span> <span data-i18n="nav.subtitles">Altyazılar</span>
       </div>
       <div class="nav-item" data-view="documentaries" onclick="navigate(this,'documentaries')">
-        <span class="icon">🎞</span> Belgeseller
+        <span class="icon">🎞</span> <span data-i18n="nav.documentaries">Belgeseller</span>
         <span class="nav-badge" id="nb-documentaries">0</span>
       </div>
     </nav>
@@ -756,9 +753,15 @@ select{
           <div class="breadcrumb" id="page-breadcrumb">CineAdmin / Dashboard</div>
         </div>
       </div>
+      <div style="margin-left:12px;display:flex;align-items:center;gap:8px;">
+        <select id="admin-lang-select" class="lang-select" onchange="adminHandleLanguageChange(this.value)">
+          <option value="tr">Türkçe</option>
+          <option value="ar">العربية</option>
+        </select>
+      </div>
       <div class="search-wrap">
         <span class="search-icon">⌕</span>
-        <input type="text" placeholder="Hızlı ara..." id="global-search" oninput="onGlobalSearch(this.value)">
+        <input type="text" id="global-search" data-i18n-placeholder="placeholder.search" placeholder="Hızlı ara..." oninput="onGlobalSearch(this.value)">
       </div>
       <button class="btn btn-ghost sm" onclick="refreshAll()" title="Yenile" style="padding:8px 12px">↺</button>
     </header>
@@ -769,32 +772,32 @@ select{
       <div class="view active" id="view-dashboard">
         <div class="stats-grid" id="stats-grid">
           <div class="stat-card">
-            <div class="stat-label">Toplam Seri</div>
+            <div class="stat-label" data-i18n="stat.series">Toplam Seri</div>
             <div class="stat-value" id="stat-series">—</div>
-            <div class="stat-sub">içerik tanımlandı</div>
+            <div class="stat-sub" data-i18n="stat.sub_series">içerik tanımlandı</div>
           </div>
           <div class="stat-card">
-            <div class="stat-label">Toplam Sezon</div>
+            <div class="stat-label" data-i18n="stat.seasons">Toplam Sezon</div>
             <div class="stat-value" id="stat-seasons">—</div>
-            <div class="stat-sub">sezon eklendi</div>
+            <div class="stat-sub" data-i18n="stat.sub_seasons">sezon eklendi</div>
           </div>
           <div class="stat-card">
-            <div class="stat-label">Toplam Bölüm</div>
+            <div class="stat-label" data-i18n="stat.episodes">Toplam Bölüm</div>
             <div class="stat-value" id="stat-episodes">—</div>
-            <div class="stat-sub">izlenebilir içerik</div>
+            <div class="stat-sub" data-i18n="stat.sub_episodes">izlenebilir içerik</div>
           </div>
           <div class="stat-card">
-            <div class="stat-label">Film</div>
+            <div class="stat-label" data-i18n="stat.movies">Film</div>
             <div class="stat-value" id="stat-movies">—</div>
-            <div class="stat-sub">film kataloğu</div>
+            <div class="stat-sub" data-i18n="stat.sub_movies">film kataloğu</div>
           </div>
         </div>
         <div class="section-header">
           <div>
-            <h2>Son Eklenen Seriler</h2>
-            <div class="sub">En son eklenen 5 içerik</div>
+            <h2 data-i18n="dashboard.recent_title">Son Eklenen Seriler</h2>
+            <div class="sub" data-i18n="dashboard.recent_sub">En son eklenen 5 içerik</div>
           </div>
-          <button class="btn btn-ghost sm" onclick="navigate(document.querySelector('[data-view=series]'),'series')">Tümünü Gör →</button>
+          <button class="btn btn-ghost sm" onclick="navigate(document.querySelector('[data-view=series]'),'series')" data-i18n="btn.view_all">Tümünü Gör →</button>
         </div>
         <div id="dashboard-recent"></div>
       </div>
@@ -802,66 +805,84 @@ select{
       <!-- SERIES VIEW -->
       <div class="view" id="view-series">
         <div class="form-card">
-          <h3>Yeni Seri Ekle</h3>
+          <h3 data-i18n="form.new_series">Yeni Seri Ekle</h3>
           <div class="form-row">
             <div class="form-group">
-              <label>Seri Adı <span class="required">*</span></label>
-              <input type="text" id="s-title" placeholder="örn. Breaking Bad">
+              <label><span data-i18n="form.title">Seri Adı</span> <span class="required">*</span></label>
+              <input type="text" id="s-title" data-i18n-placeholder="ph.example_title" placeholder="örn. Breaking Bad">
             </div>
             <div class="form-group">
-              <label>Tür <span class="required">*</span></label>
+              <label><span data-i18n="form.type">Tür</span> <span class="required">*</span></label>
               <select id="s-type" onchange="onContentTypeChange()">
                 <option value="series">Dizi</option>
                 <option value="movie">Film</option>
                 <option value="documentary">Belgesel</option>
+                <option value="yerli">Yerli Dizi</option>
               </select>
             </div>
           </div>
           <div class="form-group">
-            <label>Açıklama</label>
-            <textarea id="s-desc" placeholder="Seri hakkında kısa açıklama..."></textarea>
+            <label><span data-i18n="form.description">Açıklama</span></label>
+            <textarea id="s-desc" data-i18n-placeholder="ph.desc_default" placeholder="Serinin varsayılan açıklaması..."></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label><span data-i18n="form.description_tr">Açıklama (Türkçe)</span></label>
+              <textarea id="s-desc-tr" data-i18n-placeholder="ph.desc_tr" placeholder="Türkçe açıklama..."></textarea>
+            </div>
+            <div class="form-group">
+              <label><span data-i18n="form.description_ar">Açıklama (Arapça)</span></label>
+              <textarea id="s-desc-ar" data-i18n-placeholder="ph.desc_ar" placeholder="Arapça açıklama..."></textarea>
+            </div>
           </div>
           <div class="form-row three">
             <div class="form-group">
-              <label>Yayın Yılı</label>
-              <input type="number" id="s-year" min="1900" max="2100" placeholder="2024">
+              <label><span data-i18n="form.year">Yayın Yılı</span></label>
+              <input type="number" id="s-year" min="1900" max="2100" data-i18n-placeholder="ph.year" placeholder="2024">
             </div>
             <div class="form-group">
-              <label>Puan (0–10)</label>
+              <label><span data-i18n="form.rating">Puan (0–10)</span></label>
               <input type="number" id="s-rating" min="0" max="10" step="0.1" value="0">
             </div>
             <div class="form-group">
-              <label>Kategoriler</label>
-              <input type="text" id="s-cats" placeholder="Aksiyon, Dram">
-              <div class="hint">virgülle ayır</div>
+              <label><span data-i18n="form.categories">Kategoriler</span></label>
+              <input type="text" id="s-cats" data-i18n-placeholder="ph.categories" placeholder="Aksiyon, Dram">
+              <div class="hint" data-i18n="hint.sep_by_comma">virgülle ayır</div>
             </div>
           </div>
-          <div class="form-group">
-            <label>Poster Görseli</label>
-            <input type="file" id="s-poster-file" accept="image/*" onchange="previewLocalFile(this,'s-poster-prev')" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:10px 12px;border-radius:var(--radius);font-family:var(--font-head);font-size:.85rem;width:100%;cursor:pointer;">
-            <div class="hint">JPG, PNG, WebP — maks. 20 MB</div>
-            <div class="poster-preview-wrap"><img id="s-poster-prev" alt="poster önizleme"></div>
+          <div class="form-row">
+            <div class="form-group">
+              <label><span data-i18n="form.poster">Poster Görseli</span></label>
+              <input type="file" id="s-poster-file" accept="image/*" onchange="previewLocalFile(this,'s-poster-prev')" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:10px 12px;border-radius:var(--radius);font-family:var(--font-head);font-size:.85rem;width:100%;cursor:pointer;">
+              <div class="hint">JPG, PNG, WebP — maks. 20 MB</div>
+              <div class="poster-preview-wrap"><img id="s-poster-prev" alt="poster önizleme"></div>
+            </div>
+            <div class="form-group">
+              <label><span data-i18n="form.banner">Banner Görseli (opsiyonel)</span></label>
+              <input type="file" id="s-banner-file" accept="image/*" onchange="previewLocalFile(this,'s-banner-prev')" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:10px 12px;border-radius:var(--radius);font-family:var(--font-head);font-size:.85rem;width:100%;cursor:pointer;">
+              <div class="hint">Geniş banner — önerilen 1280×480</div>
+              <div class="poster-preview-wrap"><img id="s-banner-prev" alt="banner önizleme"></div>
+            </div>
           </div>
           <div class="form-group" id="s-video-group" style="display:none">
-            <label>Video URL <span class="required">*</span></label>
-            <input type="text" id="s-video" placeholder="https://.../video.mp4 veya embed linki">
+            <label><span data-i18n="form.video">Video URL</span> <span class="required">*</span></label>
+            <input type="text" id="s-video" data-i18n-placeholder="ph.video" placeholder="https://.../video.mp4 veya embed linki">
             <div class="hint">Film/Belgesel için doğrudan video adresi (MP4, M3U8, iframe embed vb.)</div>
           </div>
           <div class="form-group" id="s-duration-group" style="display:none">
-            <label>Süre (saniye)</label>
-            <input type="number" id="s-duration" min="0" placeholder="5400">
+            <label><span data-i18n="form.duration">Süre (saniye)</span></label>
+            <input type="number" id="s-duration" min="0" data-i18n-placeholder="ph.duration" placeholder="5400">
             <div class="hint">Orn: 90 dakika = 5400 saniye</div>
           </div>
           <button class="btn btn-red" id="btn-add-series" onclick="addSeries()">
-            <span id="btn-add-series-label">+ İçerik Ekle</span>
-            </div>
-          </div>
+            <span id="btn-add-series-label" data-i18n="btn.add_series">+ İçerik Ekle</span>
+          </button>
           <div class="form-group">
-            <label>Açıklama</label>
-            <textarea id="sea-desc" placeholder="Sezon hakkında..."></textarea>
+            <label><span data-i18n="form.description">Açıklama</span></label>
+            <textarea id="sea-desc" data-i18n-placeholder="ph.season_desc" placeholder="Sezon hakkında..."></textarea>
           </div>
           <button class="btn btn-red" id="btn-add-season" onclick="addSeason()">
-            <span>+ Sezon Ekle</span>
+            <span data-i18n="btn.add_season">+ Sezon Ekle</span>
           </button>
         </div>
 
@@ -879,16 +900,16 @@ select{
       <!-- EPISODES VIEW -->
       <div class="view" id="view-episodes">
         <div class="form-card">
-          <h3>Yeni Bölüm Ekle</h3>
+          <h3 data-i18n="form.new_episode">Yeni Bölüm Ekle</h3>
           <div class="form-row">
             <div class="form-group">
-              <label>Seri <span class="required">*</span></label>
+              <label><span data-i18n="form.series">Seri</span> <span class="required">*</span></label>
               <select id="ep-series" onchange="onEpSeriesChange()">
                 <option value="">— Seri Seç —</option>
               </select>
             </div>
             <div class="form-group">
-              <label>Sezon <span class="required">*</span></label>
+              <label><span data-i18n="form.season">Sezon</span> <span class="required">*</span></label>
               <select id="ep-season">
                 <option value="">— Önce Seri Seç —</option>
               </select>
@@ -896,26 +917,26 @@ select{
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>Bölüm No <span class="required">*</span></label>
-              <input type="number" id="ep-num" min="1" placeholder="1">
+              <label><span data-i18n="form.ep_num">Bölüm No</span> <span class="required">*</span></label>
+              <input type="number" id="ep-num" min="1" data-i18n-placeholder="ph.ep_num" placeholder="1">
             </div>
             <div class="form-group">
-              <label>Başlık <span class="required">*</span></label>
-              <input type="text" id="ep-title" placeholder="Bölüm adı">
+              <label><span data-i18n="form.title">Başlık</span> <span class="required">*</span></label>
+              <input type="text" id="ep-title" data-i18n-placeholder="ph.ep_title" placeholder="Bölüm adı">
             </div>
           </div>
           <div class="form-group">
-            <label>Açıklama</label>
-            <textarea id="ep-desc" placeholder="Bölüm özeti..."></textarea>
+            <label><span data-i18n="form.description">Açıklama</span></label>
+            <textarea id="ep-desc" data-i18n-placeholder="ph.ep_desc" placeholder="Bölüm özeti..."></textarea>
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>Video URL <span class="required">*</span></label>
-              <input type="text" id="ep-video" placeholder="https://.../video.mp4">
+              <label><span data-i18n="form.video">Video URL</span> <span class="required">*</span></label>
+              <input type="text" id="ep-video" data-i18n-placeholder="ph.ep_video" placeholder="https://.../video.mp4">
             </div>
             <div class="form-group">
-              <label>Süre (saniye)</label>
-              <input type="number" id="ep-dur" min="0" placeholder="2700">
+              <label><span data-i18n="form.duration">Süre (saniye)</span></label>
+              <input type="number" id="ep-dur" min="0" data-i18n-placeholder="ph.ep_duration" placeholder="2700">
             </div>
           </div>
           <div class="form-group">
@@ -924,7 +945,7 @@ select{
             <img id="ep-thumb-prev" class="preview-img">
           </div>
           <button class="btn btn-red" id="btn-add-ep" onclick="addEpisode()">
-            <span>+ Bölüm Ekle</span>
+            <span data-i18n="btn.add_episode">+ Bölüm Ekle</span>
           </button>
         </div>
 
@@ -1013,6 +1034,218 @@ select{
 // ═══════════════════════════════════════════════════════════════
 // CONFIG
 // ═══════════════════════════════════════════════════════════════
+// Admin i18n map
+const ADMIN_I18N = {
+  tr: {
+    'nav.menu':'Ana Menü',
+    'nav.dashboard':'Dashboard',
+    'nav.series':'Seriler',
+    'nav.seasons':'Sezonlar',
+    'nav.episodes':'Bölümler',
+    'nav.subtitles':'Altyazılar',
+    'nav.documentaries':'Belgeseller',
+    'auth.placeholder':'Admin şifresi',
+    'auth.login':'Giriş Yap →',
+    'toast.refreshed':'Yenilendi',
+    'stat.series':'Toplam Seri',
+    'stat.seasons':'Toplam Sezon',
+    'stat.episodes':'Toplam Bölüm',
+    'stat.movies':'Film',
+    'form.new_series':'Yeni Seri Ekle',
+    'form.new_season':'Yeni Sezon Ekle',
+    'form.new_episode':'Yeni Bölüm Ekle',
+    'btn.cancel':'İptal',
+    'btn.save':'Kaydet',
+    'btn.add_series':'+ İçerik Ekle',
+    'btn.add_season':'+ Sezon Ekle',
+    'btn.add_episode':'+ Bölüm Ekle',
+    'msg.title_required':'Başlık zorunludur',
+    'err.video_required':'Film/Belgesel için Video URL zorunludur',
+    'msg.added':'✓ Eklendi',
+    'msg.deleted':'Silindi',
+    'err.select_series':'Seri seçin',
+    'err.valid_season_num':'Geçerli sezon numarası girin',
+    'msg.season_added':'✓ Sezon eklendi',
+    'msg.season_deleted':'Sezon silindi',
+    'err.select_season':'Sezon seçin',
+    'err.enter_episode_num':'Bölüm numarası girin',
+    'msg.episode_added':'✓ Bölüm eklendi',
+    'msg.episode_deleted':'Bölüm silindi',
+    'modal.edit_series':'Seri Düzenle',
+    'modal.delete_confirm':'Bu işlem geri alınamaz. Devam?',
+    'placeholder.search':'Hızlı ara...'
+      ,
+      'empty.no_series_added':'Henüz seri eklenmedi',
+      'empty.no_results':'Sonuç bulunamadı',
+      'list.count':'{n} içerik listeleniyor',
+      'badge.movie':'Film',
+      'badge.documentary':'Belgesel',
+      'badge.series':'Dizi',
+      'btn.edit':'Düzenle',
+      'btn.delete':'Sil',
+      'btn.add_subtitle':'+ Altyazı Ekle',
+      'empty.choose_series':'Bir seri seçin',
+      'empty.no_seasons':'Bu seride sezon yok',
+      'empty.no_episodes':'Bölüm yok',
+      'empty.no_description':'Açıklama yok',
+      'placeholder.loading':'— Yükleniyor —',
+      'placeholder.select_series_first':'— Önce Seri Seç —',
+      'placeholder.select_season':'— Sezon Seç —',
+      'placeholder.select_episode':'— Bölüm Seç —',
+      'label.season':'Sezon',
+      'label.episode':'Bölüm',
+      'err.operation_failed':'İşlem başarısız',
+      'err.series_not_found':'Seri bulunamadı',
+      'msg.series_updated':'✓ Seri güncellendi',
+      'msg.season_updated':'✓ Sezon güncellendi',
+      'msg.episode_updated':'✓ Bölüm güncellendi',
+      'err.select_episode':'Bölüm seçin',
+      'err.vtt_required':'VTT içeriği gerekli',
+      'msg.subtitle_added':'✓ Altyazı eklendi'
+  },
+  ar: {
+    'nav.menu':'القائمة الرئيسية',
+    'nav.dashboard':'لوحة القيادة',
+    'nav.series':'المسلسلات',
+    'nav.seasons':'المواسم',
+    'nav.episodes':'الحلقات',
+    'nav.subtitles':'الترجمة',
+    'nav.documentaries':'وثائقيات',
+    'auth.placeholder':'كلمة مرور المدير',
+    'auth.login':'تسجيل الدخول →',
+    'toast.refreshed':'تم التحديث',
+    'stat.series':'إجمالي السلاسل',
+    'stat.seasons':'إجمالي المواسم',
+    'stat.episodes':'إجمالي الحلقات',
+    'stat.movies':'أفلام',
+    'form.new_series':'إضافة مسلسل جديد',
+    'form.new_season':'إضافة موسم',
+    'form.new_episode':'إضافة حلقة',
+    'btn.cancel':'إلغاء',
+    'btn.save':'حفظ',
+    'btn.add_series':'+ أضف محتوى',
+    'btn.add_season':'+ أضف موسم',
+    'btn.add_episode':'+ أضف حلقة',
+    'msg.title_required':'العنوان مطلوب',
+    'err.video_required':'عنوان الفيديو مطلوب للفيلم/الوثائقي',
+    'msg.added':'✓ تم الإضافة',
+    'msg.deleted':'تم الحذف',
+    'err.select_series':'اختر مسلسلًا',
+    'err.valid_season_num':'أدخل رقم موسم صالح',
+    'msg.season_added':'✓ تم إضافة الموسم',
+    'msg.season_deleted':'تم حذف الموسم',
+    'err.select_season':'اختر الموسم',
+    'err.enter_episode_num':'أدخل رقم الحلقة',
+    'msg.episode_added':'✓ تم إضافة الحلقة',
+    'msg.episode_deleted':'تم حذف الحلقة',
+    'modal.edit_series':'تعديل السلسلة',
+    'modal.delete_confirm':'هذا الإجراء لا يمكن التراجع عنه. هل تريد المتابعة؟',
+    'placeholder.search':'بحث سريع...'
+    ,
+    'empty.no_series_added':'لم يتم إضافة أي مسلسلات بعد',
+    'empty.no_results':'لم يتم العثور على نتائج',
+    'list.count':'عرض {n} عنصر',
+    'badge.movie':'فيلم',
+    'badge.documentary':'وثائقي',
+    'badge.series':'مسلسل',
+    'btn.edit':'تعديل',
+    'btn.delete':'حذف',
+    'btn.add_subtitle':'+ أضف ترجمة',
+    'empty.choose_series':'اختر مسلسلًا',
+    'empty.no_seasons':'لا توجد مواسم لهذا المسلسل',
+    'empty.no_episodes':'لا توجد حلقات',
+    'empty.no_description':'لا يوجد وصف',
+    'placeholder.loading':'— جاري التحميل —',
+    'placeholder.select_series_first':'— اختر مسلسلًا أولاً —',
+    'placeholder.select_season':'— اختر الموسم —',
+    'placeholder.select_episode':'— اختر الحلقة —',
+    'label.season':'موسم',
+    'label.episode':'حلقة',
+    'err.operation_failed':'فشل الإجراء',
+    'err.series_not_found':'المسلسل غير موجود',
+    'msg.series_updated':'✓ تم تحديث المسلسل',
+    'msg.season_updated':'✓ تم تحديث الموسم',
+    'msg.episode_updated':'✓ تم تحديث الحلقة',
+    'err.select_episode':'اختر الحلقة',
+    'err.vtt_required':'مطلوب محتوى VTT',
+    'msg.subtitle_added':'✓ تم إضافة الترجمة'
+  }
+};
+
+// Additional form labels and modal keys
+ADMIN_I18N.tr['form.title'] = 'Seri Adı';
+ADMIN_I18N.tr['form.type'] = 'Tür';
+ADMIN_I18N.tr['form.description'] = 'Açıklama';
+ADMIN_I18N.tr['form.description_tr'] = 'Açıklama (Türkçe)';
+ADMIN_I18N.tr['form.description_ar'] = 'Açıklama (Arapça)';
+ADMIN_I18N.tr['form.year'] = 'Yayın Yılı';
+ADMIN_I18N.tr['form.rating'] = 'Puan (0–10)';
+ADMIN_I18N.tr['form.categories'] = 'Kategoriler';
+ADMIN_I18N.tr['form.poster'] = 'Poster Görseli';
+ADMIN_I18N.tr['form.banner'] = 'Banner (opsiyonel)';
+ADMIN_I18N.tr['form.season_number'] = 'Sezon No';
+ADMIN_I18N.tr['form.season_title'] = 'Sezon Başlığı';
+ADMIN_I18N.tr['form.episode_number'] = 'Bölüm No';
+ADMIN_I18N.tr['form.episode_title'] = 'Başlık';
+ADMIN_I18N.tr['form.video'] = 'Video URL';
+ADMIN_I18N.tr['form.duration'] = 'Süre (saniye)';
+ADMIN_I18N.tr['hint.current_poster'] = 'Mevcut poster';
+ADMIN_I18N.tr['hint.upload_help'] = 'Yeni bir görsel seçin (boş bırakırsanız mevcut poster korunur)';
+ADMIN_I18N.tr['modal.edit_season'] = 'Sezon Düzenle';
+ADMIN_I18N.tr['modal.edit_episode'] = 'Bölüm Düzenle';
+ADMIN_I18N.tr['type.series'] = 'Dizi';
+ADMIN_I18N.tr['type.movie'] = 'Film';
+ADMIN_I18N.tr['type.documentary'] = 'Belgesel';
+ADMIN_I18N.tr['type.local'] = 'Yerli Dizi';
+
+ADMIN_I18N.ar['form.title'] = 'اسم المسلسل';
+ADMIN_I18N.ar['form.type'] = 'النوع';
+ADMIN_I18N.ar['form.description'] = 'الوصف';
+ADMIN_I18N.ar['form.description_tr'] = 'الوصف (تركي)';
+ADMIN_I18N.ar['form.description_ar'] = 'الوصف (عربي)';
+ADMIN_I18N.ar['form.year'] = 'سنة العرض';
+ADMIN_I18N.ar['form.rating'] = 'التقييم (0–10)';
+ADMIN_I18N.ar['form.categories'] = 'الفئات';
+ADMIN_I18N.ar['form.poster'] = 'صورة الملصق';
+ADMIN_I18N.ar['form.banner'] = 'الخلفية (اختياري)';
+ADMIN_I18N.ar['form.season_number'] = 'رقم الموسم';
+ADMIN_I18N.ar['form.season_title'] = 'عنوان الموسم';
+ADMIN_I18N.ar['form.episode_number'] = 'رقم الحلقة';
+ADMIN_I18N.ar['form.episode_title'] = 'العنوان';
+ADMIN_I18N.ar['form.video'] = 'رابط الفيديو';
+ADMIN_I18N.ar['form.duration'] = 'المدة (بالثواني)';
+ADMIN_I18N.ar['hint.current_poster'] = 'الملصق الحالي';
+ADMIN_I18N.ar['hint.upload_help'] = 'اختر صورة جديدة (سيتم الاحتفاظ بالملصق الحالي إذا تركتها فارغة)';
+ADMIN_I18N.ar['modal.edit_season'] = 'تعديل الموسم';
+ADMIN_I18N.ar['modal.edit_episode'] = 'تعديل الحلقة';
+ADMIN_I18N.ar['type.series'] = 'مسلسل';
+ADMIN_I18N.ar['type.movie'] = 'فيلم';
+ADMIN_I18N.ar['type.documentary'] = 'وثائقي';
+ADMIN_I18N.ar['type.local'] = 'مسلسل محلي';
+
+function adminT(key) {
+  const lang = localStorage.getItem('qfLang') || 'tr';
+  return (ADMIN_I18N[lang] && ADMIN_I18N[lang][key]) || ADMIN_I18N['tr'][key] || key;
+}
+
+function applyAdminLang(l) {
+  if (!l) l = localStorage.getItem('qfLang') || 'tr';
+  localStorage.setItem('qfLang', l);
+  document.documentElement.lang = (l === 'ar' ? 'ar' : 'tr');
+  document.documentElement.dir = (l === 'ar' ? 'rtl' : 'ltr');
+  if (l === 'ar') document.body.style.fontFamily = "'Cairo', sans-serif"; else document.body.style.fontFamily = '';
+  // static elements
+  document.querySelectorAll('[data-i18n]').forEach(el => { const k = el.getAttribute('data-i18n'); el.textContent = adminT(k); });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => { const k = el.getAttribute('data-i18n-placeholder'); el.setAttribute('placeholder', adminT(k)); });
+  // update dynamic elements
+  document.getElementById('auth-pass') && (document.getElementById('auth-pass').placeholder = adminT('auth.placeholder'));
+  const sel = document.getElementById('global-search'); if (sel) sel.placeholder = adminT('placeholder.search');
+  const langSel = document.getElementById('admin-lang-select'); if (langSel) langSel.value = l;
+}
+
+window.adminHandleLanguageChange = function(l){ applyAdminLang(l); };
+// apply immediately on load
+applyAdminLang(localStorage.getItem('qfLang') || 'tr');
 const API = window.location.origin + '/api';
 const ADMIN_PASS = 'admin123'; // Değiştirin
 
@@ -1058,6 +1291,11 @@ function toast(msg, type = 'info') {
   t.innerHTML = `<span class="toast-icon">${icons[type]||'·'}</span><span>${msg}</span><button class="toast-close" onclick="this.closest('.toast').remove()">×</button>`;
   c.appendChild(t);
   setTimeout(() => t.remove(), 4500);
+}
+
+function toastError(e) {
+  const text = adminT('err.operation_failed') + ': ' + ((e && e.message) ? e.message : String(e));
+  toast(text, 'error');
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1116,7 +1354,9 @@ function navigate(el, view) {
   el.classList.add('active');
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById(`view-${view}`).classList.add('active');
-  const [title, crumb] = pageTitles[view] || [view, view];
+  // Use i18n for page titles/breadcrumbs when available
+  const title = adminT('nav.' + view) || (pageTitles[view] ? pageTitles[view][0] : view);
+  const crumb = adminT('nav.' + view) || (pageTitles[view] ? pageTitles[view][1] : view);
   document.getElementById('page-title').textContent = title;
   document.getElementById('page-breadcrumb').textContent = `CineAdmin / ${crumb}`;
   if (view === 'dashboard') loadDashboard();
@@ -1162,7 +1402,7 @@ async function loadAllSeries() {
     if (nbDocEl) nbDocEl.textContent = docCount;
     populateSeriesSelects();
   } catch (e) {
-    toast(e.message, 'error');
+    toastError(e);
   }
 }
 
@@ -1171,7 +1411,7 @@ function refreshAll() {
     const active = document.querySelector('.nav-item.active');
     if (active) active.click();
   });
-  toast('Yenilendi', 'info');
+  toast(adminT('toast.refreshed'), 'info');
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1188,7 +1428,7 @@ async function loadDashboard() {
   const recent = [...allSeries].reverse().slice(0,5);
   const wrap = document.getElementById('dashboard-recent');
   if (!recent.length) {
-    wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">▦</div><p>Henüz seri eklenmedi</p></div>';
+    wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">▦</div><p>' + adminT('empty.no_series_added') + '</p></div>';
     return;
   }
   wrap.innerHTML = `<div class="list-container">${recent.map(s => seriesItemHTML(s)).join('')}</div>`;
@@ -1210,10 +1450,10 @@ function renderSeriesList() {
   else list = allSeries.filter(s => s.type === filter);
   if (searchTerm) list = list.filter(s => s.title.toLowerCase().includes(searchTerm));
   const lbl = document.getElementById('series-count-label');
-  if (lbl) lbl.textContent = `${list.length} içerik listeleniyor`;
+  if (lbl) lbl.textContent = adminT('list.count').replace('{n}', list.length);
   const wrap = document.getElementById('series-list-wrap');
   if (!list.length) {
-    wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">▦</div><p>Sonuç bulunamadı</p></div>';
+    wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">▦</div><p>' + adminT('empty.no_results') + '</p></div>';
     return;
   }
   wrap.innerHTML = `<div class="list-container">${list.map(s => seriesItemHTML(s)).join('')}</div>`;
@@ -1228,10 +1468,10 @@ function renderDocumentariesList() {
   let list = allSeries.filter(s => s.type === 'documentary');
   if (searchTerm) list = list.filter(s => s.title.toLowerCase().includes(searchTerm));
   const lbl = document.getElementById('documentaries-count-label');
-  if (lbl) lbl.textContent = `${list.length} içerik listeleniyor`;
+  if (lbl) lbl.textContent = adminT('list.count').replace('{n}', list.length);
   const wrap = document.getElementById('documentaries-list-wrap');
   if (!list.length) {
-    wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">🎞</div><p>Sonuç bulunamadı</p></div>';
+    wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">🎞</div><p>' + adminT('empty.no_results') + '</p></div>';
     return;
   }
   wrap.innerHTML = `<div class="list-container">${list.map(s => seriesItemHTML(s)).join('')}</div>`;
@@ -1239,7 +1479,11 @@ function renderDocumentariesList() {
 
 function seriesItemHTML(s) {
   const cats = (s.categories||[]).join(', ') || '—';
-  const typeBadge = s.type === 'movie' ? '<span class="badge badge-blue">🎬 Film</span>' : s.type === 'documentary' ? '<span class="badge badge-green">🎞 Belgesel</span>' : '<span class="badge badge-red">📺 Dizi</span>';
+  const typeBadge = s.type === 'movie'
+    ? `<span class="badge badge-blue">🎬 ${adminT('badge.movie')}</span>`
+    : s.type === 'documentary'
+      ? `<span class="badge badge-green">🎞 ${adminT('badge.documentary')}</span>`
+      : `<span class="badge badge-red">📺 ${adminT('badge.series')}</span>`;
   const poster = s.poster
     ? `<img class="list-thumb" src="${esc(s.poster)}" alt="" onerror="this.style.display='none';this.nextSibling.style.display='flex'">`
     : '';
@@ -1257,8 +1501,8 @@ function seriesItemHTML(s) {
       </div>
     </div>
     <div class="item-actions">
-      <button class="btn btn-info sm" onclick="openEditSeries('${s._id}')">✎ Düzenle</button>
-      <button class="btn btn-danger sm" onclick="deleteSeries('${s._id}','${esc(s.title)}')">🗑 Sil</button>
+      <button class="btn btn-info sm" onclick="openEditSeries('${s._id}')">✎ ${adminT('btn.edit')}</button>
+      <button class="btn btn-danger sm" onclick="deleteSeries('${s._id}','${esc(s.title)}')">🗑 ${adminT('btn.delete')}</button>
     </div>
   </div>`;
 }
@@ -1270,17 +1514,16 @@ function onContentTypeChange() {
   document.getElementById('s-video-group').style.display = isFilm ? '' : 'none';
   document.getElementById('s-duration-group').style.display = isFilm ? '' : 'none';
   const label = document.getElementById('btn-add-series-label');
-  if (type === 'movie') label.textContent = '+ Film Ekle';
-  else if (type === 'documentary') label.textContent = '+ Belgesel Ekle';
-  else label.textContent = '+ Dizi Ekle';
+  // use a generic add label (specific type shown in form title)
+  if (label) label.textContent = adminT('btn.add_series');
 }
 
 async function addSeries() {
   const title = v('s-title');
   const type = v('s-type');
-  if (!title) { toast('Başlık zorunludur', 'error'); return; }
+  if (!title) { toast(adminT('msg.title_required'), 'error'); return; }
   const isFilm = type === 'movie' || type === 'documentary';
-  if (isFilm && !v('s-video').trim()) { toast('Film/Belgesel için Video URL zorunludur', 'error'); return; }
+  if (isFilm && !v('s-video').trim()) { toast(adminT('err.video_required'), 'error'); return; }
   const btn = document.getElementById('btn-add-series');
   setLoading(btn, true);
   try {
@@ -1289,22 +1532,36 @@ async function addSeries() {
     if (posterFile) {
       posterPath = await uploadImage(posterFile);
     }
+
+    let bannerPath = '';
+    const bannerFile = document.getElementById('s-banner-file')?.files?.[0];
+    if (bannerFile) {
+      bannerPath = await uploadImage(bannerFile);
+    }
+
     const payload = {
-      title, type,
+      title,
+      type,
       description: v('s-desc'),
+      description_tr: v('s-desc-tr'),
+      description_ar: v('s-desc-ar'),
       releaseYear: parseInt(v('s-year')) || null,
       rating: parseFloat(v('s-rating')) || 0,
       categories: v('s-cats').split(',').map(c=>c.trim()).filter(Boolean),
       poster: posterPath,
+      banner: bannerPath
     };
+    if (type === 'yerli') {
+      if (!payload.categories.includes('Yerli Diziler')) payload.categories.push('Yerli Diziler');
+    }
     if (isFilm) {
       payload.videoUrl = v('s-video').trim();
       payload.duration = parseInt(v('s-duration')) || 0;
     }
     await api('POST', '/series', payload);
     const typeLabel = type === 'movie' ? 'Film' : type === 'documentary' ? 'Belgesel' : 'Dizi';
-    toast('\u2713 ' + typeLabel + ' eklendi: ' + title, 'success');
-    ['s-title','s-desc','s-year','s-cats','s-rating','s-video','s-duration'].forEach(id => {
+    toast(adminT('msg.added') + ' ' + title, 'success');
+    ['s-title','s-desc','s-desc-tr','s-desc-ar','s-year','s-cats','s-rating','s-video','s-duration'].forEach(id => {
       const el = document.getElementById(id); if (el) el.value = '';
     });
     document.getElementById('s-rating').value = '0';
@@ -1312,23 +1569,27 @@ async function addSeries() {
     if (pf) pf.value = '';
     const prev = document.getElementById('s-poster-prev');
     if (prev) prev.style.display = 'none';
+    const bf = document.getElementById('s-banner-file');
+    if (bf) bf.value = '';
+    const bprev = document.getElementById('s-banner-prev');
+    if (bprev) bprev.style.display = 'none';
     await loadAllSeries();
     renderSeriesList();
-  } catch(e) { toast(e.message, 'error'); }
-  finally { setLoading(btn, false, '+ İçerik Ekle'); }
+  } catch(e) { toastError(e); }
+  finally { setLoading(btn, false, adminT('btn.add_series')); }
 }
 
 async function deleteSeries(id, title) {
-  const ok = await confirm2('Seriyi Sil', `"${title}" serisi ve tüm sezon/bölümleri silinecek. Devam?`);
+  const ok = await confirm2(adminT('modal.delete_series') || adminT('modal.delete_confirm'), (adminT('modal.delete_series_confirm') || '"{title}" serisi ve tüm sezon/bölümleri silinecek. Devam?').replace('{title}', title));
   if (!ok) return;
   try {
     await api('DELETE', '/series/' + id);
-    toast('Seri silindi', 'info');
+    toast(adminT('msg.deleted'), 'info');
     allSeries = allSeries.filter(s => s._id !== id);
     document.getElementById('nb-series').textContent = allSeries.length;
     renderSeriesList();
     populateSeriesSelects();
-  } catch(e) { toast(e.message, 'error'); }
+  } catch(e) { toastError(e); }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1338,7 +1599,7 @@ function onSeasonSeriesChange() {
   const id = v('sea-series');
   if (id) loadSeasonsList(id);
   else document.getElementById('seasons-list-wrap').innerHTML =
-    '<div class="empty-state"><div class="empty-icon">▤</div><p>Bir seri seçin</p></div>';
+    '<div class="empty-state"><div class="empty-icon">▤</div><p>' + adminT('empty.choose_series') + '</p></div>';
 }
 
 async function loadSeasonsList(seriesId) {
@@ -1347,28 +1608,28 @@ async function loadSeasonsList(seriesId) {
   try {
     const seasons = await api('GET', '/seasons/' + seriesId + '?_=' + Date.now());
     if (!seasons || !seasons.length) {
-      wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">▤</div><p>Bu seride sezon yok</p></div>';
+      wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">▤</div><p>' + adminT('empty.no_seasons') + '</p></div>';
       return;
     }
     wrap.innerHTML = `<div class="list-container">${seasons.map(s => `
       <div class="list-item season-item">
         <div>
-          <div class="item-title">Sezon ${s.seasonNumber}${s.title ? ': '+esc(s.title) : ''}</div>
-          <div class="item-meta"><span>${esc(s.description||'Açıklama yok')}</span></div>
+          <div class="item-title">${adminT('label.season')} ${s.seasonNumber}${s.title ? ': '+esc(s.title) : ''}</div>
+          <div class="item-meta"><span>${esc(s.description||adminT('empty.no_description'))}</span></div>
         </div>
         <div class="item-actions">
-          <button class="btn btn-info sm" onclick="openEditSeason('${s._id}','${seriesId}')">✎ Düzenle</button>
-          <button class="btn btn-danger sm" onclick="deleteSeason('${s._id}','${seriesId}')">🗑 Sil</button>
+          <button class="btn btn-info sm" onclick="openEditSeason('${s._id}','${seriesId}')">✎ ${adminT('btn.edit')}</button>
+          <button class="btn btn-danger sm" onclick="deleteSeason('${s._id}','${seriesId}')">🗑 ${adminT('btn.delete')}</button>
         </div>
       </div>`).join('')}</div>`;
-  } catch(e) { toast(e.message,'error'); wrap.innerHTML=''; }
+  } catch(e) { toastError(e); wrap.innerHTML=''; }
 }
 
 async function addSeason() {
   const seriesId = v('sea-series');
   const num = parseInt(v('sea-num'));
-  if (!seriesId) { toast('Seri seçin', 'error'); return; }
-  if (!num || num < 1) { toast('Geçerli sezon numarası girin', 'error'); return; }
+  if (!seriesId) { toast(adminT('err.select_series'), 'error'); return; }
+  if (!num || num < 1) { toast(adminT('err.valid_season_num'), 'error'); return; }
   const btn = document.getElementById('btn-add-season');
   setLoading(btn, true);
   try {
@@ -1376,19 +1637,19 @@ async function addSeason() {
       seriesId, seasonNumber: num,
       title: v('sea-title'), description: v('sea-desc'),
     });
-    toast('✓ Sezon eklendi', 'success');
+    toast(adminT('msg.season_added'), 'success');
     ['sea-num','sea-title','sea-desc'].forEach(id => reset(id));
     await loadSeasonsList(seriesId);
-  } catch(e) { toast(e.message,'error'); }
-  finally { setLoading(btn, false, '+ Sezon Ekle'); }
+  } catch(e) { toastError(e); }
+  finally { setLoading(btn, false, adminT('btn.add_season')); }
 }
 
 async function deleteSeason(id, seriesId) {
-  const ok = await confirm2('Sezonu Sil', 'Bu sezon ve tüm bölümleri silinecek. Devam?');
+  const ok = await confirm2(adminT('modal.delete_season') || adminT('modal.delete_confirm'), adminT('modal.delete_season_confirm') || adminT('modal.delete_confirm'));
   if (!ok) return;
   try {
     await api('DELETE', '/seasons/' + id);
-    toast('Sezon silindi', 'info');
+    toast(adminT('msg.season_deleted'), 'info');
     await loadSeasonsList(seriesId);
   } catch(e) { toast(e.message,'error'); }
 }
@@ -1399,14 +1660,14 @@ async function deleteSeason(id, seriesId) {
 async function onEpSeriesChange() {
   const seriesId = v('ep-series');
   const seasonSel = document.getElementById('ep-season');
-  seasonSel.innerHTML = '<option value="">— Yükleniyor —</option>';
-  if (!seriesId) { seasonSel.innerHTML = '<option value="">— Önce Seri Seç —</option>'; loadEpisodesList(); return; }
+  seasonSel.innerHTML = `<option value="">${adminT('placeholder.loading')}</option>`;
+  if (!seriesId) { seasonSel.innerHTML = `<option value="">${adminT('placeholder.select_series_first')}</option>`; loadEpisodesList(); return; }
   try {
     const seasons = await api('GET', '/seasons/' + seriesId + '?_=' + Date.now());
-    seasonSel.innerHTML = '<option value="">— Sezon Seç —</option>';
+    seasonSel.innerHTML = `<option value="">${adminT('placeholder.select_season')}</option>`;
     (seasons||[]).forEach(s => {
       const o = document.createElement('option');
-      o.value = s._id; o.textContent = `Sezon ${s.seasonNumber}${s.title?' - '+s.title:''}`;
+      o.value = s._id; o.textContent = `${adminT('label.season')} ${s.seasonNumber}${s.title?' - '+s.title:''}`;
       seasonSel.appendChild(o);
     });
     await loadEpisodesList(seriesId);
@@ -1417,39 +1678,39 @@ async function onEpSeriesChange() {
 async function loadEpisodesList(seriesId) {
   const wrap = document.getElementById('episodes-list-wrap');
   if (!seriesId) {
-    wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">▶</div><p>Bir seri seçin</p></div>';
+    wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">▶</div><p>' + adminT('empty.choose_series') + '</p></div>';
     return;
   }
   wrap.innerHTML = '<div class="skeleton skeleton-item"></div>';
   try {
     const data = await api('GET', '/series/' + seriesId + '?_=' + Date.now());
     if (!data.seasons || !data.seasons.length) {
-      wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">▶</div><p>Bu seride sezon yok</p></div>';
+      wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">▶</div><p>' + adminT('empty.no_seasons') + '</p></div>';
       return;
     }
     let html = '';
     data.seasons.forEach(season => {
       if (!season.episodes || !season.episodes.length) return;
       html += `<div class="season-group">
-        <div class="season-group-header"><span class="season-num">S${pad(season.seasonNumber)}</span>${esc(season.title||'Sezon '+season.seasonNumber)}</div>
+        <div class="season-group-header"><span class="season-num">S${pad(season.seasonNumber)}</span>${esc(season.title||adminT('label.season') + ' ' + season.seasonNumber)}</div>
         <div class="list-container">${season.episodes.map(ep => `
           <div class="list-item episode-item">
             <div>
               <div class="item-title">E${pad(ep.episodeNumber)}: ${esc(ep.title)}</div>
               <div class="item-meta">
-                <span>${esc(ep.description||'Açıklama yok').substring(0,80)}</span>
+                <span>${esc(ep.description||adminT('empty.no_description')).substring(0,80)}</span>
                 ${ep.duration ? `<span>${fmtDur(ep.duration)}</span>` : ''}
                 ${ep.subtitles?.length ? `<span class="badge badge-green">ALT: ${ep.subtitles.map(s=>s.language).join(', ')}</span>` : ''}
               </div>
             </div>
             <div class="item-actions">
-              <button class="btn btn-info sm" onclick="openEditEpisode('${ep._id}','${seriesId}')">✎ Düzenle</button>
-              <button class="btn btn-danger sm" onclick="deleteEpisode('${ep._id}','${seriesId}')">🗑 Sil</button>
+              <button class="btn btn-info sm" onclick="openEditEpisode('${ep._id}','${seriesId}')">✎ ${adminT('btn.edit')}</button>
+              <button class="btn btn-danger sm" onclick="deleteEpisode('${ep._id}','${seriesId}')">🗑 ${adminT('btn.delete')}</button>
             </div>
           </div>`).join('')}</div></div>`;
     });
     wrap.innerHTML = html || '<div class="empty-state"><div class="empty-icon">▶</div><p>Bölüm yok</p></div>';
-  } catch(e) { toast(e.message,'error'); wrap.innerHTML=''; }
+  } catch(e) { toastError(e); wrap.innerHTML=''; }
 }
 
 async function addEpisode() {
@@ -1458,11 +1719,11 @@ async function addEpisode() {
   const num = parseInt(v('ep-num'));
   const title = v('ep-title');
   const video = v('ep-video');
-  if (!seriesId) { toast('Seri seçin', 'error'); return; }
-  if (!seasonId) { toast('Sezon seçin', 'error'); return; }
-  if (!num) { toast('Bölüm numarası girin', 'error'); return; }
-  if (!title) { toast('Başlık zorunlu', 'error'); return; }
-  if (!video) { toast('Video URL zorunlu', 'error'); return; }
+  if (!seriesId) { toast(adminT('err.select_series'), 'error'); return; }
+  if (!seasonId) { toast(adminT('err.select_season'), 'error'); return; }
+  if (!num) { toast(adminT('err.enter_episode_num'), 'error'); return; }
+  if (!title) { toast(adminT('msg.title_required'), 'error'); return; }
+  if (!video) { toast(adminT('err.video_required'), 'error'); return; }
   const btn = document.getElementById('btn-add-ep');
   setLoading(btn, true);
   try {
@@ -1481,7 +1742,7 @@ async function addEpisode() {
       thumbnail: thumbPath,
     });
     console.log('Bölüm eklendi:', result);
-    toast('✓ Bölüm eklendi: ' + title, 'success');
+    toast(adminT('msg.episode_added') + ' ' + title, 'success');
     ['ep-num','ep-title','ep-desc','ep-video','ep-dur'].forEach(id => reset(id));
     const tf = document.getElementById('ep-thumb-file');
     if (tf) tf.value = '';
@@ -1490,9 +1751,9 @@ async function addEpisode() {
     await loadEpisodesList(seriesId);
   } catch(e) {
     console.error('addEpisode error:', e);
-    toast('Hata: ' + e.message, 'error');
+    toastError(e);
   }
-  finally { setLoading(btn, false, '+ Bölüm Ekle'); }
+  finally { setLoading(btn, false, adminT('btn.add_episode')); }
 }
 
 async function deleteEpisode(id, seriesId) {
@@ -1500,9 +1761,9 @@ async function deleteEpisode(id, seriesId) {
   if (!ok) return;
   try {
     await api('DELETE', '/episodes/' + id);
-    toast('Bölüm silindi', 'info');
+    toast(adminT('msg.episode_deleted'), 'info');
     await loadEpisodesList(seriesId);
-  } catch(e) { toast(e.message,'error'); }
+  } catch(e) { toastError(e); }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1529,23 +1790,23 @@ async function populateSubEpisodes(seriesId) {
         sel.appendChild(o);
       });
     });
-  } catch(e) { toast(e.message,'error'); }
+  } catch(e) { toastError(e); }
 }
 
 async function addSubtitle() {
   const epId = v('sub-episode');
   const vtt  = v('sub-vtt');
   const lang = v('sub-lang');
-  if (!epId) { toast('Bölüm seçin', 'error'); return; }
-  if (!vtt)  { toast('VTT içeriği gerekli', 'error'); return; }
+  if (!epId) { toast(adminT('err.select_episode'), 'error'); return; }
+  if (!vtt)  { toast(adminT('err.vtt_required'), 'error'); return; }
   const btn = document.getElementById('btn-add-sub');
   setLoading(btn, true);
   try {
     await api('POST', `/episodes/${epId}/subtitle`, { language: lang, vttContent: vtt });
-    toast('✓ Altyazı eklendi (' + lang + ')', 'success');
+    toast(adminT('msg.subtitle_added') + ' (' + lang + ')', 'success');
     reset('sub-vtt');
   } catch(e) { toast(e.message,'error'); }
-  finally { setLoading(btn, false, '+ Altyazı Ekle'); }
+  finally { setLoading(btn, false, adminT('btn.add_subtitle')); }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1671,12 +1932,23 @@ async function openEditSeries(id) {
           <option value="series" ${s.type==='series'?'selected':''}>Dizi</option>
           <option value="movie" ${s.type==='movie'?'selected':''}>Film</option>
           <option value="documentary" ${s.type==='documentary'?'selected':''}>Belgesel</option>
+          <option value="yerli" ${s.type==='yerli'?'selected':''}>Yerli Dizi</option>
         </select>
       </div>
     </div>
     <div class="form-group">
       <label>Açıklama</label>
       <textarea id="edit-s-desc">${esc(s.description||'')}</textarea>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Açıklama (Türkçe)</label>
+        <textarea id="edit-s-desc-tr">${esc(s.description_tr||'')}</textarea>
+      </div>
+      <div class="form-group">
+        <label>Açıklama (Arapça)</label>
+        <textarea id="edit-s-desc-ar">${esc(s.description_ar||'')}</textarea>
+      </div>
     </div>
     <div class="form-row three">
       <div class="form-group">
@@ -1692,12 +1964,20 @@ async function openEditSeries(id) {
         <input type="text" id="edit-s-cats" value="${esc(cats)}" placeholder="Aksiyon, Dram">
       </div>
     </div>
-    <div class="form-group">
-      <label>Poster Görseli</label>
-      ${s.poster ? `<div style="margin-bottom:8px"><img src="${esc(s.poster)}" style="width:100px;height:140px;object-fit:cover;border-radius:4px;border:1px solid var(--border2);" onerror="this.style.display='none'"><br><small style="color:var(--muted);font-size:.75rem">Mevcut poster</small></div>` : ''}
-      <input type="file" id="edit-s-poster-file" accept="image/*" onchange="previewLocalFile(this,'edit-s-poster-prev')" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:10px 12px;border-radius:var(--radius);font-family:var(--font-head);font-size:.85rem;width:100%;cursor:pointer;">
-      <div class="hint">Yeni bir görsel seçin (boş bırakırsanız mevcut poster korunur)</div>
-      <div class="poster-preview-wrap"><img id="edit-s-poster-prev" alt="önizleme"></div>
+    <div class="form-row">
+      <div class="form-group" style="flex:0 0 140px">
+        <label>Poster Görseli</label>
+        ${s.poster ? `<div style="margin-bottom:8px"><img src="${esc(s.poster)}" style="width:100px;height:140px;object-fit:cover;border-radius:4px;border:1px solid var(--border2);" onerror="this.style.display='none'"><br><small style="color:var(--muted);font-size:.75rem">Mevcut poster</small></div>` : ''}
+        <input type="file" id="edit-s-poster-file" accept="image/*" onchange="previewLocalFile(this,'edit-s-poster-prev')" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:10px 12px;border-radius:var(--radius);font-family:var(--font-head);font-size:.85rem;width:100%;cursor:pointer;">
+        <div class="hint">Yeni bir görsel seçin (boş bırakırsanız mevcut poster korunur)</div>
+        <div class="poster-preview-wrap"><img id="edit-s-poster-prev" alt="önizleme"></div>
+      </div>
+      <div class="form-group">
+        <label>Banner (opsiyonel)</label>
+        ${s.banner ? `<div style="margin-bottom:8px"><img src="${esc(s.banner)}" style="width:220px;height:80px;object-fit:cover;border-radius:4px;border:1px solid var(--border2);" onerror="this.style.display='none'"><br><small style="color:var(--muted);font-size:.75rem">Mevcut banner</small></div>` : ''}
+        <input type="file" id="edit-s-banner-file" accept="image/*" onchange="previewLocalFile(this,'edit-s-banner-prev')" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:10px 12px;border-radius:var(--radius);font-family:var(--font-head);font-size:.85rem;width:100%;cursor:pointer;">
+        <div class="poster-preview-wrap"><img id="edit-s-banner-prev" alt="banner önizleme"></div>
+      </div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeEditModal()">İptal</button>
@@ -1710,7 +1990,7 @@ async function saveEditSeries(id) {
   const title = (document.getElementById('edit-s-title')?.value||'').trim();
   if (!title) { toast('Seri adı zorunludur', 'error'); return; }
 
-  // Yeni poster dosyası seçildiyse yükle; yoksa mevcut posteri koru
+  // Yeni poster veya banner dosyası seçildiyse yükle; yoksa mevcut değerleri koru
   let poster;
   const posterFile = document.getElementById('edit-s-poster-file')?.files?.[0];
   if (posterFile) {
@@ -1721,15 +2001,27 @@ async function saveEditSeries(id) {
     poster = existing?.poster || '';
   }
 
+  let banner;
+  const bannerFile = document.getElementById('edit-s-banner-file')?.files?.[0];
+  if (bannerFile) {
+    banner = await uploadImage(bannerFile);
+  } else {
+    const existing = allSeries.find(s => s._id === id);
+    banner = existing?.banner || '';
+  }
+
   try {
     await api('PUT', '/series/' + id, {
       title,
       type: document.getElementById('edit-s-type')?.value,
       description: (document.getElementById('edit-s-desc')?.value||'').trim(),
+      description_tr: (document.getElementById('edit-s-desc-tr')?.value||'').trim(),
+      description_ar: (document.getElementById('edit-s-desc-ar')?.value||'').trim(),
       releaseYear: parseInt(document.getElementById('edit-s-year')?.value)||null,
       rating: parseFloat(document.getElementById('edit-s-rating')?.value)||0,
       categories: (document.getElementById('edit-s-cats')?.value||'').split(',').map(c=>c.trim()).filter(Boolean),
       poster,
+      banner,
     });
     toast('✓ Seri güncellendi', 'success');
     closeEditModal();

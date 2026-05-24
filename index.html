@@ -6,16 +6,22 @@
 <title>Qasimflix — Dizi & Film İzle</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400&display=swap" rel="stylesheet">
+<!-- Arabic font for RTL support -->
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0a0a0f;--bg2:#111118;--surface:rgba(255,255,255,0.05);
-  --border:rgba(255,255,255,0.08);--accent:#e50914;--accent2:#f40612;
+  --bg:#050508;--bg2:rgba(10,10,15,0.85);--surface:rgba(255,255,255,0.05);
+  --border:rgba(255,255,255,0.1);--accent:#e50914;--accent2:#f40612;
   --text:#ffffff;--muted:#b3b3b3;--muted2:#666;
   --font:'DM Sans',sans-serif;--font-display:'Bebas Neue',sans-serif;
-  --mono:'DM Mono',monospace;--nav-h:64px;
+  --mono:'DM Mono',monospace;--nav-h:72px;
 }
-html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);overflow-x:hidden;scrollbar-width:thin;scrollbar-color:var(--muted2) transparent}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);overflow-x:hidden;scrollbar-width:thin;scrollbar-color:var(--muted2) transparent;
+  background-image: radial-gradient(circle at 15% 50%, rgba(229, 9, 20, 0.08), transparent 25%),
+                    radial-gradient(circle at 85% 30%, rgba(108, 99, 255, 0.08), transparent 25%);
+  background-attachment: fixed;
+}
 body::-webkit-scrollbar{width:6px}
 body::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:3px}
 
@@ -23,10 +29,12 @@ body::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:3px}
 .navbar{position:fixed;top:0;left:0;right:0;z-index:100;height:var(--nav-h);display:flex;align-items:center;justify-content:space-between;padding:0 4%;background:linear-gradient(to bottom,rgba(0,0,0,0.9) 0%,transparent 100%);transition:background .3s}
 .navbar.scrolled{background:var(--bg2)}
 .nav-left{display:flex;align-items:center;gap:28px}
-.logo{font-family:var(--font-display);font-size:1.9rem;letter-spacing:.06em;color:var(--accent);text-decoration:none;flex-shrink:0}
-.nav-links{display:flex;gap:0;list-style:none}
-.nav-link{color:var(--muted);font-size:.85rem;font-weight:500;padding:8px 14px;text-decoration:none;transition:color .2s;cursor:pointer;border:none;background:none;font-family:var(--font)}
-.nav-link:hover,.nav-link.active{color:var(--text)}
+.logo{font-family:var(--font-display);font-size:2.2rem;letter-spacing:.08em;background:linear-gradient(135deg, #ff0f1e 0%, #a78bfa 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-decoration:none;flex-shrink:0;filter:drop-shadow(0 0 12px rgba(229,9,20,0.5));transition:filter 0.3s}
+.logo:hover{filter:drop-shadow(0 0 20px rgba(229,9,20,0.8))}
+.nav-links{display:flex;gap:8px;list-style:none}
+.nav-link{color:var(--muted);font-size:.85rem;font-weight:600;padding:8px 16px;text-decoration:none;transition:all .3s;cursor:pointer;border:1px solid transparent;background:rgba(255,255,255,0.03);border-radius:24px;font-family:var(--font)}
+.nav-link:hover{color:var(--text);background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.2)}
+.nav-link.active{color:#fff;background:var(--accent);box-shadow:0 0 16px rgba(229,9,20,0.4);border-color:var(--accent)}
 .nav-right{display:flex;align-items:center;gap:14px}
 .mobile-menu-btn{display:none;background:none;border:none;color:#fff;font-size:1.5rem;cursor:pointer}
 .search-box{display:flex;align-items:center;gap:8px;background:rgba(0,0,0,0.6);border:1px solid var(--border);border-radius:4px;padding:7px 12px;transition:border-color .2s}
@@ -86,9 +94,23 @@ body::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:3px}
 .cards-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:12px;scrollbar-width:none}
 .cards-row::-webkit-scrollbar{display:none}
 
+/* Carousel enhancements: native scroll-snap and smooth GPU-accelerated animations */
+.cards-row{scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;scroll-behavior:smooth}
+.card{scroll-snap-align:start;will-change:transform;transition:transform .35s cubic-bezier(.2,.9,.2,1),box-shadow .35s}
+.card::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 35%, rgba(0,0,0,0.45) 100%);opacity:0;transition:opacity .35s}
+.card:hover::before{opacity:1}
+.card:hover{transform:translateY(-8px) scale(1.06);z-index:12}
+
+/* Carousel navigation buttons */
+.carousel-btn{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,0.45);z-index:50}
+.carousel-btn:hover{background:rgba(0,0,0,0.65)}
+.carousel-btn.left{left:8px}
+.carousel-btn.right{right:8px}
+@media(max-width:768px){.carousel-btn{display:none}}
+
 /* CARD */
-.card{flex:0 0 175px;position:relative;border-radius:4px;overflow:hidden;cursor:pointer;transition:transform .25s}
-.card:hover{transform:scale(1.08);z-index:10}
+.card{flex:0 0 175px;position:relative;border-radius:8px;overflow:hidden;cursor:pointer;transition:transform .3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow .3s, border-color .3s;border:1px solid transparent}
+.card:hover{transform:scale(1.08) translateY(-6px);z-index:10;box-shadow:0 12px 28px rgba(229,9,20,0.3);border-color:rgba(229,9,20,0.5)}
 .card-img{width:100%;aspect-ratio:2/3;object-fit:cover;display:block;background:#1a1a2e}
 .card-placeholder{width:100%;aspect-ratio:2/3;background:linear-gradient(135deg,#1a1a2e,#16213e);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--muted2);font-size:.75rem;text-align:center;padding:12px}
 .card-placeholder .icon{font-size:2.5rem}
@@ -141,7 +163,7 @@ body::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:3px}
 .season-label{font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);margin-bottom:10px}
 .season-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
 .season-tab{padding:6px 16px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--font);font-size:.82rem;font-weight:600;cursor:pointer;transition:all .2s}
-.season-tab.active,.season-tab:hover{background:var(--accent);border-color:var(--accent);color:#fff}
+.season-tab.active,.season-tab:hover{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 0 16px rgba(229,9,20,0.4)}
 .episodes-list{display:flex;flex-direction:column;gap:6px}
 .ep-card{display:flex;gap:12px;align-items:center;padding:10px 12px;border-radius:6px;background:var(--surface);border:1px solid var(--border);cursor:pointer;transition:background .2s}
 .ep-card:hover{background:rgba(255,255,255,0.1)}
@@ -228,6 +250,19 @@ body::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:3px}
   .hero-title{font-size:1.7rem}
   .search-box input{width:70px}
 }
+
+/* Language selector & RTL handling */
+.lang-select{background:transparent;border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:8px;font-family:var(--font);cursor:pointer}
+.sy-flag{width:20px;height:14px;display:inline-block;vertical-align:middle;margin-right:8px}
+.sy-flag svg{display:block;width:100%;height:100%}
+
+/* RTL specific adjustments */
+html[dir="rtl"] .nav-left{order:2}
+html[dir="rtl"] .nav-right{order:1}
+html[dir="rtl"] .hero-content{direction:rtl;text-align:right}
+html[dir="rtl"] .card-overlay{direction:rtl;text-align:right}
+html[dir="rtl"] .badge-type{left:auto;right:6px}
+html[dir="rtl"] .user-dropdown{right:auto;left:0}
 </style>
 </head>
 <body>
@@ -237,16 +272,23 @@ body::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:3px}
     <button class="mobile-menu-btn" onclick="document.querySelector('.nav-links').classList.toggle('open')">☰</button>
     <a href="#" class="logo" onclick="showAll();return false;">Qasimflix</a>
     <ul class="nav-links">
-      <li><button class="nav-link active" onclick="showAll(this)">Ana Sayfa</button></li>
-      <li><button class="nav-link" onclick="showCategory('series',this)">Diziler</button></li>
-      <li><button class="nav-link" onclick="showDocumentaries(this)">Belgeseller</button></li>
-      <li><button class="nav-link" onclick="showCategory('movie',this)">Filmler</button></li>
+      <li><button class="nav-link active" onclick="showAll(this)" data-i18n="nav.home">Ana Sayfa</button></li>
+      <li><button class="nav-link" onclick="showCategory('series',this)" data-i18n="nav.series">Diziler</button></li>
+      <li><button class="nav-link" onclick="showLocalSeries(this)"><span class="sy-flag" aria-hidden="true"><svg viewBox="0 0 24 16" xmlns="http://www.w3.org/2000/svg"><rect width="24" height="16" fill="#0A5C2B"/><rect y="5.3" width="24" height="5.4" fill="#FFFFFF"/><rect y="10.6" width="24" height="5.4" fill="#000000"/></svg></span><span data-i18n="nav.local">Yerli Diziler</span></button></li>
+      <li><button class="nav-link" onclick="showDocumentaries(this)" data-i18n="nav.documentaries">Belgeseller</button></li>
+      <li><button class="nav-link" onclick="showCategory('movie',this)" data-i18n="nav.movies">Filmler</button></li>
     </ul>
   </div>
   <div class="nav-right">
     <div class="search-box">
       <span>🔍</span>
-      <input type="text" id="search-input" placeholder="Ara..." oninput="handleSearch(this.value)">
+      <input type="text" id="search-input" data-i18n-placeholder="search.placeholder" placeholder="Ara..." oninput="handleSearch(this.value)">
+    </div>
+    <div style="margin-left:8px;margin-right:6px">
+      <select id="lang-select" class="lang-select" onchange="handleLanguageChange(this.value)" aria-label="Dil seçimi">
+        <option value="tr">Türkçe</option>
+        <option value="ar">العربية</option>
+      </select>
     </div>
     <a href="admin.html" class="admin-btn" id="admin-link" style="display:none">⚙ Admin</a>
     <div id="auth-section">
@@ -314,6 +356,10 @@ body::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:3px}
     <div class="section" id="series-section">
       <div class="section-title">📺 Diziler</div>
       <div class="cards-row" id="series-row"></div>
+    </div>
+    <div class="section" id="local-series-section" style="display:none">
+      <div class="section-title" data-i18n="local.new">🌟 Yeni Eklenen Yerli Diziler</div>
+      <div class="cards-row" id="local-series-row"></div>
     </div>
     <div class="section" id="documentaries-section" style="display:none">
       <div class="section-title">🎞️ Belgeseller</div>
@@ -405,6 +451,69 @@ body::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:3px}
       });
     });
   }
+</script>
+<!-- Language selector + RTL support -->
+<script>
+  (function(){
+    const key = 'qfLang';
+    const T = {
+      tr: {
+        'nav.home':'Ana Sayfa',
+        'nav.series':'Diziler',
+        'nav.local':'Yerli Diziler',
+        'nav.documentaries':'Belgeseller',
+        'nav.movies':'Filmler',
+        'search.placeholder':'Ara...',
+        'hero.welcome':'Qasimflix\'e Hoş Geldiniz',
+        'hero.desc':'Admin panelinden içerik ekleyerek başlayın.',
+        'local.new':'🌟 Yeni Eklenen Yerli Diziler'
+      },
+      ar: {
+        'nav.home':'الصفحة الرئيسية',
+        'nav.series':'مسلسلات',
+        'nav.local':'مسلسلات محلية',
+        'nav.documentaries':'وثائقيات',
+        'nav.movies':'أفلام',
+        'search.placeholder':'ابحث...',
+        'hero.welcome':'مرحبًا بك في Qasimflix',
+        'hero.desc':'ابدأ بإضافة محتوى من لوحة التحكم.',
+        'local.new':'🌟 المسلسلات المحلية المضافة حديثًا'
+      }
+    };
+
+    function applyLang(l) {
+      document.documentElement.lang = l === 'ar' ? 'ar' : 'tr';
+      if (l === 'ar') {
+        document.documentElement.setAttribute('dir','rtl');
+        document.body.classList.add('rtl');
+        document.body.style.fontFamily = "'Cairo', sans-serif";
+      } else {
+        document.documentElement.setAttribute('dir','ltr');
+        document.body.classList.remove('rtl');
+        document.body.style.fontFamily = '';
+      }
+      try { const sel = document.getElementById('lang-select'); if (sel) sel.value = l; } catch(e){}
+
+      // translate elements with data-i18n
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (T[l] && T[l][key]) el.textContent = T[l][key];
+      });
+      // placeholders
+      document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const k = el.getAttribute('data-i18n-placeholder');
+        if (T[l] && T[l][k]) el.setAttribute('placeholder', T[l][k]);
+      });
+
+      // specific ids
+      const heroTitle = document.getElementById('hero-title'); if (heroTitle) heroTitle.textContent = T[l]['hero.welcome'] || heroTitle.textContent;
+      const heroDesc = document.getElementById('hero-desc'); if (heroDesc) heroDesc.textContent = T[l]['hero.desc'] || heroDesc.textContent;
+    }
+
+    window.handleLanguageChange = function(l){ localStorage.setItem(key,l); applyLang(l); };
+    const initial = localStorage.getItem(key) || 'tr';
+    applyLang(initial);
+  })();
 </script>
 <script src="app.js"></script>
 </body>
