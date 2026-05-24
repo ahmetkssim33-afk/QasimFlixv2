@@ -360,16 +360,76 @@ app.post("/api/categories", async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════
+// ARAMA — isim, açıklama, kategori ile arama
+// ═══════════════════════════════════════════════════════════
+app.get("/api/series/search/:query", async (req, res) => {
+  try {
+    const query = req.params.query;
+    const results = await Series.find({
+      $or: [
+        { title: { $regex: query, $options: 'i' } },
+        { description: { $regex: query, $options: 'i' } },
+        { categories: { $regex: query, $options: 'i' } }
+      ]
+    }).limit(30);
+    res.json(results);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Kategoriye göre arama
+app.get("/api/series/category/:category", async (req, res) => {
+  try {
+    const series = await Series.find({
+      categories: { $regex: req.params.category, $options: 'i' }
+    }).limit(30);
+    res.json(series);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// PROGRESS — Authenticated user endpoints
+// ═══════════════════════════════════════════════════════════
+app.get("/api/progress/me/:episodeId", async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const progress = await WatchProgress.findOne({ userId, episodeId: req.params.episodeId });
+    res.json(progress || { progress: 0 });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/progress/continue/me", async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const recentWatches = await WatchProgress.find({ userId })
+      .sort({ lastWatchedAt: -1 }).limit(10)
+      .populate("seriesId").populate("episodeId");
+    res.json(recentWatches);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
 // SAĞLIK KONTROLÜ
 // ═══════════════════════════════════════════════════════════
 app.get("/api", (req, res) => {
   res.json({
     status: "ok",
     message: "🎬 Streaming Platform API çalışıyor",
-    version: "1.1.0",
+    version: "2.0.0",
     endpoints: [
       "GET  /api/series              — tüm içerikler (sayfalama)",
       "GET  /api/series/:id          — seri + sezonlar + bölümler",
+      "GET  /api/series/search/:q    — arama (isim, açıklama, kategori)",
+      "GET  /api/series/category/:c  — kategoriye göre filtreleme",
       "POST /api/series              — seri ekle",
       "PUT  /api/series/:id          — seri güncelle",
       "DELETE /api/series/:id        — seri + sezon + bölüm sil",
@@ -379,6 +439,12 @@ app.get("/api", (req, res) => {
       "GET  /api/episodes/:seasonId  — bölümler",
       "GET  /api/episode/:id         — tek bölüm",
       "POST /api/episodes            — bölüm ekle",
+      "POST /api/progress            — izleme kaydı",
+      "GET  /api/progress/me/:epId   — kullanıcı ilerleme",
+      "GET  /api/progress/continue/me— devam et listesi",
+      "POST /api/auth/register       — kayıt",
+      "POST /api/auth/login          — giriş",
+      "GET  /api/auth/me             — kullanıcı bilgisi",
       "GET  /api/categories          — kategoriler"
     ]
   });

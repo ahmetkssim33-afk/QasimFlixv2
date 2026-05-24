@@ -28,6 +28,7 @@ body::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:3px}
 .nav-link{color:var(--muted);font-size:.85rem;font-weight:500;padding:8px 14px;text-decoration:none;transition:color .2s;cursor:pointer;border:none;background:none;font-family:var(--font)}
 .nav-link:hover,.nav-link.active{color:var(--text)}
 .nav-right{display:flex;align-items:center;gap:14px}
+.mobile-menu-btn{display:none;background:none;border:none;color:#fff;font-size:1.5rem;cursor:pointer}
 .search-box{display:flex;align-items:center;gap:8px;background:rgba(0,0,0,0.6);border:1px solid var(--border);border-radius:4px;padding:7px 12px;transition:border-color .2s}
 .search-box:focus-within{border-color:rgba(255,255,255,0.3)}
 .search-box input{background:transparent;border:none;color:var(--text);font-family:var(--font);font-size:.82rem;width:160px;outline:none}
@@ -165,7 +166,9 @@ body::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:3px}
 
 @media(max-width:768px){  /* NAVBAR */
   .navbar{padding:0 3%;height:56px}
-  .nav-links{display:none}
+  .nav-links{display:none;position:absolute;top:56px;left:0;width:100%;background:var(--bg2);flex-direction:column;padding:10px 0;border-bottom:1px solid var(--border)}
+  .nav-links.open{display:flex}
+  .mobile-menu-btn{display:block}
   .logo{font-size:1.5rem}
   .search-box input{width:90px}
   .search-box{padding:5px 8px}
@@ -231,6 +234,7 @@ body::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:3px}
 
 <nav class="navbar" id="navbar">
   <div class="nav-left">
+    <button class="mobile-menu-btn" onclick="document.querySelector('.nav-links').classList.toggle('open')">☰</button>
     <a href="#" class="logo" onclick="showAll();return false;">Qasimflix</a>
     <ul class="nav-links">
       <li><button class="nav-link active" onclick="showAll(this)">Ana Sayfa</button></li>
@@ -358,6 +362,7 @@ body::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:3px}
           <option value="">Kapalı</option>
         </select>
       </div>
+      <div id="player-download-btn-container"></div>
     </div>
   </div>
 </div>
@@ -389,6 +394,17 @@ body::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:3px}
   window.closeLoginHistory = () => {
     document.getElementById('login-modal').classList.remove('open');
   };
+
+  // Service Worker Registration
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').then(reg => {
+        console.log('ServiceWorker registered:', reg.scope);
+      }).catch(err => {
+        console.log('ServiceWorker registration failed:', err);
+      });
+    });
+  }
 </script>
 <script src="app.js"></script>
 </body>

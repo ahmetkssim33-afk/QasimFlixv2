@@ -352,17 +352,43 @@ async function doSearch(query) {
     }
 
     try {
-        const res = await fetch(API + '/series/search/' + encodeURIComponent(query));
-        const results = await res.json();
+        const queryLower = query.toLowerCase();
+        
+        // Local filtering
+        let localResults = allData.filter(item => {
+            const matchTitle = (item.title || '').toLowerCase().includes(queryLower);
+            const matchDesc = (item.description || '').toLowerCase().includes(queryLower);
+            const matchCat = (item.categories || []).some(c => (c || '').toLowerCase().includes(queryLower));
+            return matchTitle || matchDesc || matchCat;
+        });
 
         const grid = document.getElementById('search-grid');
         grid.innerHTML = '';
-        results.forEach(item => { grid.innerHTML += createCard(item); });
-
-        document.getElementById('search-count').textContent =
-            results.length + ' sonuç: "' + query + '"';
+        localResults.forEach(item => { grid.innerHTML += createCard(item); });
+        
+        document.getElementById('search-count').textContent = localResults.length + ' sonuç (Yerel): "' + query + '"';
         resultsEl.style.display = '';
         mainEl.style.display = 'none';
+
+        // API filtering for broader search
+        const res = await fetch(API + '/series/search/' + encodeURIComponent(query));
+        if (res.ok) {
+            const apiResults = await res.json();
+            // Merge results to avoid duplicates
+            const mergedResults = [...localResults];
+            const localIds = new Set(localResults.map(i => i._id));
+            
+            apiResults.forEach(item => {
+                if (!localIds.has(item._id)) {
+                    mergedResults.push(item);
+                    localIds.add(item._id);
+                }
+            });
+            
+            grid.innerHTML = '';
+            mergedResults.forEach(item => { grid.innerHTML += createCard(item); });
+            document.getElementById('search-count').textContent = mergedResults.length + ' sonuç: "' + query + '"';
+        }
     } catch (err) {
         console.error('Search error:', err);
     }
@@ -460,7 +486,8 @@ async function openDetail(seriesId, autoPlay = false) {
             const watchLabel = series.type === 'documentary' ? '▶ İzle' : '▶ İzle';
             actions.innerHTML = `
                 <button class="btn-play" onclick="playMovieDirect()">${watchLabel}</button>
-                <button class="btn-info" onclick="toggleSave('film','${series._id}')">★ Kaydet</button>`;
+                <button class="btn-info" onclick="toggleSave('film','${series._id}')">★ Kaydet</button>
+                <button class="btn-info" onclick="downloadItem('film','${series._id}', null, '${esc(series.title)}')">⬇ İndir</button>`;
         } else {
             actions.innerHTML = `
                 <button class="btn-play" onclick="playFirstEpisode()">▶ İzle</button>
@@ -695,6 +722,12 @@ async function playEpisode(episodeId, isMovie = false) {
         }
         document.getElementById('player-ep-info').textContent = infoText;
 
+        // İndirme butonunu güncelle
+        const downloadBtnContainer = document.getElementById('player-download-btn-container');
+        if (downloadBtnContainer) {
+            downloadBtnContainer.innerHTML = `<button class="btn-info sm" style="background:var(--accent);color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:0.8rem;" onclick="downloadItem('episode', '${episode._id}', '${src}', '${infoText}')">⬇ İndir</button>`;
+        }
+
         closeDetailModal();
         document.getElementById('player-modal').classList.add('open');
     } catch (err) {
@@ -750,10 +783,16 @@ function changeSubtitle() {
 // ═══════════════════════════════════════════
 // PROGRESS
 // ═══════════════════════════════════════════
+let lastProgressSaveTime = 0;
 async function saveProgress(episodeId) {
     const video = document.getElementById('video-player');
     const progress = Math.floor(video.currentTime);
     if (!progress) return;
+    
+    const now = Date.now();
+    if (now - lastProgressSaveTime < 10000) return; // Throttle: 10 seconds
+    lastProgressSaveTime = now;
+    
     try {
         const headers = { 'Content-Type': 'application/json' };
         if (TOKEN) headers['Authorization'] = 'Bearer ' + TOKEN;
@@ -785,12 +824,32 @@ async function loadProgress(episodeId) {
 }
 
 // ═══════════════════════════════════════════
-// UTILS
+// DOWNLOAD MANAGER
 // ═══════════════════════════════════════════
-function esc(s) {
-    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-function pad(n) {
-    return String(n || 0).padStart(2, '0');
+async function downloadItem(type, itemId, videoUrl, title) {
+    if (!videoUrl) {
+        if (type === 'film' && currentSeries && currentSeries.seasons && currentSeries.seasons[0] && currentSeries.seasons[0].episodes && currentSeries.seasons[0].episodes[0]) {
+            videoUrl = currentSeries.seasons[0].episodes[0].videoUrl;
+        }
+    }
+    
+    if (!videoUrl || videoUrl.includes('iframe') || videoUrl.includes('youtube') || videoUrl.includes('drive.google')) {
+        alert('Bu video formatı doğrudan indirmeyi desteklemiyor. (Sadece MP4 desteklenir)');
+        return;
+    }
+    
+    try {
+        const a = document.createElement('a');
+        a.href = videoUrl;
+        a.download = title + '.mp4';
+        a.target = '_blank';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        
+        alert(title + ' indirmesi başlatılıyor. Tarayıcınızın indirmeler bölümünü kontrol edin.');
+    } catch (err) {
+        console.error('Download error:', err);
+        alert('İndirme başlatılamadı.');
+    }
 }

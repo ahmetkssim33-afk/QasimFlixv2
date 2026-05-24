@@ -412,6 +412,200 @@ main{flex:1;overflow-y:auto;display:flex;flex-direction:column}
 
 /* ── LOADING ── */
 .skeleton{
+  content:'';flex:1;height:1px;background:var(--border);
+}
+.form-row{
+  display:grid;grid-template-columns:1fr 1fr;gap:16px;
+}
+.form-row.three{grid-template-columns:1fr 1fr 1fr}
+.form-group{margin-bottom:16px}
+.form-group label{
+  display:block;font-size:.78rem;font-weight:600;letter-spacing:.03em;
+  color:var(--muted);margin-bottom:6px;text-transform:uppercase;
+}
+.form-group .required{color:var(--accent)}
+.form-group input,
+.form-group select,
+.form-group textarea{
+  width:100%;padding:10px 12px;
+  background:var(--bg3);border:1px solid var(--border2);
+  color:var(--text);border-radius:var(--radius);
+  font-family:var(--font-head);font-size:.88rem;
+  transition:border-color .2s,box-shadow .2s;
+  -webkit-appearance:none;
+}
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus{
+  outline:none;border-color:var(--accent);
+  box-shadow:0 0 0 3px var(--accent-glow);
+}
+.form-group textarea{resize:vertical;min-height:80px}
+.form-group select option{background:var(--bg3)}
+.form-group .hint{
+  font-size:.72rem;color:var(--muted2);margin-top:4px;
+  font-family:var(--font-mono);
+}
+.form-group .preview-img{
+  width:80px;height:60px;object-fit:cover;
+  border-radius:var(--radius);border:1px solid var(--border2);
+  margin-top:8px;display:none;
+}
+
+/* ── BUTTONS ── */
+.btn{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:10px 18px;border:none;border-radius:var(--radius);
+  font-family:var(--font-head);font-size:.83rem;font-weight:700;
+  letter-spacing:.03em;cursor:pointer;
+  transition:all .15s;white-space:nowrap;
+}
+.btn-red{background:var(--accent);color:#fff}
+.btn-red:hover{background:var(--accent2)}
+.btn-red:active{transform:scale(.97)}
+.btn-ghost{
+  background:transparent;color:var(--muted);
+  border:1px solid var(--border2);
+}
+.btn-ghost:hover{color:var(--text);border-color:var(--border2);background:var(--bg3)}
+.btn-danger{background:var(--danger-bg);color:var(--danger);border:1px solid rgba(239,68,68,.2)}
+.btn-danger:hover{background:rgba(239,68,68,.2)}
+.btn-success{background:var(--success-bg);color:var(--success);border:1px solid rgba(34,197,94,.2)}
+.btn-info{background:var(--info-bg);color:var(--info);border:1px solid rgba(59,130,246,.2)}
+.btn sm{padding:7px 12px;font-size:.76rem}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important}
+.spinner{
+  display:inline-block;width:14px;height:14px;
+  border:2px solid rgba(255,255,255,.2);border-top-color:#fff;
+  border-radius:50%;animation:spin .7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── LIST ITEMS ── */
+.list-container{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius2);overflow:hidden}
+.list-item{
+  display:grid;align-items:center;
+  padding:14px 18px;
+  border-bottom:1px solid var(--border);
+  gap:14px;transition:background .15s;
+}
+.list-item:last-child{border-bottom:none}
+.list-item:hover{background:var(--bg3)}
+.list-item.series-item{grid-template-columns:48px 1fr auto}
+.list-item.season-item{grid-template-columns:1fr auto}
+.list-item.episode-item{grid-template-columns:1fr auto}
+.list-thumb{
+  width:48px;height:68px;
+  object-fit:cover;border-radius:4px;
+  background:var(--bg3);flex-shrink:0;
+}
+.list-thumb-placeholder{
+  width:48px;height:68px;border-radius:4px;
+  background:var(--bg4);display:flex;align-items:center;
+  justify-content:center;color:var(--muted2);font-size:1.2rem;
+  flex-shrink:0;
+}
+.item-title{font-size:.9rem;font-weight:700;letter-spacing:-.01em;margin-bottom:4px}
+.item-meta{
+  font-size:.75rem;color:var(--muted);font-family:var(--font-mono);
+  display:flex;align-items:center;flex-wrap:wrap;gap:10px;
+}
+.badge{
+  display:inline-flex;align-items:center;
+  padding:2px 8px;border-radius:20px;
+  font-size:.68rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+  font-family:var(--font-mono);
+}
+.badge-red{background:rgba(229,9,26,.15);color:var(--accent)}
+.badge-blue{background:rgba(10,132,255,.15);color:#0a84ff}
+.badge-green{background:rgba(46,213,115,.15);color:#2ed573}
+.badge-gray{background:rgba(122,127,152,.12);color:var(--muted)}
+.item-actions{display:flex;gap:8px;align-items:center;flex-shrink:0}
+.empty-state{
+  text-align:center;padding:48px 24px;color:var(--muted);
+}
+.empty-state .empty-icon{font-size:2.5rem;margin-bottom:12px;opacity:.3}
+.empty-state p{font-size:.85rem}
+
+/* ── TOAST ── */
+#toast-container{
+  position:fixed;bottom:24px;right:24px;
+  z-index:9999;display:flex;flex-direction:column;gap:10px;
+}
+.toast{
+  display:flex;align-items:center;gap:12px;
+  padding:13px 18px;border-radius:var(--radius2);
+  font-size:.83rem;font-weight:600;
+  border:1px solid;min-width:260px;
+  animation:slideIn .25s ease;
+  box-shadow:0 8px 24px rgba(0,0,0,.4);
+}
+@keyframes slideIn{
+  from{transform:translateX(40px);opacity:0}
+  to{transform:none;opacity:1}
+}
+.toast.success{
+  background:rgba(22,29,22,.95);
+  border-color:rgba(34,197,94,.3);
+  color:var(--success);
+}
+.toast.error{
+  background:rgba(29,16,16,.95);
+  border-color:rgba(239,68,68,.3);
+  color:var(--danger);
+}
+.toast.info{
+  background:rgba(16,20,29,.95);
+  border-color:rgba(59,130,246,.3);
+  color:var(--info);
+}
+.toast-icon{font-size:1rem;flex-shrink:0}
+.toast-close{
+  margin-left:auto;background:none;border:none;
+  color:inherit;opacity:.5;cursor:pointer;font-size:1rem;
+  line-height:1;padding:0 2px;
+}
+.toast-close:hover{opacity:1}
+
+/* ── MODAL ── */
+#modal-overlay{
+  position:fixed;inset:0;z-index:500;
+  background:rgba(0,0,0,.7);backdrop-filter:blur(2px);
+  display:none;align-items:center;justify-content:center;
+}
+#modal-overlay.open{display:flex}
+.modal{
+  background:var(--bg2);border:1px solid var(--border2);
+  border-radius:var(--radius2);padding:28px;
+  width:380px;max-width:90vw;
+}
+.modal h3{font-size:1rem;font-weight:700;margin-bottom:10px}
+.modal p{font-size:.85rem;color:var(--muted);line-height:1.6;margin-bottom:22px}
+.modal .modal-actions{display:flex;gap:10px;justify-content:flex-end}
+
+/* ── TABS (within pages) ── */
+.tab-bar{display:flex;gap:4px;margin-bottom:20px;background:var(--bg3);padding:4px;border-radius:var(--radius2);width:fit-content}
+.tab-pill{
+  padding:7px 16px;border-radius:var(--radius);cursor:pointer;
+  font-size:.8rem;font-weight:600;letter-spacing:.02em;
+  color:var(--muted);transition:all .15s;border:none;background:transparent;
+}
+.tab-pill.active{background:var(--surface);color:var(--text)}
+
+/* ── SEASON GROUP ── */
+.season-group{margin-bottom:16px}
+.season-group-header{
+  background:var(--bg3);padding:10px 18px;
+  font-size:.78rem;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--muted);
+  display:flex;align-items:center;gap:10px;
+}
+.season-group-header .season-num{
+  color:var(--accent);font-family:var(--font-mono);font-weight:500;
+}
+
+/* ── LOADING ── */
+.skeleton{
   background:linear-gradient(90deg,var(--bg3) 25%,var(--bg4) 50%,var(--bg3) 75%);
   background-size:200% 100%;animation:shimmer 1.4s infinite;
   border-radius:var(--radius);
@@ -421,9 +615,17 @@ main{flex:1;overflow-y:auto;display:flex;flex-direction:column}
 
 /* ── RESPONSIVE ── */
 @media(max-width:768px){
-  :root{--sidebar-w:0px}
-  aside.sidebar{display:none}
-  .form-row,.form-row.three{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;left:-240px;top:0;height:100vh;z-index:900;transition:left 0.3s}
+  aside.sidebar.open{left:0}
+  main{margin-left:0;padding:80px 15px 30px}
+  .topbar{left:0;width:100%}
+  .form-row{grid-template-columns:1fr}
+  .toast-container{width:100%;left:0;bottom:0;padding:10px}
+  .toast{width:100%;border-radius:0}
+  .mobile-menu-btn{display:block;background:none;border:none;color:var(--text);font-size:1.5rem;cursor:pointer;margin-right:15px}
+}
+@media(min-width:769px){
+  .mobile-menu-btn{display:none}
 }
 
 /* ── SCROLLBAR ── */
@@ -533,17 +735,20 @@ select{
 
   <!-- MAIN -->
   <main>
-    <div class="topbar">
-      <div style="flex:1">
-        <h1 id="page-title">Dashboard</h1>
-        <div class="breadcrumb" id="page-breadcrumb">CineAdmin / Dashboard</div>
+    <header class="topbar">
+      <div style="display:flex;align-items:center;">
+        <button class="mobile-menu-btn" onclick="document.querySelector('.sidebar').classList.toggle('open')">☰</button>
+        <div>
+          <h1 id="page-title">Dashboard</h1>
+          <div class="breadcrumb" id="page-breadcrumb">CineAdmin / Dashboard</div>
+        </div>
       </div>
       <div class="search-wrap">
         <span class="search-icon">⌕</span>
         <input type="text" placeholder="Hızlı ara..." id="global-search" oninput="onGlobalSearch(this.value)">
       </div>
       <button class="btn btn-ghost sm" onclick="refreshAll()" title="Yenile" style="padding:8px 12px">↺</button>
-    </div>
+    </header>
 
     <div class="content">
 
@@ -636,64 +841,6 @@ select{
           </div>
           <button class="btn btn-red" id="btn-add-series" onclick="addSeries()">
             <span id="btn-add-series-label">+ İçerik Ekle</span>
-          </button>
-        </div>
-
-        <div class="section-header">
-          <div>
-            <h2>Mevcut Seriler</h2>
-            <div class="sub" id="series-count-label">yükleniyor...</div>
-          </div>
-          <div style="display:flex;gap:8px">
-            <select id="filter-type" onchange="renderSeriesList()" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:7px 28px 7px 10px;border-radius:var(--radius);font-family:var(--font-head);font-size:.78rem">
-              <option value="">Tümü</option>
-              <option value="series">Sadece Diziler</option>
-              <option value="documentary">Sadece Belgeseller</option>
-              <option value="movie">Sadece Filmler</option>
-            </select>
-          </div>
-        </div>
-        <div id="series-list-wrap">
-          <div class="skeleton skeleton-item"></div>
-          <div class="skeleton skeleton-item" style="opacity:.7"></div>
-        </div>
-      </div>
-
-      <!-- DOCUMENTARIES VIEW -->
-      <div class="view" id="view-documentaries">
-        <div class="section-header">
-          <div>
-            <h2>Belgeseller</h2>
-            <div class="sub" id="documentaries-count-label">yükleniyor...</div>
-          </div>
-          <div style="display:flex;gap:8px"></div>
-        </div>
-        <div id="documentaries-list-wrap">
-          <div class="empty-state">
-            <div class="empty-icon">🎞</div>
-            <p>Belgesel bulunamadı</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- SEASONS VIEW -->
-      <div class="view" id="view-seasons">
-        <div class="form-card">
-          <h3>Yeni Sezon Ekle</h3>
-          <div class="form-group">
-            <label>Seri Seç <span class="required">*</span></label>
-            <select id="sea-series" onchange="onSeasonSeriesChange()">
-              <option value="">— Seri Seç —</option>
-            </select>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Sezon No <span class="required">*</span></label>
-              <input type="number" id="sea-num" min="1" placeholder="1">
-            </div>
-            <div class="form-group">
-              <label>Sezon Başlığı</label>
-              <input type="text" id="sea-title" placeholder="örn. İlk Sezon">
             </div>
           </div>
           <div class="form-group">

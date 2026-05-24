@@ -158,9 +158,10 @@ app.get('/api/series/search/:query', async (req, res) => {
     const results = await Series.find({
       $or: [
         { title: { $regex: query, $options: 'i' } },
-        { description: { $regex: query, $options: 'i' } }
+        { description: { $regex: query, $options: 'i' } },
+        { categories: { $regex: query, $options: 'i' } }
       ]
-    }).limit(20);
+    }).limit(30);
     res.json(results);
   } catch (err) {
     res.status(500).json({ error: err.message });
