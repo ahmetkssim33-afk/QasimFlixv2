@@ -1035,6 +1035,20 @@ select{
         </div>
       </div>
 
+      <!-- DOCUMENTARIES VIEW -->
+      <div class="view" id="view-documentaries">
+        <div class="section-header">
+          <h2>Belgeseller</h2>
+          <div class="sub">Tüm belgesel içeriği</div>
+        </div>
+        <div id="documentaries-list-wrap">
+          <div class="empty-state">
+            <div class="empty-icon">🎞</div>
+            <p>Belgesel yüklenemedi</p>
+          </div>
+        </div>
+      </div>
+
     </div><!-- /content -->
   </main>
 </div>
@@ -1386,7 +1400,12 @@ function navigate(el, view) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   el.classList.add('active');
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.getElementById(`view-${view}`).classList.add('active');
+  const viewEl = document.getElementById(`view-${view}`);
+  if (!viewEl) {
+    console.error('View not found:', `view-${view}`);
+    return;
+  }
+  viewEl.classList.add('active');
   // Use i18n for page titles/breadcrumbs when available
   const title = adminT('nav.' + view) || (pageTitles[view] ? pageTitles[view][0] : view);
   const crumb = adminT('nav.' + view) || (pageTitles[view] ? pageTitles[view][1] : view);
