@@ -132,8 +132,8 @@ async function loadContinueWatching() {
         if (!row) return;
         const headers = {};
         let url;
-        if (TOKEN) { headers['Authorization'] = 'Bearer ' + TOKEN; url = API + '/progress/continue/me'; }
-        else { url = API + '/progress/continue/' + USER_ID; }
+        if (TOKEN) { headers['Authorization'] = 'Bearer ' + TOKEN; url = API + '/progress/continue/me?_=' + Date.now(); }
+        else { url = API + '/progress/continue/' + USER_ID + '?_=' + Date.now(); }
         const res = await fetch(url, { headers });
         if (!res.ok) { row.innerHTML = ''; document.getElementById('continue-section').style.display = 'none'; return; }
         const data = await res.json();
@@ -202,12 +202,22 @@ function pad(n) {
     try { await loadAll(); } catch (e) { console.warn('loadAll error', e); }
     try { await loadContinueWatching(); } catch (e) { /* ignore */ }
 })();
+
+// Sayfayı yenile (admin panelinde eklenen yeni içerik için)
+async function refreshPage() {
+    try {
+        await loadAll();
+        await loadContinueWatching();
+    } catch (e) {
+        console.error('Refresh error:', e);
+    }
+}
 // ═══════════════════════════════════════════
 // DATA LOADING
 // ═══════════════════════════════════════════
 async function loadAll() {
     try {
-        const res = await fetch(API + '/series?page=1&limit=100');
+        const res = await fetch(API + '/series?page=1&limit=100&_=' + Date.now());
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
         allData = data.series || [];
