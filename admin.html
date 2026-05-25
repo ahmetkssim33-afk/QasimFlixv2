@@ -1397,6 +1397,10 @@ const pageTitles = {
 };
 
 function navigate(el, view) {
+  if (!el || !view) {
+    console.error('navigate() - invalid parameters:', { el, view });
+    return;
+  }
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   el.classList.add('active');
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
