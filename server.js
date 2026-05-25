@@ -44,7 +44,7 @@ const upload = multer({
 app.use('/uploads', express.static(uploadsDir));
 // Use shared DB connector and centralized models
 const { connectDB } = require('./lib/db');
-const { Series, Season, Episode, WatchProgress, Category, Film, User } = require('./lib/models');
+const { Series, Season, Episode, WatchProgress, Category, Film, User, Rating, Analytics, EmailLog } = require('./lib/models');
 
 // Helper: try to extract user id from Authorization header (Bearer token)
 function getUserIdFromReq(req) {
@@ -668,6 +668,282 @@ app.delete('/api/user/saved', async (req, res) => {
     else if (type === 'film') user.savedFilms = user.savedFilms.filter(id => String(id) !== String(itemId));
     await user.save();
     res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// FAVORITES & WATCHLIST
+// ═══════════════════════════════════════════════════════════
+
+// Add to favorites
+app.post('/api/favorites/add', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const { seriesId } = req.body;
+    const user = await User.findById(userId);
+    if (!user.favorites.includes(seriesId)) user.favorites.push(seriesId);
+    await user.save();
+    res.json({ ok: true, message: 'Favorilere eklendi' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Remove from favorites
+app.post('/api/favorites/remove', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const { seriesId } = req.body;
+    const user = await User.findById(userId);
+    user.favorites = user.favorites.filter(id => String(id) !== String(seriesId));
+    await user.save();
+    res.json({ ok: true, message: 'Favorilerden çıkartıldı' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get favorites
+app.get('/api/favorites', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const user = await User.findById(userId).populate('favorites');
+    res.json(user.favorites || []);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Add to watchlist
+app.post('/api/watchlist/add', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const { seriesId } = req.body;
+    const user = await User.findById(userId);
+    if (!user.watchlist.includes(seriesId)) user.watchlist.push(seriesId);
+    await user.save();
+    res.json({ ok: true, message: 'İzlenecekler listesine eklendi' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get watchlist
+app.get('/api/watchlist', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const user = await User.findById(userId).populate('watchlist');
+    res.json(user.watchlist || []);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// RATING & REVIEWS
+// ═══════════════════════════════════════════════════════════
+
+// Add rating and review
+app.post('/api/ratings/add', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const { seriesId, rating, review } = req.body;
+    if (!rating || rating < 1 || rating > 5) return res.status(400).json({ error: 'Rating 1-5 arası olmalı' });
+    
+    let ratingDoc = await Rating.findOne({ userId, seriesId });
+    if (ratingDoc) {
+      ratingDoc.rating = rating;
+      ratingDoc.review = review;
+    } else {
+      ratingDoc = new Rating({ userId, seriesId, rating, review });
+    }
+    await ratingDoc.save();
+    
+    // Update series average rating
+    const ratings = await Rating.find({ seriesId });
+    const avgRating = ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length;
+    await Series.findByIdAndUpdate(seriesId, { rating: avgRating.toFixed(1) });
+    
+    res.json({ ok: true, message: 'Puanlandırıldı' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get ratings for a series
+app.get('/api/ratings/:seriesId', async (req, res) => {
+  try {
+    const ratings = await Rating.find({ seriesId: req.params.seriesId })
+      .populate('userId', 'name profilePicture')
+      .sort({ createdAt: -1 });
+    res.json(ratings);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// ADVANCED SEARCH & FILTERING
+// ═══════════════════════════════════════════════════════════
+
+// Advanced search with filters
+app.get('/api/search/advanced', async (req, res) => {
+  try {
+    const { query, category, year, minRating, sortBy } = req.query;
+    let filter = {};
+    
+    if (query) filter.$or = [{ title: new RegExp(query, 'i') }, { description: new RegExp(query, 'i') }];
+    if (category) filter.categories = category;
+    if (year) filter.releaseYear = parseInt(year);
+    if (minRating) filter.rating = { $gte: parseFloat(minRating) };
+    
+    let query_obj = Series.find(filter);
+    
+    if (sortBy === 'rating') query_obj = query_obj.sort({ rating: -1 });
+    else if (sortBy === 'newest') query_obj = query_obj.sort({ createdAt: -1 });
+    else if (sortBy === 'popular') query_obj = query_obj.sort({ _id: -1 });
+    
+    const results = await query_obj.limit(50);
+    res.json(results);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// USER PROFILE & PREFERENCES
+// ═══════════════════════════════════════════════════════════
+
+// Update user preferences (darkMode, preferredQuality)
+app.put('/api/user/preferences', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const { darkMode, preferredQuality } = req.body;
+    const user = await User.findByIdAndUpdate(userId, { darkMode, preferredQuality }, { new: true }).select('-passwordHash');
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update profile (name, profilePicture)
+app.put('/api/user/profile', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const { name, profilePicture } = req.body;
+    const user = await User.findByIdAndUpdate(userId, { name, profilePicture }, { new: true }).select('-passwordHash');
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Create child profile (Parental Controls)
+app.post('/api/user/profiles', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const { name, ageRestriction, pinCode } = req.body;
+    const user = await User.findById(userId);
+    user.profiles.push({ name, ageRestriction, pinCode });
+    await user.save();
+    res.json(user.profiles);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// ANALYTICS (Admin only)
+// ═══════════════════════════════════════════════════════════
+
+// Get analytics dashboard data
+app.get('/api/admin/analytics', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    // Add admin check if needed
+    
+    const totalUsers = await User.countDocuments();
+    const totalWatches = await WatchProgress.countDocuments();
+    const totalSeries = await Series.countDocuments();
+    
+    const last30Days = await Analytics.find({
+      date: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
+    }).sort({ date: -1 });
+    
+    const topSeries = await Series.find().sort({ rating: -1 }).limit(10);
+    
+    res.json({
+      totalUsers,
+      totalWatches,
+      totalSeries,
+      analytics: last30Days,
+      topSeries
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Record watch event for analytics
+app.post('/api/admin/analytics/watch', async (req, res) => {
+  try {
+    const { seriesId } = req.body;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    let analytics = await Analytics.findOne({ date: today });
+    if (!analytics) analytics = new Analytics({ date: today });
+    analytics.totalWatches += 1;
+    await analytics.save();
+    
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// EMAIL NOTIFICATIONS
+// ═══════════════════════════════════════════════════════════
+
+// Send notification email
+app.post('/api/email/notify', async (req, res) => {
+  try {
+    const { userId, subject, message } = req.body;
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    
+    if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+      const transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: parseInt(process.env.SMTP_PORT || '587', 10),
+        secure: process.env.SMTP_SECURE === 'true',
+        auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+      });
+      
+      await transporter.sendMail({
+        from: process.env.EMAIL_FROM || process.env.SMTP_USER,
+        to: user.email,
+        subject: subject,
+        html: `<p>${message}</p>`
+      });
+      
+      const log = new EmailLog({ to: user.email, subject, status: 'sent' });
+      await log.save();
+    }
+    
+    res.json({ ok: true, message: 'Email sent' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

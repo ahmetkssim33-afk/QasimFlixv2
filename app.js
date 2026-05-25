@@ -586,11 +586,16 @@ async function openDetail(seriesId, autoPlay = false) {
             actions.innerHTML = `
                 <button class="btn-play" onclick="playMovieDirect()">${watchLabel}</button>
                 <button class="btn-info" onclick="toggleSave('film','${series._id}')">★ Kaydet</button>
+                <button class="btn-info" onclick="addToFavorites('${series._id}')">❤️ Favori</button>
+                <button class="btn-info" onclick="submitRating('${series._id}')">⭐ Puanla</button>
                 <button class="btn-info" onclick="downloadItem('film','${series._id}', null, '${esc(series.title)}')">⬇ İndir</button>`;
         } else {
             actions.innerHTML = `
                 <button class="btn-play" onclick="playFirstEpisode()">▶ İzle</button>
-                <button class="btn-info" onclick="toggleSave('series','${series._id}')">★ Kaydet</button>`;
+                <button class="btn-info" onclick="toggleSave('series','${series._id}')">★ Kaydet</button>
+                <button class="btn-info" onclick="addToFavorites('${series._id}')">❤️ Favori</button>
+                <button class="btn-info" onclick="addToWatchlist('${series._id}')">📋 İzlenecekler</button>
+                <button class="btn-info" onclick="submitRating('${series._id}')">⭐ Puanla</button>`;
         }
 
         // Seasons / Episodes
@@ -950,3 +955,223 @@ async function downloadItem(type, itemId, videoUrl, title) {
         alert('İndirme başlatılamadı.');
     }
 }
+
+// ═══════════════════════════════════════════
+// FAVORITES & WATCHLIST
+// ═══════════════════════════════════════════
+async function addToFavorites(seriesId) {
+    if (!TOKEN) { alert('Lütfen önce giriş yapın'); return; }
+    try {
+        const res = await fetch(API + '/favorites/add', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ seriesId })
+        });
+        const data = await res.json();
+        if (res.ok) alert(data.message || 'Favorilere eklendi');
+        else alert(data.error || 'Hata');
+    } catch (err) { console.error(err); alert('Hata'); }
+}
+
+async function removeFromFavorites(seriesId) {
+    if (!TOKEN) { alert('Lütfen önce giriş yapın'); return; }
+    try {
+        const res = await fetch(API + '/favorites/remove', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ seriesId })
+        });
+        const data = await res.json();
+        if (res.ok) alert(data.message || 'Favorilerden çıkartıldı');
+        else alert(data.error || 'Hata');
+    } catch (err) { console.error(err); alert('Hata'); }
+}
+
+async function addToWatchlist(seriesId) {
+    if (!TOKEN) { alert('Lütfen önce giriş yapın'); return; }
+    try {
+        const res = await fetch(API + '/watchlist/add', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ seriesId })
+        });
+        const data = await res.json();
+        if (res.ok) alert(data.message || 'İzlenecekler listesine eklendi');
+        else alert(data.error || 'Hata');
+    } catch (err) { console.error(err); alert('Hata'); }
+}
+
+async function loadFavorites() {
+    if (!TOKEN) { alert('Lütfen önce giriş yapın'); return; }
+    try {
+        const res = await fetch(API + '/favorites', {
+            headers: { 'Authorization': 'Bearer ' + TOKEN }
+        });
+        if (res.ok) {
+            const favorites = await res.json();
+            displaySeriesGrid(favorites, 'Favorilerim');
+        }
+    } catch (err) { console.error(err); }
+}
+
+async function loadWatchlist() {
+    if (!TOKEN) { alert('Lütfen önce giriş yapın'); return; }
+    try {
+        const res = await fetch(API + '/watchlist', {
+            headers: { 'Authorization': 'Bearer ' + TOKEN }
+        });
+        if (res.ok) {
+            const watchlist = await res.json();
+            displaySeriesGrid(watchlist, 'İzlenecekler');
+        }
+    } catch (err) { console.error(err); }
+}
+
+// ═══════════════════════════════════════════
+// RATING & REVIEWS
+// ═══════════════════════════════════════════
+async function submitRating(seriesId) {
+    if (!TOKEN) { alert('Lütfen önce giriş yapın'); return; }
+    const rating = prompt('Puanınız (1-5):');
+    if (!rating) return;
+    const review = prompt('Yorumunuz (isteğe bağlı):');
+    
+    try {
+        const res = await fetch(API + '/ratings/add', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ seriesId, rating: parseInt(rating), review })
+        });
+        const data = await res.json();
+        if (res.ok) alert(data.message || 'Puanlandırılıştır');
+        else alert(data.error || 'Hata');
+    } catch (err) { console.error(err); alert('Hata'); }
+}
+
+async function loadRatings(seriesId) {
+    try {
+        const res = await fetch(API + '/ratings/' + seriesId);
+        if (res.ok) {
+            const ratings = await res.json();
+            let html = '<div style="margin-top:20px; border-top:1px solid var(--border); padding-top:20px;">';
+            html += '<h3>Yorumlar</h3>';
+            ratings.forEach(r => {
+                html += `<div style="margin-bottom:15px; padding:10px; background:var(--surface); border-radius:6px;">`;
+                html += `<strong>${r.userId?.name || 'Anonim'}</strong> - ⭐ ${r.rating}/5<br>`;
+                html += `<small style="color:var(--muted);">${new Date(r.createdAt).toLocaleDateString('tr-TR')}</small><br>`;
+                if (r.review) html += `<p>${r.review}</p>`;
+                html += `</div>`;
+            });
+            html += '</div>';
+            const modalBody = document.querySelector('.modal-body');
+            if (modalBody) modalBody.innerHTML += html;
+        }
+    } catch (err) { console.error(err); }
+}
+
+// ═══════════════════════════════════════════
+// ADVANCED SEARCH
+// ═══════════════════════════════════════════
+async function advancedSearch(query, category, year, minRating, sortBy) {
+    try {
+        const params = new URLSearchParams();
+        if (query) params.append('query', query);
+        if (category) params.append('category', category);
+        if (year) params.append('year', year);
+        if (minRating) params.append('minRating', minRating);
+        if (sortBy) params.append('sortBy', sortBy);
+        
+        const res = await fetch(API + '/search/advanced?' + params.toString());
+        if (res.ok) {
+            const results = await res.json();
+            displaySeriesGrid(results, 'Arama Sonuçları');
+        }
+    } catch (err) { console.error(err); }
+}
+
+// ═══════════════════════════════════════════
+// USER PREFERENCES & PROFILE
+// ═══════════════════════════════════════════
+async function toggleDarkMode() {
+    if (!TOKEN) { alert('Lütfen önce giriş yapın'); return; }
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const newMode = !isDark;
+    
+    try {
+        const res = await fetch(API + '/user/preferences', {
+            method: 'PUT',
+            headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ darkMode: newMode })
+        });
+        if (res.ok) {
+            document.documentElement.setAttribute('data-theme', newMode ? 'dark' : 'light');
+            localStorage.setItem('darkMode', newMode);
+        }
+    } catch (err) { console.error(err); }
+}
+
+async function setVideoQuality(quality) {
+    if (!TOKEN) { alert('Lütfen önce giriş yapın'); return; }
+    try {
+        const res = await fetch(API + '/user/preferences', {
+            method: 'PUT',
+            headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ preferredQuality: quality })
+        });
+        if (res.ok) {
+            alert('Video kalitesi ' + quality + ' olarak ayarlandı');
+        }
+    } catch (err) { console.error(err); }
+}
+
+async function updateProfile(name, profilePicture) {
+    if (!TOKEN) { alert('Lütfen önce giriş yapın'); return; }
+    try {
+        const res = await fetch(API + '/user/profile', {
+            method: 'PUT',
+            headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, profilePicture })
+        });
+        if (res.ok) {
+            await initAuth();
+            alert('Profil güncellendi');
+        }
+    } catch (err) { console.error(err); alert('Hata'); }
+}
+
+// ═══════════════════════════════════════════
+// PARENTAL CONTROLS
+// ═══════════════════════════════════════════
+async function createChildProfile(name, ageRestriction, pinCode) {
+    if (!TOKEN) { alert('Lütfen önce giriş yapın'); return; }
+    try {
+        const res = await fetch(API + '/user/profiles', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, ageRestriction, pinCode })
+        });
+        if (res.ok) {
+            alert('Çocuk profili oluşturuldu');
+        }
+    } catch (err) { console.error(err); alert('Hata'); }
+}
+
+// ═══════════════════════════════════════════
+// THEME MANAGEMENT
+// ═══════════════════════════════════════════
+function applyTheme() {
+    const isDark = localStorage.getItem('darkMode') !== 'false';
+    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    if (!isDark) {
+        document.documentElement.style.setProperty('--bg', '#ffffff');
+        document.documentElement.style.setProperty('--bg2', '#f5f5f5');
+        document.documentElement.style.setProperty('--text', '#000000');
+        document.documentElement.style.setProperty('--muted', '#666666');
+    }
+}
+
+// Initialize theme on page load
+window.addEventListener('DOMContentLoaded', () => {
+    applyTheme();
+    initAuth();
+});

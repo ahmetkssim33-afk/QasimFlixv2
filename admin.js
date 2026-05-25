@@ -408,8 +408,109 @@ async function addSubtitle(e) {
     }
 }
 
+// ═══════════════════════════════════════════════════════
+// ANALYTICS DASHBOARD
+// ═══════════════════════════════════════════════════════
+
+async function loadAnalyticsDashboard() {
+    try {
+        const res = await fetch(API + '/admin/analytics');
+        if (!res.ok) {
+            console.error('Analytics error:', res.status);
+            return;
+        }
+        
+        const data = await res.json();
+        const analyticsContainer = document.getElementById('analytics-container') || createAnalyticsContainer();
+        
+        let html = `
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:20px; margin-bottom:30px;">
+                <div style="background:var(--accent); color:white; padding:20px; border-radius:8px; text-align:center;">
+                    <div style="font-size:2.5rem; font-weight:bold;">${data.totalUsers}</div>
+                    <div style="font-size:0.9rem; margin-top:5px;">Toplam Kullanıcı</div>
+                </div>
+                <div style="background:#6c63ff; color:white; padding:20px; border-radius:8px; text-align:center;">
+                    <div style="font-size:2.5rem; font-weight:bold;">${data.totalWatches}</div>
+                    <div style="font-size:0.9rem; margin-top:5px;">Toplam İzlenme</div>
+                </div>
+                <div style="background:#00d4aa; color:white; padding:20px; border-radius:8px; text-align:center;">
+                    <div style="font-size:2.5rem; font-weight:bold;">${data.totalSeries}</div>
+                    <div style="font-size:0.9rem; margin-top:5px;">Toplam İçerik</div>
+                </div>
+            </div>
+            
+            <h3 style="margin-top:30px; margin-bottom:15px;">En Popüler İçerikler</h3>
+            <div style="background:var(--surface); border-radius:8px; overflow:hidden;">
+        `;
+        
+        if (data.topSeries && data.topSeries.length > 0) {
+            data.topSeries.forEach((series, idx) => {
+                html += `
+                    <div style="padding:15px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between;">
+                        <div><strong>${idx + 1}. ${series.title}</strong></div>
+                        <div style="color:var(--muted);">⭐ ${series.rating}/10</div>
+                    </div>
+                `;
+            });
+        }
+        
+        html += '</div>';
+        analyticsContainer.innerHTML = html;
+    } catch (err) {
+        console.error('Analytics error:', err);
+    }
+}
+
+function createAnalyticsContainer() {
+    const container = document.createElement('div');
+    container.id = 'analytics-container';
+    container.style.padding = '20px';
+    const mainContent = document.querySelector('main') || document.body;
+    mainContent.insertBefore(container, mainContent.firstChild);
+    return container;
+}
+
+// ═══════════════════════════════════════════════════════
+// EMAIL NOTIFICATIONS
+// ═══════════════════════════════════════════════════════
+
+async function sendNotificationEmail(userId, subject, message) {
+    try {
+        const res = await fetch(API + '/email/notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, subject, message })
+        });
+        
+        if (res.ok) {
+            alert('Email gönderildi');
+        } else {
+            alert('Email gönderilemedi');
+        }
+    } catch (err) {
+        console.error('Email error:', err);
+        alert('Hata: ' + err.message);
+    }
+}
+
+// ═══════════════════════════════════════════════════════
+// BULK EMAIL NOTIFICATION (Tüm kullanıcılara)
+// ═══════════════════════════════════════════════════════
+
+async function sendBulkNotification() {
+    const subject = prompt('Email konusu:');
+    if (!subject) return;
+    const message = prompt('Mesaj:');
+    if (!message) return;
+    
+    // Bu, tüm kullanıcılara göndermek için bir batch job başlatır
+    alert('Toplu email gönderme admin panelinde ayarlanmalıdır. Şu anda manuel gönderme desteklenmektedir.');
+}
+
 // Load data on page load
 window.addEventListener('load', () => {
     loadSeriesForSeasons();
     loadSeriesForEpisodes();
+    // Uncomment to load analytics on admin page load
+    // loadAnalyticsDashboard();
 });
