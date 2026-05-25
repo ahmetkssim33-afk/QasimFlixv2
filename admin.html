@@ -907,6 +907,10 @@ select{
             </div>
           </div>
           <div class="form-group">
+            <label><span data-i18n="form.season_title">Sezon Başlığı (opsiyonel)</span></label>
+            <input type="text" id="sea-title" data-i18n-placeholder="ph.season_title" placeholder="örn. Başlangıç">
+          </div>
+          <div class="form-group">
             <label><span data-i18n="form.description">Açıklama</span></label>
             <textarea id="sea-desc" data-i18n-placeholder="ph.season_desc" placeholder="Sezon hakkında..."></textarea>
           </div>
@@ -1624,7 +1628,7 @@ async function deleteSeries(id, title) {
 // ═══════════════════════════════════════════════════════════════
 // SEASONS
 // ═══════════════════════════════════════════════════════════════
-function onSeasonSeriesChange() {
+function onSeaSeriesChange() {
   const id = v('sea-series');
   if (id) loadSeasonsList(id);
   else document.getElementById('seasons-list-wrap').innerHTML =
