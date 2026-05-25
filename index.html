@@ -200,11 +200,11 @@ body::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:3px}
 
   /* HERO */
   .hero{height:65vh;min-height:380px}
-  .hero-content{padding:0 3% 4%;max-width:100%}
+  .hero-content{padding:0 3% 6%;max-width:100%}
   .hero-title{font-size:2rem}
-  .hero-desc{font-size:.82rem;-webkit-line-clamp:2}
-  .hero-actions{gap:8px}
-  .btn-play,.btn-info{font-size:.82rem;padding:8px 16px}
+  .hero-desc{font-size:.82rem;-webkit-line-clamp:2;margin-bottom:20px}
+  .hero-actions{gap:12px;display:flex;flex-wrap:wrap}
+  .btn-play,.btn-info{font-size:.85rem;padding:11px 20px;flex:1;min-width:140px;border-radius:6px}
 
   /* SECTIONS */
   .section{padding:0 3%}
@@ -221,8 +221,8 @@ body::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:3px}
   .modal-hero-img{height:180px}
   .modal-title{font-size:1.5rem}
   .modal-body{padding:0 14px 14px}
-  .modal-actions{gap:8px}
-  .btn-play,.btn-info{font-size:.78rem;padding:7px 14px}
+  .modal-actions{gap:12px;display:flex;flex-wrap:wrap}
+  .btn-play,.btn-info{font-size:.82rem;padding:10px 18px;flex:1;min-width:130px;border-radius:6px}
 
   /* SEARCH */
   #search-results{padding:0 3%}
@@ -244,11 +244,34 @@ body::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:3px}
   .main-content{margin-top:-60px}
 }
 
-@media(max-width:400px){
+@media(max-width:600px){
+  /* HERO BUTTONS */
+  .hero-actions{flex-direction:column;gap:14px}
+  .btn-play,.btn-info{flex:1 1 auto;width:100%;min-width:unset;padding:12px 20px;font-size:.88rem}
+
+  /* MODAL BUTTONS */
+  .modal-actions{flex-direction:column;gap:14px}
+}
+
+@media(max-width:480px){
   .card{flex:0 0 100px}
   .skeleton-card{flex:0 0 100px}
   .hero-title{font-size:1.7rem}
   .search-box input{width:70px}
+  
+  /* HERO */
+  .hero{height:55vh;min-height:340px}
+  .hero-content{padding:0 3% 4%}
+  .hero-desc{margin-bottom:16px}
+  
+  /* BUTTONS - FULL WIDTH & STACKED */
+  .hero-actions{flex-direction:column;gap:16px}
+  .btn-play,.btn-info{width:100%;padding:14px 18px;font-size:.9rem;font-weight:700}
+  
+  /* MODAL BUTTONS */
+  .modal-actions{flex-direction:column;gap:16px}
+  .modal-actions .btn-play,
+  .modal-actions .btn-info{width:100%;padding:12px 16px}
 }
 
 /* Language selector & RTL handling */

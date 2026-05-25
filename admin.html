@@ -633,7 +633,28 @@ main{flex:1;overflow-y:auto;display:flex;flex-direction:column}
   .toast-container{width:100%;left:0;bottom:0;padding:10px}
   .toast{width:100%;border-radius:0}
   .mobile-menu-btn{display:block;background:none;border:none;color:var(--text);font-size:1.5rem;cursor:pointer;margin-right:15px}
+  
+  /* Better button spacing on mobile */
+  .btn{padding:11px 18px;font-size:.82rem}
+  .modal-actions{display:flex;gap:12px;flex-direction:column}
+  .modal-actions .btn{width:100%;justify-content:center}
 }
+
+@media(max-width:600px){
+  /* Improved button layouts */
+  .btn{padding:12px 16px;font-size:.85rem;width:100%;justify-content:center}
+  .modal-actions{gap:14px}
+  .btn-red, .btn-ghost, .btn-danger, .btn-success, .btn-info{width:100%}
+}
+
+@media(max-width:480px){
+  main{padding:70px 12px 20px}
+  .btn{padding:13px 16px;font-size:.88rem}
+  .modal-actions{gap:16px}
+  .edit-modal{padding:20px}
+  .form-row.three{grid-template-columns:1fr}
+}
+
 @media(min-width:769px){
   .mobile-menu-btn{display:none}
 }
