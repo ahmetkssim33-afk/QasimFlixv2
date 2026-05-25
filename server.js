@@ -110,6 +110,19 @@ async function initializeCategories() {
 }
 
 // ═══════════════════════════════════════════════════════════
+// SAĞLIK (Health) Endpoint - local server için
+// ═══════════════════════════════════════════════════════════
+app.get('/api/health', async (req, res) => {
+  try {
+    await connectDB();
+    const state = mongoose.connection.readyState;
+    res.json({ api: 'ok', dbReady: state === 1, mongooseReadyState: state, message: state === 1 ? 'MongoDB bağlı' : 'MongoDB bağlı değil' });
+  } catch (err) {
+    res.status(500).json({ api: 'ok', dbReady: false, error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
 // API ENDPOINTS - CATEGORIES
 // ═══════════════════════════════════════════════════════════
 
@@ -690,15 +703,19 @@ const PORT = process.env.PORT || 3000;
   try {
     await connectDB();
     await initializeCategories();
-    app.listen(PORT, () => {
-      console.log(`\n🎬 Streaming Platform Server Running on http://localhost:${PORT}`);
-      console.log(`📝 Admin Panel: http://localhost:${PORT}/admin.html`);
-      console.log(`🎭 Frontend: http://localhost:${PORT}/index.html\n`);
-    });
   } catch (err) {
-    console.error('Sunucu başlatılırken hata:', err);
-    process.exit(1);
+    console.warn('⚠ Başlangıçta MongoDB bağlantısı kurulamadı:', err && err.message ? err.message : err);
+    console.warn('Sunucu başlatılıyor. DB bağlantı hatası olması durumunda bazı API endpointleri 503/500 dönebilir.');
   }
+
+  app.listen(PORT, () => {
+    console.log(`\n🎬 Streaming Platform Server Running on http://localhost:${PORT}`);
+    console.log(`📝 Admin Panel: http://localhost:${PORT}/admin.html`);
+    console.log(`🎭 Frontend: http://localhost:${PORT}/index.html\n`);
+    if (typeof mongoose !== 'undefined' && mongoose.connection && mongoose.connection.readyState !== 1) {
+      console.warn('⚠ MongoDB şu anda bağlı değil (readyState=' + (mongoose.connection.readyState) + ').');
+    }
+  });
 })();
 
 // Kategori ekle (Admin)

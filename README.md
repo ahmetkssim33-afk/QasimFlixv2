@@ -399,6 +399,30 @@ curl -X POST http://localhost:3000/api/episodes \
 
 ## 🐛 Troubleshooting
 
+### Deployment (Vercel) — Environment Variables
+
+When deploying to Vercel you must set environment variables so serverless functions can connect to MongoDB and other services. In your Vercel Project Settings > Environment Variables add at least:
+
+- `MONGODB_URI` = your MongoDB connection string (e.g. `mongodb+srv://user:pass@cluster0.mongodb.net/streamingDB`)
+- `JWT_SECRET` = a strong secret used for signing JWT tokens
+- `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS` (optional) = for password reset email delivery
+
+After adding variables, redeploy the project. You can verify the deployment by calling the health endpoint:
+
+```
+GET https://<your-vercel-domain>/api/health
+
+Response: { "api":"ok", "dbReady": true, "mongooseReadyState": 1 }
+```
+
+If `dbReady` is `false` check:
+
+- The `MONGODB_URI` is correct and allowed by your MongoDB provider IP/access rules.
+- Credentials in the connection string are valid.
+- Your MongoDB cluster allows connections from Vercel (or use MongoDB Atlas with proper network access).
+
+If you need help adding environment variables to Vercel I can provide step-by-step instructions.
+
 ### MongoDB Connection Error
 - Ensure MongoDB is running: `mongod`
 - Check connection string in `server.js`

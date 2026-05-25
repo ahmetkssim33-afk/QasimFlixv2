@@ -30,6 +30,26 @@ const { Series, Season, Episode, WatchProgress, Category, Film, User } = require
 // (keeps serverless redeploys and hot reloads from re-defining models)
 
 // ───────────────────────────────────────────────────────────
+// SAĞLIK (Health) Endpoint - DB durumunu kontrol eder
+// Bu endpoint DB middleware'inden önce gelmelidir, böylece
+// bağlantı durumunu ayrı olarak sorgulayabiliriz.
+app.get('/api/health', async (req, res) => {
+  try {
+    await connectDB();
+    const state = mongoose.connection.readyState;
+    const ok = state === 1;
+    res.json({
+      api: 'ok',
+      dbReady: ok,
+      mongooseReadyState: state,
+      message: ok ? 'MongoDB bağlı' : 'MongoDB bağlı değil'
+    });
+  } catch (err) {
+    res.status(500).json({ api: 'ok', dbReady: false, error: err.message });
+  }
+});
+
+// ───────────────────────────────────────────────────────────
 // DB MIDDLEWARE
 // ───────────────────────────────────────────────────────────
 app.use(async (req, res, next) => {
