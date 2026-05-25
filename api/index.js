@@ -218,8 +218,30 @@ app.delete("/api/series/:id", async (req, res) => {
 
 app.get("/api/seasons/:seriesId", async (req, res) => {
   try {
-    const seasons = await Season.find({ seriesId: req.params.seriesId }).sort({ seasonNumber: 1 });
-    res.json(seasons);
+    const seasons = await Season.find({ seriesId: req.params.seriesId })
+      .sort({ seasonNumber: 1 })
+      .lean();
+    
+    // Her sezon için bölümleri çek
+    const seasonsWithEpisodes = await Promise.all(
+      seasons.map(async (season) => {
+        const episodes = await Episode.find({ seasonId: season._id })
+          .sort({ episodeNumber: 1 })
+          .lean();
+        return {
+          ...season,
+          _id: String(season._id),
+          episodes: episodes.map(ep => ({
+            ...ep,
+            _id: String(ep._id),
+            seasonId: String(ep.seasonId),
+            seriesId: String(ep.seriesId)
+          }))
+        };
+      })
+    );
+    
+    res.json(seasonsWithEpisodes);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

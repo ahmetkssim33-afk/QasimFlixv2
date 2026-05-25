@@ -943,7 +943,7 @@ select{
             </div>
             <div class="form-group">
               <label><span data-i18n="form.season">Sezon</span> <span class="required">*</span></label>
-              <select id="ep-season">
+              <select id="ep-season" onchange="onEpSeasonChange()">
                 <option value="">— Önce Seri Seç —</option>
               </select>
             </div>
@@ -1706,6 +1706,20 @@ async function onEpSeriesChange() {
     await loadEpisodesList(seriesId);
     await populateSubEpisodes(seriesId);
   } catch(e) { toast(e.message,'error'); }
+}
+
+async function onEpSeasonChange() {
+  const seriesId = v('ep-series');
+  const seasonId = v('ep-season');
+  const wrap = document.getElementById('episodes-list-wrap');
+  
+  if (!seasonId) {
+    wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">▶</div><p>' + adminT('empty.choose_series') + '</p></div>';
+    return;
+  }
+  
+  // Sezon seçilirse, bölümleri yeni baştan yükle
+  await loadEpisodesList(seriesId);
 }
 
 async function loadEpisodesList(seriesId) {

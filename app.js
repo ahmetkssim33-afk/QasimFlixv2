@@ -595,10 +595,8 @@ async function openDetail(seriesId, autoPlay = false) {
 
         // Seasons / Episodes
         const area = document.getElementById('seasons-area');
-        if (series.type === 'series' && series.seasons?.length) {
+        if (series.seasons && series.seasons.length > 0) {
             renderSeasonsArea(series.seasons);
-        } else if (series.type === 'movie' || series.type === 'documentary') {
-            area.innerHTML = '';
         } else {
             area.innerHTML = '<p style="color:var(--muted2);font-size:.85rem">Sezon bulunamadı.</p>';
         }
