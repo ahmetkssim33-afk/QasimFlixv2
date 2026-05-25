@@ -329,7 +329,7 @@ function createCard(item) {
     <div class="card" onclick="openDetail('${item._id}')">
       ${imgHtml}
       <div class="card-placeholder" style="${placeholderStyle}">
-        <span class="icon">${type === 'movie' ? '🎬' : type === 'documentary' ? '🎞' : '📺'}</span>
+        <span class="icon">${tKey === 'movie' ? '🎬' : tKey === 'documentary' ? '🎞' : '📺'}</span>
         <span>${esc(item.title)}</span>
       </div>
       <span class="badge-type ${typeCls}">${typeLabel}</span>
