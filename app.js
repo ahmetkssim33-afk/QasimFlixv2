@@ -1379,6 +1379,309 @@ function closeProfileManageModal() {
 async function reloadChildProfilesList() {
   const list = document.getElementById('child-profiles-list');
   list.innerHTML = '<div style="color:var(--muted);font-size:.8rem;padding:4px">Yükleniyor...</div>';
+}
+
+// ═══════════════════════════════════════════════════════
+// LANDSCAPE MODE & FULLSCREEN (Mobile)
+// ═══════════════════════════════════════════════════════
+
+function initLandscapeMode() {
+  const fullscreenBtn = document.getElementById('fullscreen-btn');
+  if (!fullscreenBtn) return;
+
+  // Fullscreen button click
+  fullscreenBtn.addEventListener('click', () => {
+    const playerModal = document.getElementById('player-modal');
+    if (!playerModal) return;
+
+    // Request fullscreen
+    const elem = playerModal;
+    if (elem.requestFullscreen) {
+      elem.requestFullscreen().catch(err => console.log('Fullscreen error:', err));
+    } else if (elem.webkitRequestFullscreen) {
+      elem.webkitRequestFullscreen();
+    } else if (elem.mozRequestFullScreen) {
+      elem.mozRequestFullScreen();
+    } else if (elem.msRequestFullscreen) {
+      elem.msRequestFullscreen();
+    }
+
+    // Try to lock to landscape
+    if (screen.orientation && screen.orientation.lock) {
+      screen.orientation.lock('landscape').catch(err => {
+        console.log('Orientation lock not supported:', err);
+      });
+    }
+  });
+
+  // Orientation change listener
+  window.addEventListener('orientationchange', () => {
+    const playerModal = document.getElementById('player-modal');
+    if (playerModal && playerModal.classList.contains('open')) {
+      const video = document.getElementById('video-player');
+      const embed = document.getElementById('embed-player');
+      
+      if (window.innerHeight < window.innerWidth) {
+        // Landscape mode
+        playerModal.style.padding = '0';
+        playerModal.style.height = '100vh';
+        if (video) video.style.maxHeight = 'calc(100vh - 100px)';
+        if (embed) embed.style.height = 'calc(100vh - 100px)';
+      } else {
+        // Portrait mode
+        playerModal.style.padding = '20px';
+        playerModal.style.height = 'auto';
+        if (video) video.style.maxHeight = '60vh';
+        if (embed) embed.style.height = '60vh';
+      }
+    }
+  });
+
+  // Screen orientation lock for landscape viewing
+  document.addEventListener('fullscreenchange', () => {
+    if (document.fullscreenElement && screen.orientation && screen.orientation.lock) {
+      screen.orientation.lock('landscape').catch(err => {
+        console.log('Landscape lock not available');
+      });
+    }
+  });
+}
+
+// Initialize on load
+window.addEventListener('DOMContentLoaded', () => {
+  initLandscapeMode();
+  initKeyboardShortcuts();
+  initSwipeGestures();
+});
+
+// Also initialize if already loaded
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    initLandscapeMode();
+    initKeyboardShortcuts();
+    initSwipeGestures();
+  });
+} else {
+  initLandscapeMode();
+  initKeyboardShortcuts();
+  initSwipeGestures();
+}
+
+// ═══════════════════════════════════════════════════════
+// KEYBOARD SHORTCUTS
+// ═══════════════════════════════════════════════════════
+
+function initKeyboardShortcuts() {
+  document.addEventListener('keydown', (e) => {
+    const video = document.getElementById('video-player');
+    const playerModal = document.getElementById('player-modal');
+    
+    if (!playerModal || !playerModal.classList.contains('open') || !video) return;
+
+    // Prevent default if focused on input
+    if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+
+    switch(e.code) {
+      case 'Space':
+        e.preventDefault();
+        video.paused ? video.play() : video.pause();
+        break;
+      case 'KeyF':
+        e.preventDefault();
+        if (video.requestFullscreen) {
+          video.requestFullscreen();
+        }
+        break;
+      case 'KeyN':
+        e.preventDefault();
+        nextEpisode();
+        break;
+      case 'KeyP':
+        e.preventDefault();
+        previousEpisode();
+        break;
+      case 'ArrowRight':
+        e.preventDefault();
+        video.currentTime += 10;
+        break;
+      case 'ArrowLeft':
+        e.preventDefault();
+        video.currentTime -= 10;
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        video.volume = Math.min(1, video.volume + 0.1);
+        break;
+      case 'ArrowDown':
+        e.preventDefault();
+        video.volume = Math.max(0, video.volume - 0.1);
+        break;
+      case 'KeyM':
+        e.preventDefault();
+        video.muted = !video.muted;
+        break;
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// SWIPE GESTURES (Mobile)
+// ═══════════════════════════════════════════════════════
+
+function initSwipeGestures() {
+  let touchStartX = 0;
+  let touchEndX = 0;
+  let touchStartY = 0;
+  let touchEndY = 0;
+
+  const playerModal = document.getElementById('player-modal');
+  if (!playerModal) return;
+
+  playerModal.addEventListener('touchstart', (e) => {
+    touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
+  }, false);
+
+  playerModal.addEventListener('touchend', (e) => {
+    touchEndX = e.changedTouches[0].screenX;
+    touchEndY = e.changedTouches[0].screenY;
+    handleSwipe();
+  }, false);
+
+  function handleSwipe() {
+    const diffX = touchStartX - touchEndX;
+    const diffY = touchStartY - touchEndY;
+    
+    // Only register if horizontal swipe is more pronounced than vertical
+    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
+      if (diffX > 0) {
+        // Swipe left = next
+        nextEpisode();
+      } else {
+        // Swipe right = previous
+        previousEpisode();
+      }
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// EPISODE NAVIGATION
+// ═══════════════════════════════════════════════════════
+
+function nextEpisode() {
+  if (!currentSeason || !currentEpisode) return;
+  
+  const episodes = currentSeason.episodes || [];
+  const currentIdx = episodes.findIndex(e => String(e._id) === String(currentEpisode._id));
+  
+  if (currentIdx >= 0 && currentIdx < episodes.length - 1) {
+    playEpisode(episodes[currentIdx + 1]._id);
+  }
+}
+
+function previousEpisode() {
+  if (!currentSeason || !currentEpisode) return;
+  
+  const episodes = currentSeason.episodes || [];
+  const currentIdx = episodes.findIndex(e => String(e._id) === String(currentEpisode._id));
+  
+  if (currentIdx > 0) {
+    playEpisode(episodes[currentIdx - 1]._id);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// VIEWING STATISTICS & WATCH HISTORY
+// ═══════════════════════════════════════════════════════
+
+function trackViewingTime(duration) {
+  if (!currentEpisode || !currentSeries) return;
+
+  const viewingData = {
+    seriesId: currentSeries._id,
+    seriesTitle: currentSeries.title,
+    episodeId: currentEpisode._id,
+    episodeNum: currentEpisode.episodeNumber,
+    duration: duration,
+    watchedAt: new Date().toISOString(),
+    userId: USER_ID
+  };
+
+  // Save to localStorage
+  let viewingStats = JSON.parse(localStorage.getItem('viewingStats') || '[]');
+  viewingStats.push(viewingData);
+  
+  // Keep only last 100 entries
+  if (viewingStats.length > 100) {
+    viewingStats = viewingStats.slice(-100);
+  }
+  
+  localStorage.setItem('viewingStats', JSON.stringify(viewingStats));
+
+  // Send to server if logged in
+  if (TOKEN) {
+    fetch(API + '/viewing-stats', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + TOKEN
+      },
+      body: JSON.stringify(viewingData)
+    }).catch(err => console.log('Stats tracking error:', err));
+  }
+}
+
+function getViewingStats() {
+  const stats = JSON.parse(localStorage.getItem('viewingStats') || '[]');
+  
+  let totalWatched = 0;
+  let totalSeries = new Set();
+  let watchDates = {};
+
+  stats.forEach(s => {
+    totalWatched += s.duration;
+    totalSeries.add(s.seriesId);
+    
+    const date = new Date(s.watchedAt).toLocaleDateString();
+    watchDates[date] = (watchDates[date] || 0) + s.duration;
+  });
+
+  return {
+    totalMinutesWatched: Math.round(totalWatched / 60),
+    totalSeriesWatched: totalSeries.size,
+    recentActivity: stats.slice(-5),
+    watchDates: watchDates
+  };
+}
+
+function displayViewingStats() {
+  const stats = getViewingStats();
+  const msg = `📊 İzleme İstatistikleri\n` +
+    `Toplam İzlenmiş: ${stats.totalMinutesWatched} dakika\n` +
+    `Dizi Sayısı: ${stats.totalSeriesWatched}`;
+  console.log(msg);
+  return stats;
+}
+
+// Track video playback end
+document.addEventListener('DOMContentLoaded', () => {
+  const video = document.getElementById('video-player');
+  if (video) {
+    video.addEventListener('ended', () => {
+      trackViewingTime(Math.round(video.duration / 60));
+    });
+    
+    // Also track on video time update every 30 seconds
+    let lastTracked = 0;
+    video.addEventListener('timeupdate', () => {
+      if (video.currentTime - lastTracked >= 30 && !video.paused) {
+        trackViewingTime(Math.round(video.currentTime / 60));
+        lastTracked = video.currentTime;
+      }
+    });
+  }
+});
 
   try {
     const res = await fetch(API + '/user/profiles', { headers: { 'Authorization': 'Bearer ' + TOKEN } });
