@@ -1856,3 +1856,14 @@ window.addEventListener('load', () => {
         hideLoading();
     }, 1000);
 });
+
+// ═══════════════════════════════════════════
+// EXPOSE FUNCTIONS FOR INLINE EVENT HANDLERS
+// ═══════════════════════════════════════════
+window.pinInput = pinInput;
+window.pinKeyDown = pinKeyDown;
+window.closePinModal = closePinModal;
+window.toggleFavorite = toggleFavorite;
+window.showLoading = showLoading;
+window.hideLoading = hideLoading;
+window.reloadChildProfilesList = reloadChildProfilesList;
