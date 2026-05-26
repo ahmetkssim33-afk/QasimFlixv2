@@ -1,79 +1,39 @@
-const CACHE_NAME = 'qasimflix-cache-v2';
-const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
-  '/auth.html',
-  '/app.js',
-  '/style.css'
-];
+const CACHE_NAME = 'qasimflix-v4';
+const STATIC = ['/', '/index.html', '/auth.html', '/style.css', '/favicon.svg'];
 
-// Install event - cache static assets with error handling
-self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return Promise.all(
-        ASSETS_TO_CACHE.map(url => {
-          return fetch(url)
-            .then(response => {
-              if (response && response.status === 200) {
-                cache.put(url, response);
-              }
-            })
-            .catch(err => {
-              console.log('Cache asset error:', url, err);
-            });
-        })
-      );
+self.addEventListener('install', e => {
+  e.waitUntil(
+    caches.open(CACHE_NAME).then(c => {
+      return Promise.all(STATIC.map(url =>
+        fetch(url).then(r => { if (r.ok) c.put(url, r); }).catch(() => {})
+      ));
     })
   );
+  self.skipWaiting();
 });
 
-// Activate event - clean up old caches
-self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
+self.addEventListener('activate', e => {
+  e.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+    )
   );
+  self.clients.claim();
 });
 
-// Fetch event - serve from cache or network
-self.addEventListener('fetch', event => {
-  // Skip API requests and non-GET requests
-  if (event.request.url.includes('/api/') || event.request.method !== 'GET') {
-    return;
-  }
+self.addEventListener('fetch', e => {
+  const url = new URL(e.request.url);
+  // app.js, admin.js, API istekleri → her zaman network
+  if (
+    url.pathname.endsWith('app.js') ||
+    url.pathname.endsWith('admin.js') ||
+    url.pathname.includes('/api/') ||
+    e.request.method !== 'GET'
+  ) return;
 
-  event.respondWith(
-    caches.match(event.request).then(response => {
-      // Return cached response if found
-      if (response) {
-        return response;
-      }
-      
-      // Otherwise fetch from network
-      return fetch(event.request).then(networkResponse => {
-        // Cache new static assets dynamically
-        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then(cache => {
-            cache.put(event.request, responseToCache);
-          });
-        }
-        return networkResponse;
-      }).catch(() => {
-        // Fallback for failed network requests
-        // Return index.html for navigation requests
-        if (event.request.mode === 'navigate') {
-          return caches.match('/index.html');
-        }
-      });
-    })
+  e.respondWith(
+    caches.match(e.request).then(cached => cached || fetch(e.request).catch(() =>
+      e.request.mode === 'navigate' ? caches.match('/index.html') : undefined
+    ))
   );
 });

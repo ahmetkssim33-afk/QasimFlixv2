@@ -757,8 +757,243 @@ function closeDetailModal() {
 // ═══════════════════════════════════════════
 // VIDEO PLAYER
 // ═══════════════════════════════════════════
+let qasimQualitySources = [];
+let qasimCurrentSourceUrl = '';
+let qasimPlayerBound = false;
+let qasimControlsHideTimer = null;
+
+function isGoogleDriveUrl(url = '') {
+    return String(url).includes('drive.google.com') || String(url).includes('docs.google.com');
+}
+
+function isYouTubeUrl(url = '') {
+    return String(url).includes('youtube.com') || String(url).includes('youtu.be');
+}
+
+function isDirectVideoUrl(url = '') {
+    return /\.(mp4|webm|ogg|mov|mkv|m3u8)(\?|$)/i.test(String(url));
+}
+
+function makePlayableUrl(url = '') {
+    const clean = String(url || '').trim();
+    if (!clean) return '';
+    if (isGoogleDriveUrl(clean)) return `/api/video-proxy?url=${encodeURIComponent(clean)}`;
+    return clean;
+}
+
+function toYouTubeEmbed(url) {
+    let id = '';
+    const m1 = String(url).match(/[?&]v=([a-zA-Z0-9_-]+)/);
+    if (m1) id = m1[1];
+    const m2 = String(url).match(/youtu\.be\/([a-zA-Z0-9_-]+)/);
+    if (m2) id = m2[1];
+    return id ? `https://www.youtube.com/embed/${id}?rel=0&showinfo=0` : url;
+}
+
+function extractIframeSrc(html = '') {
+    const match = String(html).match(/src=["']([^"']+)["']/i);
+    return match ? match[1] : '';
+}
+
+function parseQualitySources(episode, fallbackUrl) {
+    const list = [];
+    const add = (label, url) => {
+        if (!url) return;
+        const cleanUrl = String(url).trim();
+        if (!cleanUrl) return;
+        if (list.some(item => item.url === cleanUrl)) return;
+        list.push({ label: label || 'Orijinal', url: cleanUrl });
+    };
+
+    // Gelecekte API'ye qualities/videoQualities alanı eklenirse otomatik destekler.
+    const rawQualities = episode?.qualities || episode?.videoQualities || episode?.qualitySources;
+    if (Array.isArray(rawQualities)) {
+        rawQualities.forEach(q => add(q.label || q.quality || q.name, q.url || q.src || q.videoUrl));
+    } else if (rawQualities && typeof rawQualities === 'object') {
+        Object.entries(rawQualities).forEach(([label, url]) => add(label, url));
+    }
+
+    // Tek videoUrl içine satır satır kalite girilirse destekler:
+    // 480p=https://...
+    // 720p=https://...
+    const textUrl = String(fallbackUrl || '');
+    if (textUrl.includes('\n') || /\b\d{3,4}p\s*[:=|]/i.test(textUrl)) {
+        textUrl.split(/\n|;;/).forEach(line => {
+            const match = line.trim().match(/^([^:=|]+)\s*[:=|]\s*(https?:\/\/.+)$/i);
+            if (match) add(match[1].trim(), match[2].trim());
+        });
+    }
+
+    if (!list.length) add('Orijinal', fallbackUrl);
+    return list;
+}
+
+function fillQualitySelect(sources) {
+    const select = document.getElementById('quality-select');
+    const wrap = document.getElementById('quality-wrap');
+    if (!select || !wrap) return;
+
+    select.innerHTML = '';
+    sources.forEach((item, index) => {
+        const opt = document.createElement('option');
+        opt.value = String(index);
+        opt.textContent = item.label || (index === 0 ? 'Orijinal' : `Kalite ${index + 1}`);
+        select.appendChild(opt);
+    });
+    wrap.style.display = sources.length ? '' : 'none';
+}
+
+function qasimFormatTime(seconds) {
+    if (!Number.isFinite(seconds)) return '00:00';
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const sec = Math.floor(seconds % 60);
+    if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+    return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+}
+
+function updateQasimControls() {
+    const video = document.getElementById('video-player');
+    if (!video) return;
+    const playBtn = document.getElementById('qasim-play-pause');
+    const cur = document.getElementById('qasim-current-time');
+    const dur = document.getElementById('qasim-duration');
+    const progress = document.getElementById('qasim-progress');
+    const mute = document.getElementById('qasim-mute');
+    const volume = document.getElementById('qasim-volume');
+
+    if (playBtn) playBtn.textContent = video.paused ? '▶' : '⏸';
+    if (cur) cur.textContent = qasimFormatTime(video.currentTime || 0);
+    if (dur) dur.textContent = qasimFormatTime(video.duration || 0);
+    if (progress && Number.isFinite(video.duration) && video.duration > 0) {
+        progress.value = String((video.currentTime / video.duration) * 100);
+    }
+    if (mute) mute.textContent = video.muted || video.volume === 0 ? '🔇' : '🔊';
+    if (volume) volume.value = String(video.muted ? 0 : video.volume);
+}
+
+function setQasimLoading(isLoading) {
+    const wrap = document.getElementById('player-wrap');
+    if (!wrap) return;
+    wrap.classList.toggle('is-loading', !!isLoading);
+}
+
+function showQasimControls() {
+    const wrap = document.getElementById('player-wrap');
+    if (!wrap) return;
+    wrap.classList.remove('controls-hidden');
+    clearTimeout(qasimControlsHideTimer);
+    qasimControlsHideTimer = setTimeout(() => {
+        const video = document.getElementById('video-player');
+        if (video && !video.paused) wrap.classList.add('controls-hidden');
+    }, 2600);
+}
+
+function initQasimPlayerControls() {
+    if (qasimPlayerBound) return;
+    qasimPlayerBound = true;
+
+    const video = document.getElementById('video-player');
+    const wrap = document.getElementById('player-wrap');
+    if (!video || !wrap) return;
+
+    const playBtn = document.getElementById('qasim-play-pause');
+    const backBtn = document.getElementById('qasim-back-10');
+    const forwardBtn = document.getElementById('qasim-forward-10');
+    const progress = document.getElementById('qasim-progress');
+    const muteBtn = document.getElementById('qasim-mute');
+    const volume = document.getElementById('qasim-volume');
+
+    const togglePlay = () => {
+        if (video.paused) video.play().catch(err => console.warn('Video oynatılamadı:', err));
+        else video.pause();
+    };
+
+    playBtn?.addEventListener('click', togglePlay);
+    video.addEventListener('click', togglePlay);
+    backBtn?.addEventListener('click', () => { video.currentTime = Math.max(0, video.currentTime - 10); });
+    forwardBtn?.addEventListener('click', () => { video.currentTime = Math.min(video.duration || Infinity, video.currentTime + 10); });
+    progress?.addEventListener('input', () => {
+        if (Number.isFinite(video.duration) && video.duration > 0) {
+            video.currentTime = (Number(progress.value) / 100) * video.duration;
+        }
+    });
+    muteBtn?.addEventListener('click', () => { video.muted = !video.muted; updateQasimControls(); });
+    volume?.addEventListener('input', () => {
+        video.volume = Number(volume.value);
+        video.muted = video.volume === 0;
+        updateQasimControls();
+    });
+
+    ['play', 'pause', 'timeupdate', 'loadedmetadata', 'volumechange', 'ended'].forEach(ev => {
+        video.addEventListener(ev, updateQasimControls);
+    });
+    ['loadstart', 'waiting'].forEach(ev => video.addEventListener(ev, () => setQasimLoading(true)));
+    ['canplay', 'playing', 'loadeddata'].forEach(ev => video.addEventListener(ev, () => setQasimLoading(false)));
+    ['mousemove', 'touchstart', 'click'].forEach(ev => wrap.addEventListener(ev, showQasimControls, { passive: true }));
+}
+
+function showIframe(iframeSrc) {
+    const videoPlayer = document.getElementById('video-player');
+    const embedContainer = document.getElementById('embed-player');
+    const controls = document.getElementById('qasim-video-controls');
+    if (!videoPlayer || !embedContainer) return;
+
+    videoPlayer.pause();
+    videoPlayer.style.display = 'none';
+    if (controls) controls.style.display = 'none';
+    embedContainer.innerHTML = '';
+
+    const iframe = document.createElement('iframe');
+    iframe.src = iframeSrc;
+    iframe.allow = 'autoplay; fullscreen; encrypted-media; picture-in-picture';
+    iframe.allowFullscreen = true;
+    iframe.style.cssText = 'width:100%;height:100%;border:none;position:absolute;top:0;left:0';
+    embedContainer.appendChild(iframe);
+    embedContainer.style.display = 'block';
+    document.getElementById('sub-wrap').style.display = 'none';
+    document.getElementById('quality-wrap').style.display = 'none';
+}
+
+async function setVideoSource(url, keepTime = 0, autoPlay = true) {
+    const videoPlayer = document.getElementById('video-player');
+    const videoSource = document.getElementById('video-source');
+    const embedContainer = document.getElementById('embed-player');
+    const controls = document.getElementById('qasim-video-controls');
+    if (!videoPlayer || !videoSource || !embedContainer) return;
+
+    qasimCurrentSourceUrl = url;
+    embedContainer.innerHTML = '';
+    embedContainer.style.display = 'none';
+    videoPlayer.style.display = 'block';
+    if (controls) controls.style.display = '';
+    setQasimLoading(true);
+
+    videoSource.src = makePlayableUrl(url);
+    videoPlayer.load();
+
+    videoPlayer.addEventListener('loadedmetadata', () => {
+        if (keepTime > 0 && Number.isFinite(videoPlayer.duration)) {
+            videoPlayer.currentTime = Math.min(keepTime, Math.max(0, videoPlayer.duration - 2));
+        }
+        updateQasimControls();
+        if (autoPlay) videoPlayer.play().catch(() => {});
+    }, { once: true });
+}
+
+async function changeQuality() {
+    const select = document.getElementById('quality-select');
+    const video = document.getElementById('video-player');
+    if (!select || !video || !qasimQualitySources.length) return;
+    const item = qasimQualitySources[Number(select.value)] || qasimQualitySources[0];
+    await setVideoSource(item.url, video.currentTime || 0, !video.paused);
+    if (currentEpisode?.subtitles) loadSubtitles(currentEpisode.subtitles || []);
+}
+
 async function playEpisode(episodeId, isMovie = false) {
     try {
+        initQasimPlayerControls();
+
         // Önce cache'deki (currentSeries.seasons) episode'u bul — API'ye istek atmaya gerek yok
         let episode = null;
         const seasons = currentSeries?.seasons || [];
@@ -785,94 +1020,31 @@ async function playEpisode(episodeId, isMovie = false) {
         currentEpisode = episode;
         console.log('[playEpisode] videoUrl:', episode.videoUrl);
 
-        const videoPlayer = document.getElementById('video-player');
-        const videoSource = document.getElementById('video-source');
-        const embedContainer = document.getElementById('embed-player');
+        let src = episode.videoUrl || '';
+        const rawIframeSrc = /^\s*</.test(src) && src.includes('iframe') ? extractIframeSrc(src) : '';
+        if (rawIframeSrc) src = rawIframeSrc;
 
-        embedContainer.innerHTML = '';
-        embedContainer.style.display = 'none';
-        videoPlayer.style.display = 'block';
+        // Drive linkleri artık Drive player iframe'i yerine QasimFlix HTML5 player + /api/video-proxy ile açılır.
+        const canUseHtmlPlayer = isGoogleDriveUrl(src) || isDirectVideoUrl(src) || (!isYouTubeUrl(src) && !/^\s*</.test(src));
 
-        const src = episode.videoUrl || '';
-
-        // Google Drive: kendi HTML5 player'ında oynat (proxy üzerinden)
-        function getDriveProxyUrl(url) {
-            return `/api/video-proxy?url=${encodeURIComponent(url)}`;
-        }
-
-        function isDirectVideo(url) {
-            return /\.(mp4|webm|ogg|mov|mkv)(\?|$)/i.test(url);
-        }
-
-        function isGoogleDrive(url) {
-            return url.includes('drive.google.com') || url.includes('docs.google.com');
-        }
-
-        function isYouTube(url) {
-            return url.includes('youtube.com') || url.includes('youtu.be');
-        }
-
-        function toYouTubeEmbed(url) {
-            let id = '';
-            const m1 = url.match(/[?&]v=([a-zA-Z0-9_-]+)/);
-            if (m1) id = m1[1];
-            const m2 = url.match(/youtu\.be\/([a-zA-Z0-9_-]+)/);
-            if (m2) id = m2[1];
-            return id ? `https://www.youtube.com/embed/${id}?rel=0&showinfo=0` : url;
-        }
-
-        function showIframe(iframeSrc) {
-            videoPlayer.pause();
-            videoPlayer.style.display = 'none';
-            const iframe = document.createElement('iframe');
-            iframe.src = iframeSrc;
-            iframe.allow = 'autoplay; fullscreen; encrypted-media';
-            iframe.allowFullscreen = true;
-            iframe.style.cssText = 'width:100%;height:100%;border:none;position:absolute;top:0;left:0';
-            embedContainer.appendChild(iframe);
-            embedContainer.style.display = 'block';
-            document.getElementById('sub-wrap').style.display = 'none';
-        }
-
-        // Raw iframe tag in the field
-        if (/^\s*</.test(src) && src.includes('iframe')) {
-            videoPlayer.pause();
-            videoPlayer.style.display = 'none';
-            embedContainer.innerHTML = src;
-            // Make any iframe inside fill the container
-            const iframeEl = embedContainer.querySelector('iframe');
-            if (iframeEl) {
-                iframeEl.style.cssText = 'width:100%;height:100%;border:none;position:absolute;top:0;left:0';
-            }
-            embedContainer.style.display = 'block';
-            document.getElementById('sub-wrap').style.display = 'none';
-        } else if (isGoogleDrive(src)) {
-            // Drive → proxy üzerinden kendi HTML5 player'ında oynat
-            const proxySrc = getDriveProxyUrl(src);
-            videoSource.src = proxySrc;
-            videoPlayer.load();
-            videoPlayer.style.display = '';
-            embedContainer.style.display = 'none';
-            document.getElementById('sub-wrap').style.display = '';
-            loadSubtitles(episode.subtitles || []);
-            await loadProgress(episodeId);
-            videoPlayer.addEventListener('timeupdate', () => saveProgress(episodeId));
-            // Proxy yüklenemezse fallback olarak iframe göster
-            videoPlayer.onerror = () => {
-                console.warn('[Drive] Proxy yüklenemedi, iframe\'e geçiliyor...');
-                videoPlayer.style.display = 'none';
-                const fallbackSrc = src.includes('/preview') ? src : src.replace(/\/view.*$/, '/preview');
-                showIframe(fallbackSrc);
-            };
-        } else if (isYouTube(src)) {
+        if (isYouTubeUrl(src)) {
             showIframe(toYouTubeEmbed(src));
-        } else if (isDirectVideo(src)) {
-            videoSource.src = src;
-            videoPlayer.load();
+        } else if (canUseHtmlPlayer) {
+            qasimQualitySources = parseQualitySources(episode, src);
+            fillQualitySelect(qasimQualitySources);
             document.getElementById('sub-wrap').style.display = '';
             loadSubtitles(episode.subtitles || []);
+            await setVideoSource(qasimQualitySources[0]?.url || src, 0, true);
             await loadProgress(episodeId);
-            videoPlayer.addEventListener('timeupdate', () => saveProgress(episodeId));
+            const videoPlayer = document.getElementById('video-player');
+            videoPlayer.ontimeupdate = () => { saveProgress(episodeId); updateQasimControls(); };
+            videoPlayer.onerror = () => {
+                setQasimLoading(false);
+                console.warn('[QasimFlix Player] Video yüklenemedi. Link doğrudan oynatılamıyor olabilir:', src);
+                alert('Video yüklenemedi. Google Drive dosyası herkese açık olmalı ve çok büyük dosyalarda Drive bazen oynatmayı engelleyebilir.');
+            };
+        } else if (rawIframeSrc) {
+            showIframe(rawIframeSrc);
         } else if (src) {
             showIframe(src);
         } else {
@@ -896,6 +1068,7 @@ async function playEpisode(episodeId, isMovie = false) {
 
         closeDetailModal();
         document.getElementById('player-modal').classList.add('open');
+        showQasimControls();
     } catch (err) {
         console.error('Play error:', err);
     }
@@ -911,7 +1084,12 @@ function closePlayer() {
     embed.innerHTML = '';
     embed.style.display = 'none';
     video.style.display = 'block';
+    const controls = document.getElementById('qasim-video-controls');
+    if (controls) controls.style.display = '';
     document.getElementById('sub-wrap').style.display = '';
+    const qualityWrap = document.getElementById('quality-wrap');
+    if (qualityWrap) qualityWrap.style.display = '';
+    setQasimLoading(false);
 }
 
 // ═══════════════════════════════════════════

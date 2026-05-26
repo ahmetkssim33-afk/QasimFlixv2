@@ -50,6 +50,117 @@ app.get('/api/health', async (req, res) => {
 });
 
 // ───────────────────────────────────────────────────────────
+// QasimFlix HTML5 player için Google Drive video proxy
+// Bu endpoint DB istemez; bu yüzden DB middleware'inden önce durur.
+// ───────────────────────────────────────────────────────────
+function extractDriveFileId(input = '') {
+  const url = String(input || '');
+  const patterns = [
+    /\/file\/d\/([a-zA-Z0-9_-]+)/,
+    /[?&]id=([a-zA-Z0-9_-]+)/,
+    /\/uc\?[^#]*id=([a-zA-Z0-9_-]+)/,
+    /\/open\?[^#]*id=([a-zA-Z0-9_-]+)/,
+    /\/d\/([a-zA-Z0-9_-]+)/
+  ];
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+  return '';
+}
+
+function toDriveDownloadUrl(input = '') {
+  const raw = String(input || '').trim();
+  const id = extractDriveFileId(raw);
+  if (!id) return raw;
+  return `https://drive.google.com/uc?export=download&id=${id}`;
+}
+
+async function fetchVideoUpstream(targetUrl, headers) {
+  let upstream = await fetch(targetUrl, { headers, redirect: 'follow' });
+  let contentType = upstream.headers.get('content-type') || '';
+
+  // Büyük Google Drive dosyaları bazen önce onay HTML'i döndürür.
+  // HTML içinden gerçek indirme linkini bulup ikinci isteği yapıyoruz.
+  if (contentType.includes('text/html') && targetUrl.includes('drive.google.com')) {
+    const html = await upstream.text();
+    const cookie = upstream.headers.get('set-cookie') || '';
+    const confirmMatch = html.match(/href="([^"]*(?:uc\?export=download|drive\.usercontent\.google\.com\/download)[^"]*)"/i);
+    let confirmUrl = confirmMatch ? confirmMatch[1].replace(/&amp;/g, '&') : '';
+
+    if (confirmUrl && confirmUrl.startsWith('/')) {
+      confirmUrl = 'https://drive.google.com' + confirmUrl;
+    }
+
+    if (!confirmUrl) {
+      const token = (html.match(/confirm=([0-9A-Za-z_\-]+)/) || [])[1];
+      const id = extractDriveFileId(targetUrl);
+      if (token && id) confirmUrl = `https://drive.google.com/uc?export=download&confirm=${token}&id=${id}`;
+    }
+
+    if (confirmUrl) {
+      upstream = await fetch(confirmUrl, {
+        headers: { ...headers, Cookie: cookie },
+        redirect: 'follow'
+      });
+    }
+  }
+
+  return upstream;
+}
+
+app.get('/api/video-proxy', async (req, res) => {
+  try {
+    const rawUrl = String(req.query.url || '');
+    if (!rawUrl) return res.status(400).send('Video URL gerekli');
+
+    const targetUrl = toDriveDownloadUrl(rawUrl);
+    if (!/^https:\/\//i.test(targetUrl)) {
+      return res.status(400).send('Sadece güvenli HTTPS video linkleri desteklenir');
+    }
+
+    const headers = {
+      'User-Agent': 'Mozilla/5.0 QasimFlixPlayer/1.0'
+    };
+    if (req.headers.range) headers.Range = req.headers.range;
+
+    const upstream = await fetchVideoUpstream(targetUrl, headers);
+    const contentType = upstream.headers.get('content-type') || 'video/mp4';
+
+    if (!upstream.ok && upstream.status !== 206) {
+      return res.status(upstream.status).send('Video kaynağına ulaşılamadı');
+    }
+
+    if (contentType.includes('text/html')) {
+      return res.status(422).send('Google Drive doğrudan video akışı vermedi. Dosya herkese açık olmalı veya farklı depolama/CDN kullanılmalı.');
+    }
+
+    res.status(upstream.status === 206 ? 206 : 200);
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Content-Type', contentType);
+    ['content-length', 'content-range', 'cache-control', 'etag', 'last-modified'].forEach(name => {
+      const value = upstream.headers.get(name);
+      if (value) res.setHeader(name, value);
+    });
+
+    if (!upstream.body) return res.end();
+
+    const reader = upstream.body.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!res.write(Buffer.from(value))) {
+        await new Promise(resolve => res.once('drain', resolve));
+      }
+    }
+    res.end();
+  } catch (err) {
+    console.error('[video-proxy]', err);
+    res.status(500).send('Video proxy hatası: ' + err.message);
+  }
+});
+
+// ───────────────────────────────────────────────────────────
 // DB MIDDLEWARE
 // ───────────────────────────────────────────────────────────
 app.use(async (req, res, next) => {

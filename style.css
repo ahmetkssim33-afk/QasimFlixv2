@@ -1566,3 +1566,278 @@ body.scrolled .navbar {
     background: rgba(0, 0, 0, 0.5);
   }
 }
+
+/* ═══════════════════════════════════════════════
+   MOBİL BUTON DÜZELTME - üst üste binme engeli
+   ═══════════════════════════════════════════════ */
+
+/* Modal action butonları - varsayılan */
+.modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+/* Tablet */
+@media (max-width: 768px) {
+  .modal-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .modal-actions .btn-play {
+    grid-column: 1 / -1; /* İzle butonu tam genişlik */
+  }
+  .modal-actions .btn-play,
+  .modal-actions .btn-info {
+    width: 100%;
+    justify-content: center;
+    font-size: .85rem;
+    padding: 12px 10px;
+  }
+}
+
+/* Küçük telefon */
+@media (max-width: 480px) {
+  .modal-actions {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .modal-actions .btn-play {
+    grid-column: 1 / -1;
+    padding: 14px 10px;
+    font-size: .9rem;
+  }
+  .modal-actions .btn-info {
+    padding: 11px 8px;
+    font-size: .78rem;
+  }
+}
+
+/* Hero butonlar - tam genişlik stack */
+@media (max-width: 600px) {
+  .hero-actions {
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+  }
+  .hero-actions .btn-play,
+  .hero-actions .btn-info {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   YATAY (LANDSCAPE) TAM EKRAN İZLEME
+   ═══════════════════════════════════════════════ */
+
+/* Yatay modda player tam ekran */
+@media screen and (orientation: landscape) and (max-height: 500px) {
+  #player-modal.open {
+    padding: 0 !important;
+  }
+  .player-modal-box {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    display: flex;
+    flex-direction: column;
+  }
+  .player-bar {
+    flex-shrink: 0;
+    padding: 6px 12px;
+    font-size: 11px;
+    background: rgba(0,0,0,.9);
+  }
+  .player-wrap {
+    flex: 1;
+    height: 0 !important; /* flex ile dolacak */
+  }
+  #video-player {
+    width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    object-fit: contain;
+  }
+  #embed-player {
+    width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
+  }
+  .modal-close {
+    top: 4px !important;
+    right: 8px !important;
+    width: 28px !important;
+    height: 28px !important;
+    font-size: 14px !important;
+    z-index: 9999;
+  }
+  /* Navbar gizle */
+  .navbar {
+    display: none !important;
+  }
+}
+
+/* QasimFlix custom HTML5 video player */
+.qasim-player-wrap {
+  position: relative;
+  background: #000;
+  overflow: hidden;
+  border-radius: 10px 10px 0 0;
+}
+
+.qasim-player-wrap video {
+  width: 100%;
+  height: min(70vh, 720px);
+  display: block;
+  background: #000;
+  object-fit: contain;
+}
+
+.qasim-player-logo {
+  position: absolute;
+  top: 16px;
+  left: 18px;
+  z-index: 9;
+  color: #fff;
+  font-family: 'Bebas Neue', Impact, sans-serif;
+  font-size: clamp(1.35rem, 3vw, 2.1rem);
+  letter-spacing: .08em;
+  text-shadow: 0 2px 14px rgba(0,0,0,.9);
+  pointer-events: none;
+}
+
+.qasim-center-loader {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: .9rem;
+  background: rgba(0,0,0,.25);
+  pointer-events: none;
+}
+
+.qasim-player-wrap.is-loading .qasim-center-loader {
+  display: flex;
+}
+
+.qasim-video-controls {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 38px 14px 14px;
+  background: linear-gradient(transparent, rgba(0,0,0,.92));
+  transition: opacity .22s ease;
+}
+
+.qasim-player-wrap.controls-hidden .qasim-video-controls {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.qasim-video-controls button,
+.sub-select-wrap select {
+  background: rgba(18,18,18,.92);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,.22);
+  border-radius: 8px;
+  min-height: 34px;
+  padding: 7px 10px;
+  cursor: pointer;
+  font-family: var(--font, Arial, sans-serif);
+}
+
+.qasim-video-controls button:hover,
+.sub-select-wrap select:hover {
+  background: var(--accent, #e50914);
+  border-color: var(--accent, #e50914);
+}
+
+.qasim-main-play {
+  min-width: 42px;
+  font-weight: 800;
+}
+
+.qasim-time {
+  color: #fff;
+  font-size: .78rem;
+  white-space: nowrap;
+  opacity: .9;
+}
+
+#qasim-progress {
+  flex: 1;
+  min-width: 110px;
+  cursor: pointer;
+}
+
+#qasim-volume {
+  width: 80px;
+  cursor: pointer;
+}
+
+#embed-player {
+  z-index: 4;
+}
+
+#embed-player iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+#quality-wrap,
+#sub-wrap {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+#quality-wrap label,
+#sub-wrap label {
+  color: rgba(255,255,255,.75);
+  font-size: .78rem;
+}
+
+@media (max-width: 768px) {
+  .qasim-player-wrap video {
+    height: 56vh;
+  }
+
+  .qasim-video-controls {
+    flex-wrap: wrap;
+    gap: 7px;
+    padding: 42px 10px 10px;
+  }
+
+  #qasim-progress {
+    order: -1;
+    flex-basis: 100%;
+  }
+
+  #qasim-volume {
+    width: 58px;
+  }
+
+  .qasim-video-controls button {
+    font-size: .78rem;
+    padding: 6px 8px;
+  }
+
+  .player-bar {
+    gap: 10px;
+  }
+}
