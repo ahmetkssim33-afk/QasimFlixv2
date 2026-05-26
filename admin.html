@@ -2172,8 +2172,8 @@ async function saveEditSeason(id, seriesId) {
 async function openEditEpisode(id, seriesId) {
   let episode;
   try {
-    episode = await api('GET', '/episodes/' + id + '?_=' + Date.now());
-    if (Array.isArray(episode)) throw new Error('Bölüm bulunamadı');
+    episode = await api('GET', '/episode/' + id + '?_=' + Date.now());
+    if (!episode) throw new Error('Bölüm bulunamadı');
   } catch(e) { toast(e.message, 'error'); return; }
 
   openEditModal('Bölüm Düzenle', `
