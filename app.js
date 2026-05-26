@@ -1721,6 +1721,8 @@ document.addEventListener('DOMContentLoaded', () => {
 // ═══════════════════════════════════════════════════════
 // LANDSCAPE MODE & FULLSCREEN (Mobile)
 // ═══════════════════════════════════════════════════════
+
+async function saveMainProfile() {
   const name = document.getElementById('mp-name-input').value.trim();
   if (!name) { alert('Ad boş olamaz'); return; }
   try {
@@ -1867,3 +1869,6 @@ window.toggleFavorite = toggleFavorite;
 window.showLoading = showLoading;
 window.hideLoading = hideLoading;
 window.reloadChildProfilesList = reloadChildProfilesList;
+window.saveMainProfile = saveMainProfile;
+window.changePassword = changePassword;
+window.addNewChildProfile = addNewChildProfile;
