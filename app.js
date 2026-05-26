@@ -1683,21 +1683,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-  try {
-    const res = await fetch(API + '/user/profiles', { headers: { 'Authorization': 'Bearer ' + TOKEN } });
-    const data = await res.json();
-    const profiles = data.childProfiles || [];
-    const countLabel = document.getElementById('profile-count-label');
-    if (countLabel) countLabel.textContent = profiles.length + '/4 profil';
-
-    const addForm = document.getElementById('add-profile-form');
-    if (addForm) addForm.style.display = profiles.length >= 4 ? 'none' : '';
-
-    if (!profiles.length) {
-      list.innerHTML = '<div style="color:var(--muted2);font-size:.8rem;padding:8px 0">Henüz alt profil eklenmedi.</div>';
-      return;
-    }
-
     list.innerHTML = profiles.map(p => `
       <div style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:14px 16px;display:flex;align-items:center;gap:12px" id="cpcard-${p._id}">
         <div style="width:40px;height:40px;border-radius:8px;background:linear-gradient(135deg,#6c63ff,#a78bfa);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0">${getProfileEmoji(p.name)}</div>
