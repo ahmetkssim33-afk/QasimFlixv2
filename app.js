@@ -1378,7 +1378,42 @@ function closeProfileManageModal() {
 
 async function reloadChildProfilesList() {
   const list = document.getElementById('child-profiles-list');
+  if (!list) return;
+  
   list.innerHTML = '<div style="color:var(--muted);font-size:.8rem;padding:4px">Yükleniyor...</div>';
+  
+  try {
+    if (!AUTH_USER || !AUTH_USER._id) return;
+    
+    const res = await fetch(API + '/user/profiles', {
+      headers: { 'Authorization': 'Bearer ' + TOKEN }
+    });
+    
+    if (!res.ok) throw new Error('Profiller yüklenemedi');
+    
+    const profiles = await res.json();
+    
+    if (!profiles || profiles.length === 0) {
+      list.innerHTML = '<div style="color:var(--muted);font-size:.8rem;padding:8px">Henüz profil oluşturulmadı.</div>';
+      return;
+    }
+    
+    list.innerHTML = profiles.map(p => `
+      <div style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:14px 16px;display:flex;align-items:center;gap:12px" id="cpcard-${p._id}">
+        <div style="width:40px;height:40px;border-radius:8px;background:linear-gradient(135deg,#6c63ff,#a78bfa);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0">${getProfileEmoji(p.name)}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.88rem;font-weight:600">${p.name}</div>
+          <div style="font-size:.72rem;color:var(--muted);margin-top:2px">${p.ageRestriction || 18}+ yaş · ${p.hasPin ? '🔒 PIN korumalı' : '🔓 PIN yok'}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          <button onclick="editChildProfile('${p._id}','${p.name}',${p.ageRestriction||18},${!!p.hasPin})" style="background:rgba(255,255,255,0.08);border:1px solid var(--border);color:var(--muted);padding:6px 12px;border-radius:5px;cursor:pointer;font-size:.75rem;font-family:var(--font)">Düzenle</button>
+          <button onclick="deleteChildProfile('${p._id}','${p.name}')" style="background:rgba(255,80,80,0.1);border:1px solid rgba(255,80,80,0.3);color:#ff6b6b;padding:6px 10px;border-radius:5px;cursor:pointer;font-size:.75rem">Sil</button>
+        </div>
+      </div>`).join('');
+  } catch (e) {
+    console.error('Error loading profiles:', e);
+    list.innerHTML = '<div style="color:#ff6b6b;font-size:.8rem;padding:8px">Profiller yüklenemedi.</div>';
+  }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1683,24 +1718,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-    list.innerHTML = profiles.map(p => `
-      <div style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:14px 16px;display:flex;align-items:center;gap:12px" id="cpcard-${p._id}">
-        <div style="width:40px;height:40px;border-radius:8px;background:linear-gradient(135deg,#6c63ff,#a78bfa);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0">${getProfileEmoji(p.name)}</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:.88rem;font-weight:600">${p.name}</div>
-          <div style="font-size:.72rem;color:var(--muted);margin-top:2px">${p.ageRestriction || 18}+ yaş · ${p.hasPin ? '🔒 PIN korumalı' : '🔓 PIN yok'}</div>
-        </div>
-        <div style="display:flex;gap:6px;flex-shrink:0">
-          <button onclick="editChildProfile('${p._id}','${p.name}',${p.ageRestriction||18},${!!p.hasPin})" style="background:rgba(255,255,255,0.08);border:1px solid var(--border);color:var(--muted);padding:6px 12px;border-radius:5px;cursor:pointer;font-size:.75rem;font-family:var(--font)">Düzenle</button>
-          <button onclick="deleteChildProfile('${p._id}','${p.name}')" style="background:rgba(255,80,80,0.1);border:1px solid rgba(255,80,80,0.3);color:#ff6b6b;padding:6px 10px;border-radius:5px;cursor:pointer;font-size:.75rem">Sil</button>
-        </div>
-      </div>`).join('');
-  } catch (e) {
-    list.innerHTML = '<div style="color:#ff6b6b;font-size:.8rem">Profiller yüklenemedi.</div>';
-  }
-}
-
-async function saveMainProfile() {
+// ═══════════════════════════════════════════════════════
+// LANDSCAPE MODE & FULLSCREEN (Mobile)
+// ═══════════════════════════════════════════════════════
   const name = document.getElementById('mp-name-input').value.trim();
   if (!name) { alert('Ad boş olamaz'); return; }
   try {

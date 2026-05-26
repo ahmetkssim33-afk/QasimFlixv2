@@ -4,14 +4,26 @@ const ASSETS_TO_CACHE = [
   '/index.html',
   '/auth.html',
   '/app.js',
-  '/manifest.json'
+  '/style.css'
 ];
 
-// Install event - cache static assets
+// Install event - cache static assets with error handling
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(ASSETS_TO_CACHE);
+      return Promise.all(
+        ASSETS_TO_CACHE.map(url => {
+          return fetch(url)
+            .then(response => {
+              if (response && response.status === 200) {
+                cache.put(url, response);
+              }
+            })
+            .catch(err => {
+              console.log('Cache asset error:', url, err);
+            });
+        })
+      );
     })
   );
 });
