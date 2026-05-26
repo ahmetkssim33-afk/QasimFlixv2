@@ -562,6 +562,41 @@ app.get('/api/auth/me', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════
+// API ENDPOINTS — FAVORİLER (WISHLIST)
+// ═══════════════════════════════════════════════════════════
+
+app.get('/api/favorites', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    const progress = await WatchProgress.find({ userId, isFavorite: true });
+    const seriesIds = [...new Set(progress.map(p => p.seriesId))];
+    const favorites = await Series.find({ _id: { $in: seriesIds } });
+    res.json(favorites);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/favorites/:seriesId', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    const seriesId = req.params.seriesId;
+    const existing = await WatchProgress.findOne({ userId, seriesId });
+    
+    if (existing) {
+      existing.isFavorite = !existing.isFavorite;
+      await existing.save();
+    } else {
+      const newFav = new WatchProgress({ userId, seriesId, isFavorite: true });
+      await newFav.save();
+    }
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
 // EXPORT — Vercel için app.listen() YOK
 // ═══════════════════════════════════════════════════════════
 module.exports = app;

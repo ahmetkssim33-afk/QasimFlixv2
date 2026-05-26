@@ -14,7 +14,62 @@ let currentFilter = null; // null=all, 'series', 'movie'
 let allData = []; // global cache for all content
 
 // ═══════════════════════════════════════════
-// INIT
+// LOADING SPINNER
+// ═══════════════════════════════════════════
+function showLoading() {
+    const spinner = document.getElementById('loading-spinner');
+    if (spinner) spinner.classList.add('active');
+}
+
+function hideLoading() {
+    const spinner = document.getElementById('loading-spinner');
+    if (spinner) spinner.classList.remove('active');
+}
+
+// ═══════════════════════════════════════════
+// FAVORITES (FAVORİLER)
+// ═══════════════════════════════════════════
+async function toggleFavorite(seriesId) {
+    try {
+        const res = await fetch(API + `/favorites/${seriesId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': TOKEN ? 'Bearer ' + TOKEN : '' }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Hata');
+        const btn = document.querySelector(`[data-series="${seriesId}"] .heart-btn`);
+        if (btn) btn.classList.toggle('active');
+        return data;
+    } catch (e) {
+        console.error('Favorite error:', e);
+    }
+}
+
+async function loadFavorites() {
+    try {
+        showLoading();
+        const res = await fetch(API + '/favorites', {
+            headers: { 'Authorization': TOKEN ? 'Bearer ' + TOKEN : '' }
+        });
+        if (!res.ok) throw new Error('Favoriler yüklenemedi');
+        const favorites = await res.json();
+        displayFavorites(favorites);
+    } catch (e) {
+        console.error('Load favorites error:', e);
+    } finally {
+        hideLoading();
+    }
+}
+
+function displayFavorites(items) {
+    const row = document.getElementById('search-results') || document.querySelector('.results-container');
+    if (!row) {
+        alert('Sonuç alanı bulunamadı');
+        return;
+    }
+    row.innerHTML = items.map(item => renderCard(item, null, null, null)).join('');
+}
+
 // ═══════════════════════════════════════════
 // ═══════════════════════════════════════════════════════════════════
 // AUTH HELPERS & UI
@@ -336,7 +391,7 @@ function createCard(item) {
     const placeholderStyle = item.poster ? 'display:none' : '';
 
     return `
-    <div class="card" onclick="openDetail('${item._id}')">
+    <div class="card" data-series="${item._id}">
       ${imgHtml}
       <div class="card-placeholder" style="${placeholderStyle}">
         <span class="icon">${tKey === 'movie' ? '🎬' : tKey === 'documentary' ? '🎞' : '📺'}</span>
@@ -344,7 +399,8 @@ function createCard(item) {
       </div>
       <span class="badge-type ${typeCls}">${typeLabel}</span>
       ${rating ? `<span class="badge-rating">⭐ ${rating}</span>` : ''}
-      <div class="card-overlay">
+      <button class="heart-btn" onclick="event.stopPropagation();toggleFavorite('${item._id}')">❤️</button>
+      <div class="card-overlay" onclick="openDetail('${item._id}')">
         <button class="card-overlay-play" onclick="event.stopPropagation();openDetail('${item._id}',true)">
           <svg viewBox="0 0 24 24" width="12" height="12"><polygon points="5,3 19,12 5,21" fill="#000"/></svg>
         </button>
