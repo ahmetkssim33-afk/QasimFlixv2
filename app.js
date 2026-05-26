@@ -1837,5 +1837,17 @@ window.addEventListener('DOMContentLoaded', () => {
             history.replaceState({}, '', window.location.pathname);
             openProfileSelectScreen();
         }
+        // Hide loading spinner
+        hideLoading();
+    }).catch(err => {
+        console.error('Init error:', err);
+        hideLoading();
     });
+});
+
+// Auto-hide loading after 5 seconds (failsafe)
+window.addEventListener('load', () => {
+    setTimeout(() => {
+        hideLoading();
+    }, 1000);
 });
