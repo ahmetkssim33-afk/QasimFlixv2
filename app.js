@@ -1213,8 +1213,305 @@ async function createChildProfile(name, ageRestriction, pinCode) {
 }
 
 // ═══════════════════════════════════════════
-// THEME MANAGEMENT
+// PROFİL YÖNETİMİ & PIN SİSTEMİ
 // ═══════════════════════════════════════════
+
+let ACTIVE_PROFILE = null; // Seçili profil (null = ana hesap)
+let _pinResolve = null;
+
+const PROFILE_EMOJIS = ['🎬','🎭','🌟','🦁','🐬','🦊','🌈','🎮','👑','🏆'];
+
+function getProfileEmoji(name) {
+  const idx = name ? (name.charCodeAt(0) % PROFILE_EMOJIS.length) : 0;
+  return PROFILE_EMOJIS[idx];
+}
+
+// ── Profil Seçim Ekranı ──────────────────────────────────
+async function openProfileSelectScreen() {
+  if (!AUTH_USER) return;
+  const screen = document.getElementById('profile-select-screen');
+  screen.style.display = 'flex';
+
+  // Profil verilerini çek
+  let profiles = { mainProfile: null, childProfiles: [] };
+  try {
+    const res = await fetch(API + '/user/profiles', { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+    if (res.ok) profiles = await res.json();
+  } catch (e) {}
+
+  const container = document.getElementById('profile-avatars');
+  container.innerHTML = '';
+
+  // Ana profil kartı
+  const main = profiles.mainProfile || { name: AUTH_USER.name || 'Ana Hesap', isMain: true };
+  container.innerHTML += profileAvatarCard(null, main.name, true);
+
+  // Alt profil kartları
+  (profiles.childProfiles || []).forEach(p => {
+    container.innerHTML += profileAvatarCard(p._id, p.name, false, !!p.pinCode, p.ageRestriction);
+  });
+}
+
+function profileAvatarCard(id, name, isMain, hasPin = false, age = null) {
+  const emoji = getProfileEmoji(name);
+  const ageLabel = age && age < 18 ? `<div style="font-size:.65rem;color:var(--muted);margin-top:2px">${age}+</div>` : '';
+  const pinIcon = hasPin ? `<div style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.7);border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:.6rem">🔒</div>` : '';
+  return `
+    <div onclick="${isMain ? 'selectMainProfile()' : `selectChildProfile('${id}','${name}',${hasPin})`}"
+         style="display:flex;flex-direction:column;align-items:center;gap:10px;cursor:pointer;padding:8px;border-radius:10px;transition:background .2s;width:110px;min-width:90px"
+         onmouseover="this.style.background='rgba(255,255,255,0.07)'" onmouseout="this.style.background='transparent'">
+      <div style="position:relative;width:72px;height:72px;border-radius:10px;background:linear-gradient(135deg,${isMain?'var(--accent),#f40612':'#6c63ff,#a78bfa'});display:flex;align-items:center;justify-content:center;font-size:2.2rem;border:2px solid ${ACTIVE_PROFILE===null&&isMain || ACTIVE_PROFILE&&ACTIVE_PROFILE._id===id?'#fff':'transparent'}">
+        ${emoji}${pinIcon}
+      </div>
+      <div style="font-size:.85rem;font-weight:500;text-align:center;word-break:break-word;max-width:90px">${name || 'Profil'}</div>
+      ${ageLabel}
+    </div>`;
+}
+
+function selectMainProfile() {
+  ACTIVE_PROFILE = null;
+  closeProfileSelectScreen();
+  updateActiveProfileBadge();
+}
+
+async function selectChildProfile(id, name, hasPin) {
+  if (hasPin) {
+    const ok = await showPinModal(id, name);
+    if (!ok) return;
+  }
+  ACTIVE_PROFILE = { _id: id, name };
+  closeProfileSelectScreen();
+  updateActiveProfileBadge();
+}
+
+function closeProfileSelectScreen() {
+  document.getElementById('profile-select-screen').style.display = 'none';
+}
+
+function updateActiveProfileBadge() {
+  const nameEl = document.getElementById('user-display-name');
+  if (nameEl) {
+    nameEl.textContent = ACTIVE_PROFILE ? ACTIVE_PROFILE.name : (AUTH_USER ? (AUTH_USER.name || AUTH_USER.email) : '');
+  }
+}
+
+// ── PIN Modali ───────────────────────────────────────────
+function showPinModal(profileId, profileName) {
+  return new Promise(resolve => {
+    _pinResolve = resolve;
+    document.getElementById('pin-profile-name').textContent = profileName;
+    document.querySelector('#pin-avatar-display').textContent = getProfileEmoji(profileName);
+    document.querySelectorAll('.pin-box').forEach(b => { b.value = ''; b.style.borderColor = 'var(--border)'; });
+    document.getElementById('pin-error').textContent = '';
+    document.getElementById('pin-modal').classList.add('open');
+    setTimeout(() => document.querySelectorAll('.pin-box')[0].focus(), 100);
+
+    // Attach profileId to modal for verify
+    document.getElementById('pin-modal').dataset.profileId = profileId;
+  });
+}
+
+function closePinModal() {
+  document.getElementById('pin-modal').classList.remove('open');
+  if (_pinResolve) { _pinResolve(false); _pinResolve = null; }
+}
+
+function pinInput(input, idx) {
+  input.value = input.value.replace(/[^0-9]/g,'');
+  input.style.borderColor = input.value ? 'var(--accent)' : 'var(--border)';
+  const boxes = document.querySelectorAll('.pin-box');
+  if (input.value && idx < 3) { boxes[idx + 1].focus(); }
+  if (idx === 3 && input.value) { submitPin(); }
+}
+
+function pinKeyDown(event, idx) {
+  const boxes = document.querySelectorAll('.pin-box');
+  if (event.key === 'Backspace' && !boxes[idx].value && idx > 0) { boxes[idx - 1].focus(); }
+  if (event.key === 'Enter') { submitPin(); }
+}
+
+async function submitPin() {
+  const boxes = document.querySelectorAll('.pin-box');
+  const pin = Array.from(boxes).map(b => b.value).join('');
+  if (pin.length < 4) { document.getElementById('pin-error').textContent = '4 haneli PIN giriniz'; return; }
+
+  const profileId = document.getElementById('pin-modal').dataset.profileId;
+  try {
+    const res = await fetch(API + `/user/profiles/${profileId}/verify-pin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
+      body: JSON.stringify({ pin })
+    });
+    const data = await res.json();
+    if (data.success) {
+      document.getElementById('pin-modal').classList.remove('open');
+      if (_pinResolve) { _pinResolve(true); _pinResolve = null; }
+    } else {
+      document.getElementById('pin-error').textContent = 'Yanlış PIN, tekrar deneyin';
+      boxes.forEach(b => { b.value = ''; b.style.borderColor = '#ff6b6b'; });
+      setTimeout(() => { boxes.forEach(b => b.style.borderColor = 'var(--border)'); }, 1200);
+      boxes[0].focus();
+    }
+  } catch (e) {
+    document.getElementById('pin-error').textContent = 'Bağlantı hatası';
+  }
+}
+
+// ── Profil Yönetim Modali ────────────────────────────────
+async function openProfileManageModal() {
+  if (!AUTH_USER) { alert('Lütfen önce giriş yapın'); return; }
+  // Kapat screen varsa
+  closeProfileSelectScreen();
+  document.getElementById('profile-manage-modal').classList.add('open');
+
+  // Ana profil alanını doldur
+  document.getElementById('mp-name').textContent = AUTH_USER.name || AUTH_USER.email || '';
+  document.getElementById('mp-name-input').value = AUTH_USER.name || '';
+  document.getElementById('mp-avatar').textContent = getProfileEmoji(AUTH_USER.name);
+
+  await reloadChildProfilesList();
+}
+
+function closeProfileManageModal() {
+  document.getElementById('profile-manage-modal').classList.remove('open');
+}
+
+async function reloadChildProfilesList() {
+  const list = document.getElementById('child-profiles-list');
+  list.innerHTML = '<div style="color:var(--muted);font-size:.8rem;padding:4px">Yükleniyor...</div>';
+
+  try {
+    const res = await fetch(API + '/user/profiles', { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+    const data = await res.json();
+    const profiles = data.childProfiles || [];
+    const countLabel = document.getElementById('profile-count-label');
+    if (countLabel) countLabel.textContent = profiles.length + '/4 profil';
+
+    const addForm = document.getElementById('add-profile-form');
+    if (addForm) addForm.style.display = profiles.length >= 4 ? 'none' : '';
+
+    if (!profiles.length) {
+      list.innerHTML = '<div style="color:var(--muted2);font-size:.8rem;padding:8px 0">Henüz alt profil eklenmedi.</div>';
+      return;
+    }
+
+    list.innerHTML = profiles.map(p => `
+      <div style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:14px 16px;display:flex;align-items:center;gap:12px" id="cpcard-${p._id}">
+        <div style="width:40px;height:40px;border-radius:8px;background:linear-gradient(135deg,#6c63ff,#a78bfa);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0">${getProfileEmoji(p.name)}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.88rem;font-weight:600">${p.name}</div>
+          <div style="font-size:.72rem;color:var(--muted);margin-top:2px">${p.ageRestriction || 18}+ yaş · ${p.hasPin ? '🔒 PIN korumalı' : '🔓 PIN yok'}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          <button onclick="editChildProfile('${p._id}','${p.name}',${p.ageRestriction||18},${!!p.hasPin})" style="background:rgba(255,255,255,0.08);border:1px solid var(--border);color:var(--muted);padding:6px 12px;border-radius:5px;cursor:pointer;font-size:.75rem;font-family:var(--font)">Düzenle</button>
+          <button onclick="deleteChildProfile('${p._id}','${p.name}')" style="background:rgba(255,80,80,0.1);border:1px solid rgba(255,80,80,0.3);color:#ff6b6b;padding:6px 10px;border-radius:5px;cursor:pointer;font-size:.75rem">Sil</button>
+        </div>
+      </div>`).join('');
+  } catch (e) {
+    list.innerHTML = '<div style="color:#ff6b6b;font-size:.8rem">Profiller yüklenemedi.</div>';
+  }
+}
+
+async function saveMainProfile() {
+  const name = document.getElementById('mp-name-input').value.trim();
+  if (!name) { alert('Ad boş olamaz'); return; }
+  try {
+    const res = await fetch(API + '/user/profile', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
+      body: JSON.stringify({ name })
+    });
+    if (res.ok) {
+      await initAuth();
+      document.getElementById('mp-name').textContent = name;
+      document.getElementById('mp-avatar').textContent = getProfileEmoji(name);
+      alert('Profil güncellendi');
+    } else {
+      const e = await res.json(); alert(e.error || 'Hata');
+    }
+  } catch (e) { alert('Bağlantı hatası'); }
+}
+
+async function changePassword() {
+  const cur = document.getElementById('mp-cur-pass').value;
+  const nw = document.getElementById('mp-new-pass').value;
+  if (!cur || !nw) { alert('Her iki alan da doldurulmalı'); return; }
+  try {
+    const res = await fetch(API + '/user/change-password', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
+      body: JSON.stringify({ currentPassword: cur, newPassword: nw })
+    });
+    const data = await res.json();
+    if (data.success) {
+      document.getElementById('mp-cur-pass').value = '';
+      document.getElementById('mp-new-pass').value = '';
+      alert('Şifre başarıyla değiştirildi');
+    } else {
+      alert(data.error || 'Hata');
+    }
+  } catch (e) { alert('Bağlantı hatası'); }
+}
+
+async function addNewChildProfile() {
+  const name = document.getElementById('new-profile-name').value.trim();
+  const age = parseInt(document.getElementById('new-profile-age').value);
+  const pin = document.getElementById('new-profile-pin').value.trim();
+  if (!name) { alert('Profil adı gerekli'); return; }
+  if (pin && (pin.length !== 4 || !/^\d{4}$/.test(pin))) { alert('PIN 4 haneli sayı olmalı'); return; }
+  try {
+    const res = await fetch(API + '/user/profiles', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
+      body: JSON.stringify({ name, ageRestriction: age, pinCode: pin || null })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      document.getElementById('new-profile-name').value = '';
+      document.getElementById('new-profile-pin').value = '';
+      await reloadChildProfilesList();
+    } else { alert(data.error || 'Hata'); }
+  } catch (e) { alert('Bağlantı hatası'); }
+}
+
+function editChildProfile(id, name, age, hasPin) {
+  const newName = prompt('Yeni profil adı:', name);
+  if (!newName) return;
+  const newAge = prompt('Yaş sınırı (6/12/16/18):', age);
+  const newPin = prompt('Yeni PIN (boş bırakırsan ' + (hasPin?'eskisi kalır':'PIN eklenmez') + '): (4 haneli sayı)');
+
+  const body = { name: newName, ageRestriction: parseInt(newAge) || age };
+  if (newPin !== null && newPin.trim() !== '') {
+    if (!/^\d{4}$/.test(newPin.trim())) { alert('PIN 4 haneli sayı olmalı'); return; }
+    body.pinCode = newPin.trim();
+  }
+
+  fetch(API + `/user/profiles/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
+    body: JSON.stringify(body)
+  }).then(r => r.json()).then(d => {
+    if (d._id) reloadChildProfilesList();
+    else alert(d.error || 'Güncelleme hatası');
+  }).catch(() => alert('Bağlantı hatası'));
+}
+
+async function deleteChildProfile(id, name) {
+  if (!confirm(`"${name}" profilini silmek istediğinize emin misiniz?`)) return;
+  try {
+    const res = await fetch(API + `/user/profiles/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + TOKEN }
+    });
+    const data = await res.json();
+    if (data.success) {
+      if (ACTIVE_PROFILE && ACTIVE_PROFILE._id === id) { ACTIVE_PROFILE = null; updateActiveProfileBadge(); }
+      await reloadChildProfilesList();
+    } else { alert(data.error || 'Silme hatası'); }
+  } catch (e) { alert('Bağlantı hatası'); }
+}
+
+// ── Giriş sonrası profil seçim ekranını göster ───────────
 function applyTheme() {
     const isDark = localStorage.getItem('darkMode') !== 'false';
     document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
@@ -1229,5 +1526,13 @@ function applyTheme() {
 // Initialize theme on page load
 window.addEventListener('DOMContentLoaded', () => {
     applyTheme();
-    initAuth();
+    initAuth().then(() => {
+        // Giriş sonrası profil seçim ekranını göster
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('showProfiles') === '1' && AUTH_USER) {
+            // URL'yi temizle
+            history.replaceState({}, '', window.location.pathname);
+            openProfileSelectScreen();
+        }
+    });
 });

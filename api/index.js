@@ -597,6 +597,143 @@ app.post('/api/favorites/:seriesId', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════
+// API ENDPOINTS — KULLANICI PROFİL YÖNETİMİ
+// ═══════════════════════════════════════════════════════════
+
+// Kullanıcının kendi profilini güncelle (isim, profil resmi)
+app.put('/api/user/profile', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const { name, profilePicture } = req.body;
+    const update = {};
+    if (name !== undefined) update.name = name;
+    if (profilePicture !== undefined) update.profilePicture = profilePicture;
+    const user = await User.findByIdAndUpdate(userId, update, { new: true }).select('-passwordHash');
+    if (!user) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Tüm alt profilleri listele
+app.get('/api/user/profiles', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const user = await User.findById(userId).select('profiles name profilePicture');
+    if (!user) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
+    res.json({
+      mainProfile: { name: user.name, profilePicture: user.profilePicture, isMain: true },
+      childProfiles: user.profiles || []
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Yeni alt profil oluştur
+app.post('/api/user/profiles', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const { name, ageRestriction, pinCode } = req.body;
+    if (!name) return res.status(400).json({ error: 'Profil adı gerekli' });
+    const hashedPin = pinCode ? await bcrypt.hash(String(pinCode), 10) : null;
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
+    if (user.profiles.length >= 4) return res.status(400).json({ error: 'En fazla 4 alt profil oluşturabilirsiniz' });
+    const newProfile = { name, ageRestriction: ageRestriction || 18, pinCode: hashedPin };
+    user.profiles.push(newProfile);
+    await user.save();
+    const added = user.profiles[user.profiles.length - 1];
+    res.status(201).json({ _id: added._id, name: added.name, ageRestriction: added.ageRestriction, hasPin: !!hashedPin });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Alt profil güncelle
+app.put('/api/user/profiles/:profileId', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const { name, ageRestriction, pinCode } = req.body;
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
+    const profile = user.profiles.id(req.params.profileId);
+    if (!profile) return res.status(404).json({ error: 'Profil bulunamadı' });
+    if (name !== undefined) profile.name = name;
+    if (ageRestriction !== undefined) profile.ageRestriction = ageRestriction;
+    if (pinCode !== undefined) {
+      profile.pinCode = pinCode ? await bcrypt.hash(String(pinCode), 10) : null;
+    }
+    await user.save();
+    res.json({ _id: profile._id, name: profile.name, ageRestriction: profile.ageRestriction, hasPin: !!profile.pinCode });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Alt profil sil
+app.delete('/api/user/profiles/:profileId', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
+    const profile = user.profiles.id(req.params.profileId);
+    if (!profile) return res.status(404).json({ error: 'Profil bulunamadı' });
+    profile.deleteOne();
+    await user.save();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PIN doğrula (profil geçişi için)
+app.post('/api/user/profiles/:profileId/verify-pin', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const { pin } = req.body;
+    if (!pin) return res.status(400).json({ error: 'PIN gerekli' });
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
+    const profile = user.profiles.id(req.params.profileId);
+    if (!profile) return res.status(404).json({ error: 'Profil bulunamadı' });
+    if (!profile.pinCode) return res.json({ success: true }); // PIN yoksa direkt geç
+    const ok = await bcrypt.compare(String(pin), profile.pinCode);
+    if (!ok) return res.status(401).json({ error: 'Yanlış PIN' });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Şifre değiştir
+app.put('/api/user/change-password', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) return res.status(400).json({ error: 'Mevcut ve yeni şifre gerekli' });
+    if (newPassword.length < 6) return res.status(400).json({ error: 'Yeni şifre en az 6 karakter olmalı' });
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
+    const ok = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!ok) return res.status(401).json({ error: 'Mevcut şifre yanlış' });
+    user.passwordHash = await bcrypt.hash(newPassword, 10);
+    await user.save();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
 // EXPORT — Vercel için app.listen() YOK
 // ═══════════════════════════════════════════════════════════
 module.exports = app;
