@@ -1719,9 +1719,8 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ═══════════════════════════════════════════════════════
-// ANA PROFİL KAYDET
+// LANDSCAPE MODE & FULLSCREEN (Mobile)
 // ═══════════════════════════════════════════════════════
-async function saveMainProfile() {
   const name = document.getElementById('mp-name-input').value.trim();
   if (!name) { alert('Ad boş olamaz'); return; }
   try {
