@@ -795,17 +795,9 @@ async function playEpisode(episodeId, isMovie = false) {
 
         const src = episode.videoUrl || '';
 
-        // Google Drive: convert share link to preview embed URL
-        function toDriveEmbed(url) {
-            // Already an embed URL
-            if (url.includes('/preview')) return url;
-            // Share URL: https://drive.google.com/file/d/FILE_ID/view
-            const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-            if (m) return `https://drive.google.com/file/d/${m[1]}/preview`;
-            // Old format: ?id=FILE_ID
-            const m2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-            if (m2) return `https://drive.google.com/file/d/${m2[1]}/preview`;
-            return url;
+        // Google Drive: kendi HTML5 player'ında oynat (proxy üzerinden)
+        function getDriveProxyUrl(url) {
+            return `/api/video-proxy?url=${encodeURIComponent(url)}`;
         }
 
         function isDirectVideo(url) {
@@ -855,7 +847,23 @@ async function playEpisode(episodeId, isMovie = false) {
             embedContainer.style.display = 'block';
             document.getElementById('sub-wrap').style.display = 'none';
         } else if (isGoogleDrive(src)) {
-            showIframe(toDriveEmbed(src));
+            // Drive → proxy üzerinden kendi HTML5 player'ında oynat
+            const proxySrc = getDriveProxyUrl(src);
+            videoSource.src = proxySrc;
+            videoPlayer.load();
+            videoPlayer.style.display = '';
+            embedContainer.style.display = 'none';
+            document.getElementById('sub-wrap').style.display = '';
+            loadSubtitles(episode.subtitles || []);
+            await loadProgress(episodeId);
+            videoPlayer.addEventListener('timeupdate', () => saveProgress(episodeId));
+            // Proxy yüklenemezse fallback olarak iframe göster
+            videoPlayer.onerror = () => {
+                console.warn('[Drive] Proxy yüklenemedi, iframe\'e geçiliyor...');
+                videoPlayer.style.display = 'none';
+                const fallbackSrc = src.includes('/preview') ? src : src.replace(/\/view.*$/, '/preview');
+                showIframe(fallbackSrc);
+            };
         } else if (isYouTube(src)) {
             showIframe(toYouTubeEmbed(src));
         } else if (isDirectVideo(src)) {
