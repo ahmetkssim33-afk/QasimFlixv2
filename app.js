@@ -937,12 +937,20 @@ function showIframe(iframeSrc) {
     const videoPlayer = document.getElementById('video-player');
     const embedContainer = document.getElementById('embed-player');
     const controls = document.getElementById('qasim-video-controls');
+    const playerWrap = document.getElementById('player-wrap');
     if (!videoPlayer || !embedContainer) return;
 
     videoPlayer.pause();
     videoPlayer.style.display = 'none';
     if (controls) controls.style.display = 'none';
     embedContainer.innerHTML = '';
+
+    // Kritik: video gizlenince wrap height sıfırlanır → iframe'e explicit height ver
+    if (playerWrap) {
+        const currentH = playerWrap.getBoundingClientRect().height;
+        const targetH = currentH > 100 ? currentH : (window.innerWidth <= 768 ? window.innerHeight * 0.56 : Math.min(window.innerHeight * 0.7, 720));
+        playerWrap.style.minHeight = targetH + 'px';
+    }
 
     const iframe = document.createElement('iframe');
     iframe.src = iframeSrc;
@@ -960,11 +968,16 @@ async function setVideoSource(url, keepTime = 0, autoPlay = true) {
     const videoSource = document.getElementById('video-source');
     const embedContainer = document.getElementById('embed-player');
     const controls = document.getElementById('qasim-video-controls');
+    const playerWrap = document.getElementById('player-wrap');
     if (!videoPlayer || !videoSource || !embedContainer) return;
 
     qasimCurrentSourceUrl = url;
     embedContainer.innerHTML = '';
     embedContainer.style.display = 'none';
+
+    // Embed'den geri dönünce minHeight temizle
+    if (playerWrap) playerWrap.style.minHeight = '';
+
     videoPlayer.style.display = 'block';
     if (controls) controls.style.display = '';
     setQasimLoading(true);
@@ -1040,8 +1053,21 @@ async function playEpisode(episodeId, isMovie = false) {
             videoPlayer.ontimeupdate = () => { saveProgress(episodeId); updateQasimControls(); };
             videoPlayer.onerror = () => {
                 setQasimLoading(false);
-                console.warn('[QasimFlix Player] Video yüklenemedi. Link doğrudan oynatılamıyor olabilir:', src);
-                alert('Video yüklenemedi. Google Drive dosyası herkese açık olmalı ve çok büyük dosyalarda Drive bazen oynatmayı engelleyebilir.');
+                console.warn('[QasimFlix Player] Video yüklenemedi, iframe fallback deneniyor:', src);
+                // Drive URL ise Drive preview iframe'ine otomatik geç
+                if (isGoogleDriveUrl(src)) {
+                    const id = src.match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1] || src.match(/[?&]id=([a-zA-Z0-9_-]+)/)?.[1];
+                    if (id) {
+                        showIframe(`https://drive.google.com/file/d/${id}/preview`);
+                        return;
+                    }
+                }
+                // Diğer URL'ler için iframe dene
+                if (src) {
+                    showIframe(src);
+                } else {
+                    alert('Video yüklenemedi. Google Drive dosyası herkese açık olmalı.');
+                }
             };
         } else if (rawIframeSrc) {
             showIframe(rawIframeSrc);
@@ -1089,6 +1115,9 @@ function closePlayer() {
     document.getElementById('sub-wrap').style.display = '';
     const qualityWrap = document.getElementById('quality-wrap');
     if (qualityWrap) qualityWrap.style.display = '';
+    // minHeight sıfırla (showIframe tarafından set edilmiş olabilir)
+    const playerWrap = document.getElementById('player-wrap');
+    if (playerWrap) playerWrap.style.minHeight = '';
     setQasimLoading(false);
 }
 
@@ -1754,35 +1783,98 @@ function initSwipeGestures() {
   let touchEndX = 0;
   let touchStartY = 0;
   let touchEndY = 0;
+  let lastTapTime = 0;
+  let lastTapX = 0;
 
   const playerModal = document.getElementById('player-modal');
   if (!playerModal) return;
 
-  playerModal.addEventListener('touchstart', (e) => {
-    touchStartX = e.changedTouches[0].screenX;
-    touchStartY = e.changedTouches[0].screenY;
+  // ─── Double-tap to seek (sol = -10s, sağ = +10s) ───
+  playerModal.addEventListener('touchend', (e) => {
+    // Kontrol butonlarına dokunulmuşsa pas geç
+    if (e.target.closest('.qasim-video-controls') || e.target.closest('.player-bar')) return;
+
+    const video = document.getElementById('video-player');
+    if (!video || video.style.display === 'none') return;
+
+    const now = Date.now();
+    const tapX = e.changedTouches[0].clientX;
+
+    if (now - lastTapTime < 300 && Math.abs(tapX - lastTapX) < 80) {
+      // Çift tıklama
+      const rect = playerModal.getBoundingClientRect();
+      const relX = tapX - rect.left;
+      if (relX < rect.width / 2) {
+        video.currentTime = Math.max(0, video.currentTime - 10);
+        showSeekIndicator('⏪ 10s', 'left');
+      } else {
+        video.currentTime = Math.min(video.duration || Infinity, video.currentTime + 10);
+        showSeekIndicator('10s ⏩', 'right');
+      }
+      lastTapTime = 0;
+    } else {
+      lastTapTime = now;
+      lastTapX = tapX;
+    }
   }, false);
 
-  playerModal.addEventListener('touchend', (e) => {
-    touchEndX = e.changedTouches[0].screenX;
-    touchEndY = e.changedTouches[0].screenY;
-    handleSwipe();
-  }, false);
+  // ─── Swipe: yatay = bölüm değiştir, dikey = ses ───
+  const playerWrap = document.getElementById('player-wrap');
+  if (playerWrap) {
+    playerWrap.addEventListener('touchstart', (e) => {
+      if (e.target.closest('.qasim-video-controls')) return;
+      touchStartX = e.changedTouches[0].clientX;
+      touchStartY = e.changedTouches[0].clientY;
+    }, { passive: true });
+
+    playerWrap.addEventListener('touchend', (e) => {
+      if (e.target.closest('.qasim-video-controls')) return;
+      touchEndX = e.changedTouches[0].clientX;
+      touchEndY = e.changedTouches[0].clientY;
+      handleSwipe();
+    }, false);
+  }
 
   function handleSwipe() {
     const diffX = touchStartX - touchEndX;
     const diffY = touchStartY - touchEndY;
-    
-    // Only register if horizontal swipe is more pronounced than vertical
-    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
-      if (diffX > 0) {
-        // Swipe left = next
-        nextEpisode();
-      } else {
-        // Swipe right = previous
-        previousEpisode();
-      }
+
+    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 80) {
+      // Yatay swipe → bölüm değiştir
+      if (diffX > 0) nextEpisode();
+      else previousEpisode();
+    } else if (Math.abs(diffY) > Math.abs(diffX) && Math.abs(diffY) > 30) {
+      // Dikey swipe → ses ayarla
+      const video = document.getElementById('video-player');
+      if (!video || video.style.display === 'none') return;
+      const delta = diffY / 200; // ne kadar kaydırıldı
+      video.volume = Math.min(1, Math.max(0, video.volume + delta));
+      video.muted = video.volume === 0;
+      updateQasimControls();
     }
+  }
+
+  // ─── Seek göstergesi ───
+  function showSeekIndicator(text, side) {
+    let ind = document.getElementById('qasim-seek-indicator');
+    if (!ind) {
+      ind = document.createElement('div');
+      ind.id = 'qasim-seek-indicator';
+      ind.style.cssText = `
+        position:absolute;top:50%;transform:translateY(-50%);
+        background:rgba(0,0,0,.65);color:#fff;
+        padding:10px 18px;border-radius:8px;font-size:1rem;font-weight:700;
+        pointer-events:none;z-index:20;transition:opacity .3s;
+      `;
+      const wrap = document.getElementById('player-wrap');
+      if (wrap) wrap.appendChild(ind);
+    }
+    ind.textContent = text;
+    ind.style.opacity = '1';
+    ind.style.left = side === 'left' ? '14%' : 'auto';
+    ind.style.right = side === 'right' ? '14%' : 'auto';
+    clearTimeout(ind._hideTimer);
+    ind._hideTimer = setTimeout(() => { ind.style.opacity = '0'; }, 800);
   }
 }
 

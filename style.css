@@ -1689,6 +1689,8 @@ body.scrolled .navbar {
   background: #000;
   overflow: hidden;
   border-radius: 10px 10px 0 0;
+  /* Kritik: video gizlenince (embed/iframe modda) container çökmemeli */
+  min-height: min(70vh, 720px);
 }
 
 .qasim-player-wrap video {
@@ -1813,31 +1815,71 @@ body.scrolled .navbar {
 }
 
 @media (max-width: 768px) {
+  .qasim-player-wrap {
+    min-height: 56vh;
+    border-radius: 0;
+  }
+
   .qasim-player-wrap video {
     height: 56vh;
   }
 
+  /* Embed iframe mobilde tam yükseklik alsın */
+  #embed-player {
+    min-height: 56vh !important;
+    height: 56vh !important;
+  }
+
   .qasim-video-controls {
     flex-wrap: wrap;
-    gap: 7px;
-    padding: 42px 10px 10px;
+    gap: 6px;
+    padding: 48px 10px 12px;
   }
 
   #qasim-progress {
     order: -1;
     flex-basis: 100%;
+    height: 6px; /* daha kolay dokunulan progress bar */
   }
 
   #qasim-volume {
-    width: 58px;
+    width: 60px;
   }
 
+  /* Mobil için daha büyük dokunma alanı */
   .qasim-video-controls button {
-    font-size: .78rem;
-    padding: 6px 8px;
+    font-size: .82rem;
+    padding: 10px 12px;
+    min-height: 42px;
+    min-width: 42px;
+  }
+
+  .qasim-main-play {
+    min-width: 52px !important;
+    font-size: 1rem !important;
+  }
+
+  .qasim-time {
+    font-size: .75rem;
   }
 
   .player-bar {
-    gap: 10px;
+    gap: 8px;
+    padding: 8px 10px;
+  }
+
+  /* Kalite/altyazı seçimi mobilde tam genişlik */
+  #quality-wrap,
+  #sub-wrap {
+    flex: 1;
+    min-width: 0;
+  }
+
+  #quality-wrap select,
+  #sub-wrap select {
+    flex: 1;
+    min-width: 0;
+    max-width: 100%;
+    font-size: .78rem;
   }
 }
