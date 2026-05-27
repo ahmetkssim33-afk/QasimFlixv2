@@ -917,35 +917,67 @@ function showQasimControls() {
     }, 2600);
 }
 
+function spawnRipple(wrap) {
+    const el = document.createElement('div');
+    el.className = 'qp-ripple';
+    wrap.appendChild(el);
+    el.addEventListener('animationend', () => el.remove(), { once: true });
+}
+
 function initQasimPlayerControls() {
     if (qasimPlayerBound) return;
     qasimPlayerBound = true;
 
     const video = document.getElementById('video-player');
-    const wrap = document.getElementById('player-wrap');
+    const wrap  = document.getElementById('player-wrap');
     if (!video || !wrap) return;
 
-    const playBtn = document.getElementById('qasim-play-pause');
-    const backBtn = document.getElementById('qasim-back-10');
+    const playBtn    = document.getElementById('qasim-play-pause');
+    const backBtn    = document.getElementById('qasim-back-10');
     const forwardBtn = document.getElementById('qasim-forward-10');
-    const progress = document.getElementById('qasim-progress');
-    const muteBtn = document.getElementById('qasim-mute');
-    const volume = document.getElementById('qasim-volume');
+    const progress   = document.getElementById('qasim-progress');
+    const muteBtn    = document.getElementById('qasim-mute');
+    const volume     = document.getElementById('qasim-volume');
+    const fsBtn      = document.getElementById('fullscreen-btn');
 
+    /* ── Play / Pause ── */
     const togglePlay = () => {
         if (video.paused) video.play().catch(err => console.warn('Video oynatılamadı:', err));
         else video.pause();
+        spawnRipple(wrap);
     };
 
-    playBtn?.addEventListener('click', togglePlay);
-    video.addEventListener('click', togglePlay);
-    backBtn?.addEventListener('click', () => { video.currentTime = Math.max(0, video.currentTime - 10); });
+    playBtn?.addEventListener('click', (e) => { e.stopPropagation(); togglePlay(); });
+
+    /* ── Click on video = toggle, double-click = seek ±10s ── */
+    let clickTimer = null;
+    video.addEventListener('click', () => {
+        if (clickTimer) { clearTimeout(clickTimer); clickTimer = null; return; }
+        clickTimer = setTimeout(() => { clickTimer = null; togglePlay(); }, 220);
+    });
+    video.addEventListener('dblclick', (e) => {
+        clearTimeout(clickTimer); clickTimer = null;
+        const rect = video.getBoundingClientRect();
+        if (e.clientX - rect.left < rect.width / 2) {
+            video.currentTime = Math.max(0, video.currentTime - 10);
+        } else {
+            video.currentTime = Math.min(video.duration || Infinity, video.currentTime + 10);
+        }
+        spawnRipple(wrap);
+    });
+
+    /* ── Seek buttons ── */
+    backBtn?.addEventListener('click',    () => { video.currentTime = Math.max(0, video.currentTime - 10); });
     forwardBtn?.addEventListener('click', () => { video.currentTime = Math.min(video.duration || Infinity, video.currentTime + 10); });
+
+    /* ── Progress bar ── */
     progress?.addEventListener('input', () => {
         if (Number.isFinite(video.duration) && video.duration > 0) {
             video.currentTime = (Number(progress.value) / 100) * video.duration;
         }
     });
+
+    /* ── Mute / Volume ── */
     muteBtn?.addEventListener('click', () => { video.muted = !video.muted; updateQasimControls(); });
     volume?.addEventListener('input', () => {
         video.volume = Number(volume.value);
@@ -953,11 +985,77 @@ function initQasimPlayerControls() {
         updateQasimControls();
     });
 
+    /* ── Fullscreen ── */
+    const toggleFullscreen = () => {
+        if (!document.fullscreenElement) {
+            wrap.requestFullscreen?.() || wrap.webkitRequestFullscreen?.();
+        } else {
+            document.exitFullscreen?.() || document.webkitExitFullscreen?.();
+        }
+    };
+    fsBtn?.addEventListener('click', toggleFullscreen);
+    document.addEventListener('fullscreenchange', updateQasimControls);
+
+    /* ── Keyboard shortcuts (only when player modal is open) ── */
+    document.addEventListener('keydown', (e) => {
+        const playerModal = document.getElementById('player-modal');
+        if (!playerModal?.classList.contains('open')) return;
+        if (['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
+
+        switch (e.key) {
+            case ' ':
+            case 'k':
+                e.preventDefault();
+                togglePlay();
+                break;
+            case 'f':
+            case 'F':
+                e.preventDefault();
+                toggleFullscreen();
+                break;
+            case 'm':
+            case 'M':
+                e.preventDefault();
+                video.muted = !video.muted;
+                updateQasimControls();
+                break;
+            case 'ArrowLeft':
+                e.preventDefault();
+                video.currentTime = Math.max(0, video.currentTime - 10);
+                showQasimControls();
+                break;
+            case 'ArrowRight':
+                e.preventDefault();
+                video.currentTime = Math.min(video.duration || Infinity, video.currentTime + 10);
+                showQasimControls();
+                break;
+            case 'ArrowUp':
+                e.preventDefault();
+                video.volume = Math.min(1, video.volume + 0.1);
+                video.muted = false;
+                if (volume) volume.value = String(video.volume);
+                updateQasimControls();
+                break;
+            case 'ArrowDown':
+                e.preventDefault();
+                video.volume = Math.max(0, video.volume - 0.1);
+                if (volume) volume.value = String(video.volume);
+                updateQasimControls();
+                break;
+            case 'Escape':
+                closePlayer();
+                break;
+        }
+    });
+
+    /* ── Video event listeners ── */
     ['play', 'pause', 'timeupdate', 'loadedmetadata', 'volumechange', 'ended'].forEach(ev => {
         video.addEventListener(ev, updateQasimControls);
     });
     ['loadstart', 'waiting'].forEach(ev => video.addEventListener(ev, () => setQasimLoading(true)));
     ['canplay', 'playing', 'loadeddata'].forEach(ev => video.addEventListener(ev, () => setQasimLoading(false)));
+
+    /* ── Show controls on any interaction ── */
     ['mousemove', 'touchstart', 'click'].forEach(ev => wrap.addEventListener(ev, showQasimControls, { passive: true }));
 }
 
@@ -1013,12 +1111,39 @@ async function setVideoSource(url, keepTime = 0, autoPlay = true) {
     videoSource.src = makePlayableUrl(url);
     videoPlayer.load();
 
-    videoPlayer.addEventListener('loadedmetadata', () => {
-        if (keepTime > 0 && Number.isFinite(videoPlayer.duration)) {
-            videoPlayer.currentTime = Math.min(keepTime, Math.max(0, videoPlayer.duration - 2));
+    // Try to play immediately (helps when called directly from a user gesture).
+    if (autoPlay) {
+      try {
+        const playPromise = videoPlayer.play();
+        if (playPromise && typeof playPromise.catch === 'function') {
+          playPromise.catch(err => {
+            console.warn('[QasimFlix Player] Immediate play attempt failed:', err);
+            // Fallback: try muted autoplay (many browsers allow muted autoplay)
+            try {
+              const prevMuted = videoPlayer.muted;
+              videoPlayer.muted = true;
+              videoPlayer.play().catch(() => {
+                // If muted autoplay also fails, leave it for the loadedmetadata handler.
+                videoPlayer.muted = prevMuted;
+              });
+            } catch (e) { /* ignore */ }
+          });
         }
-        updateQasimControls();
-        if (autoPlay) videoPlayer.play().catch(() => {});
+      } catch (e) { /* ignore */ }
+    }
+
+    videoPlayer.addEventListener('loadedmetadata', () => {
+      if (keepTime > 0 && Number.isFinite(videoPlayer.duration)) {
+        videoPlayer.currentTime = Math.min(keepTime, Math.max(0, videoPlayer.duration - 2));
+      }
+      updateQasimControls();
+      if (autoPlay) {
+        // Final attempt after metadata is loaded.
+        videoPlayer.play().catch(err => {
+          // If play is still blocked, prefer to keep the player visible and let user interact.
+          console.warn('[QasimFlix Player] Play blocked after loadedmetadata:', err);
+        });
+      }
     }, { once: true });
 }
 

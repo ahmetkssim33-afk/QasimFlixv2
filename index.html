@@ -354,6 +354,412 @@ html[dir="rtl"] .hero-content{direction:rtl;text-align:right}
 html[dir="rtl"] .card-overlay{direction:rtl;text-align:right}
 html[dir="rtl"] .badge-type{left:auto;right:6px}
 html[dir="rtl"] .user-dropdown{right:auto;left:0}
+
+/* ════════════════════════════════════════════════════════════
+   QASIMFLIX VIDEO PLAYER — MODERN PREMIUM DESIGN
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Player Modal Box ── */
+.player-modal-box {
+  background: #000;
+  border-radius: 14px;
+  width: min(1100px, 98vw);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 40px 100px rgba(0,0,0,.92), 0 0 0 1px rgba(255,255,255,.06);
+}
+
+/* ── Player Wrap (video container) ── */
+.player-wrap {
+  position: relative;
+  background: #000;
+  width: 100%;
+  aspect-ratio: 16/9;
+  height: auto;
+  min-height: 180px;
+  overflow: hidden;
+  cursor: none;
+}
+.player-wrap.controls-hidden { cursor: none; }
+.player-wrap:not(.controls-hidden) { cursor: default; }
+
+/* ── Native <video> ── */
+#video-player {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  background: #000;
+}
+
+/* ── Watermark Logo ── */
+.qasim-player-logo {
+  position: absolute;
+  top: 14px;
+  left: 18px;
+  font-family: 'Bebas Neue', var(--font-display), cursive;
+  font-size: 1.05rem;
+  letter-spacing: .12em;
+  color: rgba(255,255,255,.22);
+  pointer-events: none;
+  z-index: 8;
+  user-select: none;
+  text-shadow: 0 1px 4px rgba(0,0,0,.6);
+  transition: opacity .3s;
+}
+.player-wrap.controls-hidden .qasim-player-logo { opacity: 0; }
+
+/* ── Close Button ── */
+.qplayer-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 30;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,.12);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background .2s, transform .2s, opacity .3s;
+  opacity: 1;
+}
+.qplayer-close svg { width: 16px; height: 16px; }
+.qplayer-close:hover { background: rgba(229,9,20,.75); transform: scale(1.08); }
+.player-wrap.controls-hidden .qplayer-close { opacity: 0; pointer-events: none; }
+.player-wrap:not(.controls-hidden) .qplayer-close { opacity: 1; pointer-events: all; }
+
+/* ── Center Loading Spinner ── */
+.qasim-center-loader {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,.35);
+  z-index: 20;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s;
+}
+.player-wrap.is-loading .qasim-center-loader { opacity: 1; }
+
+.qasim-spinner {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 3.5px solid rgba(255,255,255,.12);
+  border-top-color: var(--accent, #e50914);
+  animation: qpSpin .75s linear infinite;
+}
+@keyframes qpSpin { to { transform: rotate(360deg); } }
+
+/* ── Controls Overlay ── */
+.qasim-video-controls {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 25;
+  background: linear-gradient(to top, rgba(0,0,0,.88) 0%, rgba(0,0,0,.45) 60%, transparent 100%);
+  padding: 0 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transform: translateY(0);
+  opacity: 1;
+  transition: opacity .35s, transform .35s;
+}
+.player-wrap.controls-hidden .qasim-video-controls {
+  opacity: 0;
+  transform: translateY(6px);
+  pointer-events: none;
+}
+
+/* ── Progress Row ── */
+.qp-progress-row {
+  width: 100%;
+  padding: 4px 0 0;
+}
+
+.qp-progress-wrap {
+  position: relative;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255,255,255,.2);
+  cursor: pointer;
+  transition: height .18s;
+}
+.qp-progress-wrap:hover { height: 7px; }
+
+/* Buffered bar */
+.qp-buffered {
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  background: rgba(255,255,255,.22);
+  border-radius: 2px;
+  pointer-events: none;
+  transition: width .3s;
+}
+
+/* Progress input range */
+#qasim-progress {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  z-index: 2;
+}
+
+/* Progress fill visual via pseudo-element trick */
+.qp-progress-wrap::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  width: var(--qp-pct, 0%);
+  background: var(--accent, #e50914);
+  border-radius: 2px;
+  pointer-events: none;
+  transition: width .1s linear;
+}
+
+/* ── Bottom Controls Row ── */
+.qp-bottom-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.qp-left, .qp-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ── Generic Control Button ── */
+.qp-btn {
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  padding: 0;
+  transition: background .18s, transform .15s;
+  flex-shrink: 0;
+}
+.qp-btn svg { width: 20px; height: 20px; display: block; }
+.qp-btn:hover { background: rgba(255,255,255,.12); transform: scale(1.08); }
+.qp-btn:active { transform: scale(.95); }
+
+/* Play/Pause is slightly larger */
+.qp-play { width: 40px; height: 40px; }
+.qp-play svg { width: 22px; height: 22px; }
+
+/* ── Volume Group ── */
+.qp-vol-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.qp-vol-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 0;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255,255,255,.3);
+  cursor: pointer;
+  overflow: hidden;
+  transition: width .22s ease, opacity .22s;
+  opacity: 0;
+  margin-left: 2px;
+  outline: none;
+}
+.qp-vol-group:hover .qp-vol-slider,
+.qp-vol-group:focus-within .qp-vol-slider {
+  width: 72px;
+  opacity: 1;
+}
+.qp-vol-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: calc(-100vw - 6px) 0 0 100vw var(--accent, #e50914);
+}
+.qp-vol-slider::-moz-range-thumb {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  border: none;
+}
+.qp-vol-slider::-moz-range-progress { background: var(--accent, #e50914); height: 4px; border-radius: 2px; }
+
+/* ── Time Display ── */
+.qasim-time {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: .78rem;
+  font-family: var(--mono, monospace);
+  color: rgba(255,255,255,.85);
+  white-space: nowrap;
+  padding-left: 4px;
+  letter-spacing: .02em;
+}
+.qp-time-sep { color: rgba(255,255,255,.35); margin: 0 1px; }
+
+/* ── Right Controls: Quality / Subtitle Selects ── */
+.qp-select-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 7px;
+  padding: 5px 9px;
+  cursor: pointer;
+  transition: background .18s;
+}
+.qp-select-group:hover { background: rgba(255,255,255,.13); }
+.qp-select-group svg { color: rgba(255,255,255,.7); flex-shrink: 0; }
+.qp-select-group select {
+  background: transparent;
+  border: none;
+  color: rgba(255,255,255,.88);
+  font-family: var(--font, sans-serif);
+  font-size: .72rem;
+  font-weight: 500;
+  outline: none;
+  cursor: pointer;
+  max-width: 90px;
+}
+.qp-select-group select option { background: #1a1a2e; color: #fff; }
+
+/* Fullscreen button */
+.fullscreen-btn { width: 34px; height: 34px; }
+.fullscreen-btn svg { width: 18px; height: 18px; }
+
+/* ── Info Bar (below video) ── */
+.player-bar {
+  background: rgba(6,6,10,.98);
+  padding: 10px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid rgba(255,255,255,.05);
+  border-radius: 0 0 14px 14px;
+  min-height: 44px;
+}
+
+.player-ep-info {
+  font-size: .78rem;
+  font-weight: 500;
+  color: rgba(255,255,255,.55);
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: .01em;
+}
+
+.qp-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.qp-hint {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: .7rem;
+  color: rgba(255,255,255,.3);
+  cursor: help;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,.07);
+  background: rgba(255,255,255,.03);
+  transition: color .2s, border-color .2s;
+  white-space: nowrap;
+}
+.qp-hint:hover { color: rgba(255,255,255,.6); border-color: rgba(255,255,255,.15); }
+.qp-hint svg { flex-shrink: 0; }
+
+/* ── Mobile ── */
+@media(max-width:768px) {
+  .player-modal-box { width: 100vw; border-radius: 0; }
+  .player-bar { padding: 8px 12px; border-radius: 0; }
+  .qp-hint { display: none; }
+  .qp-select-group { padding: 4px 7px; }
+  .qp-select-group select { max-width: 70px; font-size: .68rem; }
+  .qasim-time { font-size: .72rem; }
+  .qp-btn { width: 32px; height: 32px; }
+  .qp-btn svg { width: 18px; height: 18px; }
+  .qp-play { width: 36px; height: 36px; }
+  .qp-play svg { width: 20px; height: 20px; }
+}
+
+@media(max-width:480px) {
+  .qasim-video-controls { padding: 0 10px 10px; gap: 6px; }
+  .qp-select-group:first-child { display: none; } /* hide quality on very small */
+}
+
+/* ── Tooltip on hover for buttons ── */
+.qp-btn[title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,.85);
+  color: #fff;
+  font-size: .68rem;
+  padding: 4px 8px;
+  border-radius: 5px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 99;
+  font-family: var(--font, sans-serif);
+}
+.qp-btn { position: relative; }
+
+/* ── Double-click ripple (center play animation) ── */
+@keyframes qpRipple {
+  0%   { transform: translate(-50%,-50%) scale(.6); opacity: .9; }
+  100% { transform: translate(-50%,-50%) scale(1.6); opacity: 0; }
+}
+.qp-ripple {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 72px; height: 72px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.18);
+  pointer-events: none;
+  animation: qpRipple .45s ease-out forwards;
+  z-index: 28;
+}
 </style>
 </head>
 <body>
