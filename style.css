@@ -1390,30 +1390,6 @@ body.scrolled .navbar {
   justify-content: center;
 }
 
-.fullscreen-btn {
-  position: absolute;
-  bottom: 15px;
-  right: 15px;
-  background: rgba(255, 255, 255, 0.9);
-  border: none;
-  padding: 10px 14px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 18px;
-  z-index: 50;
-  transition: all 0.3s;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
-.fullscreen-btn:hover {
-  background: #fff;
-  transform: scale(1.1);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-}
-
-.fullscreen-btn:active {
-  transform: scale(0.95);
-}
 
 /* LANDSCAPE MODE - Phone */
 @media (max-width: 768px) and (orientation: landscape) {
@@ -1683,13 +1659,26 @@ body.scrolled .navbar {
   }
 }
 
-/* QasimFlix custom HTML5 video player */
+/* ═══════════════════════════════════════════════════════
+   QASIMFLIX MODERN VIDEO PLAYER
+   ═══════════════════════════════════════════════════════ */
+
+/* --- Modal box --- */
+.player-modal-box {
+  background: #000;
+  border-radius: 12px;
+  width: min(1020px, 98vw);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 32px 80px rgba(0,0,0,.85), 0 0 0 1px rgba(255,255,255,.06);
+}
+
+/* --- Wrapper --- */
 .qasim-player-wrap {
   position: relative;
   background: #000;
   overflow: hidden;
-  border-radius: 10px 10px 0 0;
-  /* Kritik: video gizlenince (embed/iframe modda) container çökmemeli */
+  border-radius: 12px 12px 0 0;
   min-height: min(70vh, 720px);
 }
 
@@ -1701,19 +1690,47 @@ body.scrolled .navbar {
   object-fit: contain;
 }
 
+/* --- Watermark --- */
 .qasim-player-logo {
   position: absolute;
-  top: 16px;
-  left: 18px;
+  top: 18px;
+  left: 20px;
   z-index: 9;
-  color: #fff;
+  color: rgba(255,255,255,.55);
   font-family: 'Bebas Neue', Impact, sans-serif;
-  font-size: clamp(1.35rem, 3vw, 2.1rem);
-  letter-spacing: .08em;
-  text-shadow: 0 2px 14px rgba(0,0,0,.9);
+  font-size: clamp(1.1rem, 2.5vw, 1.6rem);
+  letter-spacing: .1em;
+  text-shadow: 0 1px 6px rgba(0,0,0,.8);
   pointer-events: none;
+  transition: opacity .2s;
 }
+.qasim-player-wrap:hover .qasim-player-logo { opacity: .3; }
 
+/* --- Close button (üst sağ) --- */
+.qplayer-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 30;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(0,0,0,.55);
+  border: 1px solid rgba(255,255,255,.15);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .2s, background .2s, transform .15s;
+  backdrop-filter: blur(6px);
+}
+.qplayer-close svg { width: 16px; height: 16px; }
+.qasim-player-wrap:hover .qplayer-close { opacity: 1; }
+.qplayer-close:hover { background: rgba(229,9,20,.85); transform: scale(1.08); }
+
+/* --- Loading spinner --- */
 .qasim-center-loader {
   position: absolute;
   inset: 0;
@@ -1721,16 +1738,22 @@ body.scrolled .navbar {
   display: none;
   align-items: center;
   justify-content: center;
-  color: #fff;
-  font-size: .9rem;
-  background: rgba(0,0,0,.25);
+  background: rgba(0,0,0,.3);
   pointer-events: none;
 }
+.qasim-player-wrap.is-loading .qasim-center-loader { display: flex; }
 
-.qasim-player-wrap.is-loading .qasim-center-loader {
-  display: flex;
+.qasim-spinner {
+  width: 44px;
+  height: 44px;
+  border: 3px solid rgba(255,255,255,.15);
+  border-top-color: #e50914;
+  border-radius: 50%;
+  animation: qp-spin .75s linear infinite;
 }
+@keyframes qp-spin { to { transform: rotate(360deg); } }
 
+/* --- Controls overlay --- */
 .qasim-video-controls {
   position: absolute;
   left: 0;
@@ -1738,148 +1761,336 @@ body.scrolled .navbar {
   bottom: 0;
   z-index: 12;
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 38px 14px 14px;
-  background: linear-gradient(transparent, rgba(0,0,0,.92));
-  transition: opacity .22s ease;
+  flex-direction: column;
+  gap: 0;
+  padding: 60px 0 0;
+  background: linear-gradient(to top, rgba(0,0,0,.88) 0%, rgba(0,0,0,.4) 60%, transparent 100%);
+  transition: opacity .25s ease;
 }
-
 .qasim-player-wrap.controls-hidden .qasim-video-controls {
   opacity: 0;
   pointer-events: none;
 }
 
-.qasim-video-controls button,
-.sub-select-wrap select {
-  background: rgba(18,18,18,.92);
-  color: #fff;
-  border: 1px solid rgba(255,255,255,.22);
-  border-radius: 8px;
-  min-height: 34px;
-  padding: 7px 10px;
+/* --- Progress bar row --- */
+.qp-progress-row {
+  padding: 0 14px 6px;
+}
+.qp-progress-wrap {
+  position: relative;
+  height: 4px;
   cursor: pointer;
-  font-family: var(--font, Arial, sans-serif);
+  transition: height .15s;
+}
+.qp-progress-row:hover .qp-progress-wrap { height: 6px; }
+
+/* Buffered track */
+.qp-buffered {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: rgba(255,255,255,.25);
+  border-radius: 99px;
+  pointer-events: none;
+  z-index: 1;
+  width: 0%;
+  transition: width .4s;
 }
 
-.qasim-video-controls button:hover,
-.sub-select-wrap select:hover {
-  background: var(--accent, #e50914);
-  border-color: var(--accent, #e50914);
+/* Progress input */
+#qasim-progress {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  z-index: 2;
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+  --qp-pct: 0%;
+}
+#qasim-progress::-webkit-slider-runnable-track {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(to right, #e50914 var(--qp-pct), rgba(255,255,255,.22) var(--qp-pct));
+}
+#qasim-progress::-moz-range-track {
+  height: 100%;
+  border-radius: 99px;
+  background: rgba(255,255,255,.22);
+}
+#qasim-progress::-moz-range-progress {
+  background: #e50914;
+  border-radius: 99px;
+}
+#qasim-progress::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  margin-top: -4px;
+  box-shadow: 0 0 6px rgba(0,0,0,.5);
+  opacity: 0;
+  transition: opacity .15s, transform .15s;
+}
+.qp-progress-row:hover #qasim-progress::-webkit-slider-thumb {
+  opacity: 1;
+}
+#qasim-progress::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: none;
+  border-radius: 50%;
+  background: #fff;
+  cursor: pointer;
 }
 
-.qasim-main-play {
-  min-width: 42px;
-  font-weight: 800;
+/* --- Bottom row --- */
+.qp-bottom-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 4px 10px 12px;
+}
+.qp-left, .qp-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
+/* --- Icon buttons --- */
+.qp-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: rgba(255,255,255,.9);
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 7px;
+  transition: color .15s, background .15s, transform .1s;
+  flex-shrink: 0;
+}
+.qp-btn svg { width: 20px; height: 20px; display: block; pointer-events: none; }
+.qp-btn:hover { color: #fff; background: rgba(255,255,255,.12); }
+.qp-btn:active { transform: scale(.9); }
+
+.qp-play { padding: 8px; }
+.qp-play svg { width: 22px; height: 22px; }
+
+.fullscreen-btn { padding: 7px; }
+.fullscreen-btn svg { width: 19px; height: 19px; }
+
+/* --- Volume group --- */
+.qp-vol-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.qp-vol-slider {
+  width: 72px;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 3px;
+  border-radius: 99px;
+  background: transparent;
+  cursor: pointer;
+  --qp-pct: 100%;
+}
+.qp-vol-slider::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 99px;
+  background: linear-gradient(to right, rgba(255,255,255,.9) var(--qp-pct), rgba(255,255,255,.25) var(--qp-pct));
+}
+.qp-vol-slider::-moz-range-track {
+  height: 3px;
+  border-radius: 99px;
+  background: rgba(255,255,255,.25);
+}
+.qp-vol-slider::-moz-range-progress {
+  background: rgba(255,255,255,.9);
+  border-radius: 99px;
+}
+.qp-vol-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  margin-top: -4.5px;
+  cursor: pointer;
+}
+.qp-vol-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: none;
+  border-radius: 50%;
+  background: #fff;
+  cursor: pointer;
+}
+
+/* --- Time display --- */
 .qasim-time {
-  color: #fff;
+  color: rgba(255,255,255,.88);
   font-size: .78rem;
   white-space: nowrap;
-  opacity: .9;
+  padding: 0 4px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .02em;
 }
+.qp-time-sep { opacity: .5; margin: 0 3px; }
 
-#qasim-progress {
-  flex: 1;
-  min-width: 110px;
+/* --- Select groups (kalite, altyazı) --- */
+.qp-select-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: rgba(255,255,255,.7);
+}
+.qp-select-group select {
+  background: rgba(15,15,15,.88);
+  border: 1px solid rgba(255,255,255,.15);
+  color: rgba(255,255,255,.88);
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: .73rem;
+  font-family: inherit;
   cursor: pointer;
+  outline: none;
+  transition: border-color .15s;
+  max-width: 90px;
+  backdrop-filter: blur(6px);
 }
+.qp-select-group select:hover { border-color: rgba(255,255,255,.35); }
+.qp-select-group select:focus { border-color: #e50914; }
 
-#qasim-volume {
-  width: 80px;
-  cursor: pointer;
-}
-
+/* --- Embed player --- */
 #embed-player {
   z-index: 4;
 }
-
 #embed-player iframe {
   width: 100%;
   height: 100%;
   border: 0;
 }
 
-#quality-wrap,
-#sub-wrap {
+/* --- Info bar (episode adı, download) --- */
+.player-bar {
+  background: rgba(8,8,8,.95);
+  padding: 10px 16px;
   display: flex;
   align-items: center;
-  gap: 7px;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  border-top: 1px solid rgba(255,255,255,.06);
+  border-radius: 0 0 12px 12px;
+  backdrop-filter: blur(8px);
 }
+.player-ep-info {
+  font-size: .8rem;
+  color: rgba(255,255,255,.65);
+  font-weight: 500;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.qp-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.qp-hint {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: .72rem;
+  color: rgba(255,255,255,.38);
+  cursor: help;
+  transition: color .2s;
+  white-space: nowrap;
+}
+.qp-hint:hover { color: rgba(255,255,255,.65); }
 
-#quality-wrap label,
-#sub-wrap label {
+/* Download button */
+#player-download-btn-container button {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,.18);
   color: rgba(255,255,255,.75);
-  font-size: .78rem;
+  padding: 5px 11px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: .73rem;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all .15s;
+}
+#player-download-btn-container button:hover {
+  border-color: #e50914;
+  color: #fff;
+  background: rgba(229,9,20,.15);
 }
 
+/* ─── MOBILE ────────────────────────────────────────────── */
 @media (max-width: 768px) {
+  .player-modal-box {
+    border-radius: 0;
+    width: 100vw;
+    box-shadow: none;
+  }
+
   .qasim-player-wrap {
-    min-height: 56vh;
+    min-height: 56vw;
     border-radius: 0;
   }
-
   .qasim-player-wrap video {
-    height: 56vh;
+    height: 56vw;
+    min-height: 210px;
   }
 
-  /* Embed iframe mobilde tam yükseklik alsın */
   #embed-player {
-    min-height: 56vh !important;
-    height: 56vh !important;
+    min-height: 56vw !important;
+    height: 56vw !important;
+    min-height: 210px !important;
   }
 
   .qasim-video-controls {
-    flex-wrap: wrap;
-    gap: 6px;
-    padding: 48px 10px 12px;
+    padding: 50px 0 0;
   }
 
-  #qasim-progress {
-    order: -1;
-    flex-basis: 100%;
-    height: 6px; /* daha kolay dokunulan progress bar */
-  }
+  .qp-progress-row { padding: 0 10px 4px; }
+  .qp-progress-wrap { height: 5px; }
+  .qp-progress-row:hover .qp-progress-wrap { height: 7px; }
 
-  #qasim-volume {
-    width: 60px;
-  }
+  .qp-bottom-row { padding: 4px 6px 10px; gap: 2px; }
 
-  /* Mobil için daha büyük dokunma alanı */
-  .qasim-video-controls button {
-    font-size: .82rem;
-    padding: 10px 12px;
-    min-height: 42px;
-    min-width: 42px;
-  }
+  .qp-btn { padding: 9px; }
+  .qp-btn svg { width: 22px; height: 22px; }
+  .qp-play { padding: 10px; }
+  .qp-play svg { width: 24px; height: 24px; }
 
-  .qasim-main-play {
-    min-width: 52px !important;
-    font-size: 1rem !important;
-  }
+  .qp-vol-slider { width: 52px; }
 
-  .qasim-time {
-    font-size: .75rem;
-  }
+  .qasim-time { font-size: .72rem; padding: 0 2px; }
 
-  .player-bar {
-    gap: 8px;
-    padding: 8px 10px;
-  }
+  .qp-select-group select { max-width: 72px; font-size: .68rem; padding: 4px 6px; }
 
-  /* Kalite/altyazı seçimi mobilde tam genişlik */
-  #quality-wrap,
-  #sub-wrap {
-    flex: 1;
-    min-width: 0;
-  }
+  .qplayer-close { opacity: 1; top: 8px; right: 8px; width: 32px; height: 32px; }
+  .qplayer-close svg { width: 14px; height: 14px; }
 
-  #quality-wrap select,
-  #sub-wrap select {
-    flex: 1;
-    min-width: 0;
-    max-width: 100%;
-    font-size: .78rem;
-  }
+  .player-bar { padding: 8px 12px; border-radius: 0; gap: 8px; }
+  .player-ep-info { font-size: .75rem; }
+  .qp-hint { display: none; }
 }

@@ -855,21 +855,49 @@ function qasimFormatTime(seconds) {
 function updateQasimControls() {
     const video = document.getElementById('video-player');
     if (!video) return;
-    const playBtn = document.getElementById('qasim-play-pause');
     const cur = document.getElementById('qasim-current-time');
     const dur = document.getElementById('qasim-duration');
     const progress = document.getElementById('qasim-progress');
-    const mute = document.getElementById('qasim-mute');
-    const volume = document.getElementById('qasim-volume');
 
-    if (playBtn) playBtn.textContent = video.paused ? '▶' : '⏸';
+    // Play / Pause ikonları
+    const iconPlay  = document.querySelector('#qasim-play-pause .qp-icon-play');
+    const iconPause = document.querySelector('#qasim-play-pause .qp-icon-pause');
+    if (iconPlay)  iconPlay.style.display  = video.paused ? '' : 'none';
+    if (iconPause) iconPause.style.display = video.paused ? 'none' : '';
+
+    // Volume ikonları
+    const iconVol  = document.querySelector('#qasim-mute .qp-icon-vol');
+    const iconMute = document.querySelector('#qasim-mute .qp-icon-mute');
+    if (iconVol)  iconVol.style.display  = (video.muted || video.volume === 0) ? 'none' : '';
+    if (iconMute) iconMute.style.display = (video.muted || video.volume === 0) ? '' : 'none';
+
     if (cur) cur.textContent = qasimFormatTime(video.currentTime || 0);
     if (dur) dur.textContent = qasimFormatTime(video.duration || 0);
     if (progress && Number.isFinite(video.duration) && video.duration > 0) {
         progress.value = String((video.currentTime / video.duration) * 100);
+        // Progress bar fill (CSS var trick)
+        progress.style.setProperty('--qp-pct', progress.value + '%');
     }
-    if (mute) mute.textContent = video.muted || video.volume === 0 ? '🔇' : '🔊';
-    if (volume) volume.value = String(video.muted ? 0 : video.volume);
+    // Volume slider fill
+    const vol = document.getElementById('qasim-volume');
+    if (vol) {
+        vol.value = String(video.muted ? 0 : video.volume);
+        vol.style.setProperty('--qp-pct', (Number(vol.value) * 100) + '%');
+    }
+    // Buffered bar
+    const buffered = document.getElementById('qp-buffered');
+    if (buffered && video.buffered.length > 0 && Number.isFinite(video.duration) && video.duration > 0) {
+        const pct = (video.buffered.end(video.buffered.length - 1) / video.duration) * 100;
+        buffered.style.width = pct + '%';
+    }
+    // Fullscreen icons
+    const fsOpen  = document.querySelector('#fullscreen-btn .qp-icon-fs-open');
+    const fsClose = document.querySelector('#fullscreen-btn .qp-icon-fs-close');
+    if (fsOpen && fsClose) {
+        const isFs = !!document.fullscreenElement;
+        fsOpen.style.display  = isFs ? 'none' : '';
+        fsClose.style.display = isFs ? '' : 'none';
+    }
 }
 
 function setQasimLoading(isLoading) {
@@ -1694,6 +1722,7 @@ function initLandscapeMode() {
         console.log('Landscape lock not available');
       });
     }
+    updateQasimControls(); // fullscreen ikonlarını güncelle
   });
 }
 
