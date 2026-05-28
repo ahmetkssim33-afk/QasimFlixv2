@@ -777,8 +777,21 @@ function isDirectVideoUrl(url = '') {
 function makePlayableUrl(url = '') {
     const clean = String(url || '').trim();
     if (!clean) return '';
-    if (isGoogleDriveUrl(clean)) return `/api/video-proxy?url=${encodeURIComponent(clean)}`;
+    // Google Drive paylaşım linkleri direkt MP4 stream değildir.
+    // Bu yüzden Drive linklerini /api/video-proxy veya HTML5 video'ya zorlamıyoruz.
+    // Drive videoları getGoogleDrivePreviewUrl() ile iframe preview olarak açılır.
+    if (isGoogleDriveUrl(clean)) return clean;
     return clean;
+}
+
+function getGoogleDrivePreviewUrl(url = '') {
+    const raw = String(url || '').trim();
+    if (!raw) return '';
+    const id = raw.match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1]
+        || raw.match(/[?&]id=([a-zA-Z0-9_-]+)/)?.[1]
+        || raw.match(/open\?id=([a-zA-Z0-9_-]+)/)?.[1];
+    if (!id) return raw;
+    return `https://drive.google.com/file/d/${id}/preview`;
 }
 
 function toYouTubeEmbed(url) {
@@ -1059,35 +1072,64 @@ function initQasimPlayerControls() {
     ['mousemove', 'touchstart', 'click'].forEach(ev => wrap.addEventListener(ev, showQasimControls, { passive: true }));
 }
 
-function showIframe(iframeSrc) {
+function showIframe(iframeSrc, options = {}) {
     const videoPlayer = document.getElementById('video-player');
     const embedContainer = document.getElementById('embed-player');
     const controls = document.getElementById('qasim-video-controls');
     const playerWrap = document.getElementById('player-wrap');
+    const modal = document.getElementById('player-modal');
     if (!videoPlayer || !embedContainer) return;
 
-    videoPlayer.pause();
+    const isDriveEmbed = options.type === 'drive' || isGoogleDriveUrl(iframeSrc);
+
+    try { videoPlayer.pause(); } catch(e) {}
+    videoPlayer.removeAttribute('src');
+    const source = document.getElementById('video-source');
+    if (source) source.src = '';
+    try { videoPlayer.load(); } catch(e) {}
+
     videoPlayer.style.display = 'none';
     if (controls) controls.style.display = 'none';
     embedContainer.innerHTML = '';
 
-    // Kritik: video gizlenince wrap height sıfırlanır → iframe'e explicit height ver
+    if (modal) {
+        modal.classList.add('embed-mode');
+        modal.classList.toggle('drive-embed-mode', !!isDriveEmbed);
+    }
     if (playerWrap) {
-        const currentH = playerWrap.getBoundingClientRect().height;
-        const targetH = currentH > 100 ? currentH : (window.innerWidth <= 768 ? window.innerHeight * 0.56 : Math.min(window.innerHeight * 0.7, 720));
-        playerWrap.style.minHeight = targetH + 'px';
+        playerWrap.classList.add('embed-mode');
+        playerWrap.classList.toggle('drive-embed-mode', !!isDriveEmbed);
+        // Drive iframe APK/WebView'de küçük kalmasın diye tam ekran yüksekliği veriyoruz.
+        const targetH = window.innerWidth <= 950 ? window.innerHeight : Math.min(window.innerHeight * 0.78, 760);
+        playerWrap.style.minHeight = Math.max(260, targetH) + 'px';
     }
 
     const iframe = document.createElement('iframe');
     iframe.src = iframeSrc;
     iframe.allow = 'autoplay; fullscreen; encrypted-media; picture-in-picture';
     iframe.allowFullscreen = true;
-    iframe.style.cssText = 'width:100%;height:100%;border:none;position:absolute;top:0;left:0';
+    iframe.setAttribute('allowfullscreen', 'true');
+    iframe.setAttribute('webkitallowfullscreen', 'true');
+    iframe.setAttribute('mozallowfullscreen', 'true');
+    iframe.referrerPolicy = 'no-referrer-when-downgrade';
+    iframe.style.cssText = 'width:100%;height:100%;border:none;position:absolute;inset:0;background:#000';
     embedContainer.appendChild(iframe);
     embedContainer.style.display = 'block';
-    document.getElementById('sub-wrap').style.display = 'none';
-    document.getElementById('quality-wrap').style.display = 'none';
+
+    const sub = document.getElementById('sub-wrap');
+    const quality = document.getElementById('quality-wrap');
+    if (sub) sub.style.display = 'none';
+    if (quality) quality.style.display = 'none';
+    setQasimLoading(false);
+
+    // Drive player APK'da kötü görünmesin: video açılır açılmaz tam ekran/yatay dene.
+    if (isDriveEmbed && isMobileViewport()) {
+        setTimeout(() => requestPlayerLandscape(false), 150);
+        const start = document.getElementById('qf-landscape-start');
+        if (start) start.classList.add('show');
+    }
 }
+
 
 async function setVideoSource(url, keepTime = 0, autoPlay = true) {
     const videoPlayer = document.getElementById('video-player');
@@ -1101,8 +1143,13 @@ async function setVideoSource(url, keepTime = 0, autoPlay = true) {
     embedContainer.innerHTML = '';
     embedContainer.style.display = 'none';
 
-    // Embed'den geri dönünce minHeight temizle
-    if (playerWrap) playerWrap.style.minHeight = '';
+    // Embed'den HTML5 player'a geri dönünce class ve minHeight temizle
+    const modal = document.getElementById('player-modal');
+    if (modal) modal.classList.remove('embed-mode', 'drive-embed-mode');
+    if (playerWrap) {
+        playerWrap.style.minHeight = '';
+        playerWrap.classList.remove('embed-mode', 'drive-embed-mode');
+    }
 
     videoPlayer.style.display = 'block';
     if (controls) controls.style.display = '';
@@ -1236,15 +1283,20 @@ async function playEpisode(episodeId, isMovie = false) {
         // Artık ayrı player.html sayfasına gitmiyoruz; index içindeki entegre QasimFlix player açılıyor.
         prepareMobilePlayerStart();
 
-        // Drive linkleri artık Drive player iframe'i yerine QasimFlix HTML5 player + /api/video-proxy ile açılır.
-        const canUseHtmlPlayer = isGoogleDriveUrl(src) || isDirectVideoUrl(src) || (!isYouTubeUrl(src) && !/^\s*</.test(src));
+        // Kaynağa göre doğru oynatma yöntemi:
+        // Google Drive direkt MP4 stream vermez; bu yüzden Drive videoları preview iframe ile açılır.
+        // Direkt MP4/WebM/HLS linklerde QasimFlix HTML5 player çalışır.
+        const canUseHtmlPlayer = isDirectVideoUrl(src) || (!isGoogleDriveUrl(src) && !isYouTubeUrl(src) && !/^\s*</.test(src));
 
         if (isYouTubeUrl(src)) {
-          showIframe(toYouTubeEmbed(src));
+          showIframe(toYouTubeEmbed(src), { type: 'youtube' });
+        } else if (isGoogleDriveUrl(src)) {
+            showIframe(getGoogleDrivePreviewUrl(src), { type: 'drive' });
         } else if (canUseHtmlPlayer) {
             qasimQualitySources = parseQualitySources(episode, src);
             fillQualitySelect(qasimQualitySources);
-            document.getElementById('sub-wrap').style.display = '';
+            const subWrap = document.getElementById('sub-wrap');
+            if (subWrap) subWrap.style.display = '';
             loadSubtitles(episode.subtitles || []);
             await setVideoSource(qasimQualitySources[0]?.url || src, 0, true);
             await loadProgress(episodeId);
@@ -1252,21 +1304,8 @@ async function playEpisode(episodeId, isMovie = false) {
             videoPlayer.ontimeupdate = () => { saveProgress(episodeId); updateQasimControls(); };
             videoPlayer.onerror = () => {
                 setQasimLoading(false);
-                console.warn('[QasimFlix Player] Video yüklenemedi, iframe fallback deneniyor:', src);
-                // Drive URL ise Drive preview iframe'ine otomatik geç
-                if (isGoogleDriveUrl(src)) {
-                    const id = src.match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1] || src.match(/[?&]id=([a-zA-Z0-9_-]+)/)?.[1];
-                    if (id) {
-                        showIframe(`https://drive.google.com/file/d/${id}/preview`);
-                        return;
-                    }
-                }
-                // Diğer URL'ler için iframe dene
-                if (src) {
-                    showIframe(src);
-                } else {
-                    alert('Video yüklenemedi. Google Drive dosyası herkese açık olmalı.');
-                }
+                console.warn('[QasimFlix Player] Video yüklenemedi:', src);
+                alert('Video yüklenemedi. Direkt MP4 link veya Google Drive paylaşım linki kullandığından emin ol.');
             };
         } else if (rawIframeSrc) {
             showIframe(rawIframeSrc);
@@ -1301,7 +1340,8 @@ async function playEpisode(episodeId, isMovie = false) {
 }
 
 function closePlayer() {
-    document.getElementById('player-modal').classList.remove('open');
+    const modal = document.getElementById('player-modal');
+    if (modal) modal.classList.remove('open', 'embed-mode', 'drive-embed-mode');
     document.body.style.overflow = '';
     try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch(e) {}
     try { if (document.fullscreenElement) document.exitFullscreen(); } catch(e) {}

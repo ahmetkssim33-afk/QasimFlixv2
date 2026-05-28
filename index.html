@@ -869,8 +869,83 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
   box-shadow: 0 20px 60px rgba(0,0,0,.45);
 }
 
+
+
+/* Google Drive iframe player APK/mobile fix */
+#player-modal.drive-embed-mode.open {
+  background:#000;
+}
+#player-modal.drive-embed-mode.open .player-modal-box {
+  background:#000;
+  box-shadow:none;
+}
+#player-modal.drive-embed-mode.open .player-wrap {
+  background:#000;
+}
+#player-modal.drive-embed-mode.open #embed-player {
+  display:block;
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  background:#000;
+}
+#player-modal.drive-embed-mode.open #embed-player iframe {
+  width:100%;
+  height:100%;
+  border:0;
+  background:#000;
+}
+#player-modal.drive-embed-mode.open .qasim-center-loader,
+#player-modal.drive-embed-mode.open .qasim-video-controls {
+  display:none !important;
+}
+@media (max-width: 950px) {
+  #player-modal.drive-embed-mode.open {
+    padding:0 !important;
+    align-items:stretch !important;
+    justify-content:stretch !important;
+  }
+  #player-modal.drive-embed-mode.open .player-modal-box {
+    width:100vw !important;
+    height:100dvh !important;
+    max-height:100dvh !important;
+    border-radius:0 !important;
+    display:flex !important;
+    flex-direction:column !important;
+  }
+  #player-modal.drive-embed-mode.open .player-wrap {
+    flex:1 1 auto !important;
+    width:100vw !important;
+    height:100dvh !important;
+    min-height:100dvh !important;
+    aspect-ratio:auto !important;
+  }
+  #player-modal.drive-embed-mode.open .player-bar {
+    display:none !important;
+  }
+  #player-modal.drive-embed-mode.open .qplayer-close {
+    opacity:1 !important;
+    pointer-events:auto !important;
+    top:max(10px, env(safe-area-inset-top)) !important;
+    right:max(10px, env(safe-area-inset-right)) !important;
+    z-index:30 !important;
+    background:rgba(0,0,0,.72) !important;
+  }
+  #player-modal.drive-embed-mode.open .qf-landscape-start.show {
+    display:block;
+    z-index:28;
+    bottom:max(14px, env(safe-area-inset-bottom));
+  }
+}
+@media (orientation: landscape) and (max-width: 950px) {
+  #player-modal.drive-embed-mode.open .player-wrap {
+    height:100dvh !important;
+    min-height:100dvh !important;
+  }
+}
 </style>
-<!-- <link rel="stylesheet" href="qf-apk.css"> -->
+<link rel="stylesheet" href="qf-apk.css">
 </head>
 <body>
 
@@ -1277,7 +1352,7 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
   })();
 </script>
 <script src="app.js"></script>
-<!-- <script src="qf-apk.js"></script> -->
+<script src="qf-apk.js"></script>
 
 <script>
 (function(){
