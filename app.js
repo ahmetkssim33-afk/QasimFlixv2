@@ -472,75 +472,6 @@ async function doSearch(query) {
     }
 }
 
-
-// ═══════════════════════════════════════════
-// MOBILE NAV + FULLSCREEN SEARCH
-// ═══════════════════════════════════════════
-function setMobileNavActive(btn) {
-    document.querySelectorAll('.mbnav-item').forEach(b => b.classList.remove('active'));
-    if (btn) btn.classList.add('active');
-}
-
-function openMobileSearch() {
-    const panel = document.getElementById('mobile-search-panel');
-    const input = document.getElementById('mobile-search-input');
-    if (!panel) return;
-    panel.classList.add('open');
-    panel.setAttribute('aria-hidden', 'false');
-    document.body.classList.add('mobile-search-open');
-    const desktopInput = document.getElementById('search-input');
-    if (input && desktopInput) input.value = desktopInput.value || '';
-    setTimeout(() => input && input.focus(), 80);
-}
-
-function closeMobileSearch() {
-    const panel = document.getElementById('mobile-search-panel');
-    if (panel) {
-        panel.classList.remove('open');
-        panel.setAttribute('aria-hidden', 'true');
-    }
-    document.body.classList.remove('mobile-search-open');
-    const input = document.getElementById('mobile-search-input');
-    if (input && !input.value.trim()) doSearch('');
-}
-
-function syncMobileSearch(value) {
-    const desktopInput = document.getElementById('search-input');
-    if (desktopInput) desktopInput.value = value;
-    handleSearch(value);
-}
-
-function mobileNavHome(btn) {
-    setMobileNavActive(btn);
-    closeMobileSearch();
-    showAll();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-function mobileNavCategories(btn) {
-    setMobileNavActive(btn);
-    closeMobileSearch();
-    const nav = document.querySelector('.nav-links');
-    if (nav) nav.classList.toggle('open');
-}
-
-function mobileNavFavorites(btn) {
-    setMobileNavActive(btn);
-    closeMobileSearch();
-    if (typeof loadFavorites === 'function') loadFavorites();
-}
-
-function mobileNavProfile(btn) {
-    setMobileNavActive(btn);
-    closeMobileSearch();
-    if (typeof openProfileSelectScreen === 'function' && typeof AUTH_USER !== 'undefined' && AUTH_USER) openProfileSelectScreen();
-    else window.location.href = 'auth.html';
-}
-
-window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && document.body.classList.contains('mobile-search-open')) closeMobileSearch();
-});
-
 // ═══════════════════════════════════════════
 // CATEGORY FILTER
 // ═══════════════════════════════════════════
@@ -1057,7 +988,7 @@ function initQasimPlayerControls() {
     /* ── Fullscreen ── */
     const toggleFullscreen = () => {
         if (!document.fullscreenElement) {
-            wrap.requestFullscreen?.() || wrap.webkitRequestFullscreen?.();
+            requestPlayerLandscape(true);
         } else {
             document.exitFullscreen?.() || document.webkitExitFullscreen?.();
         }
@@ -1225,8 +1156,51 @@ async function changeQuality() {
     if (currentEpisode?.subtitles) loadSubtitles(currentEpisode.subtitles || []);
 }
 
+
+function isMobileViewport() {
+    return window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
+}
+
+async function requestPlayerLandscape(force = false) {
+    const modal = document.getElementById('player-modal');
+    const wrap = document.getElementById('player-wrap');
+    const video = document.getElementById('video-player');
+    const target = wrap || video || modal;
+    if (!target) return false;
+
+    try {
+        if (!document.fullscreenElement) {
+            if (target.requestFullscreen) await target.requestFullscreen();
+            else if (target.webkitRequestFullscreen) target.webkitRequestFullscreen();
+        }
+        if (screen.orientation && screen.orientation.lock) {
+            await screen.orientation.lock('landscape').catch(() => {});
+        }
+        document.getElementById('qf-landscape-start')?.classList.remove('show');
+        return true;
+    } catch (err) {
+        if (force) console.warn('[QasimFlix] Tam ekran/yatay izin verilmedi:', err);
+        return false;
+    }
+}
+
+function prepareMobilePlayerStart() {
+    const modal = document.getElementById('player-modal');
+    if (!modal) return;
+    modal.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    if (isMobileViewport()) {
+        const start = document.getElementById('qf-landscape-start');
+        if (start) start.classList.add('show');
+        requestPlayerLandscape(false).then(ok => {
+            if (ok) start?.classList.remove('show');
+        });
+    }
+}
+
 async function playEpisode(episodeId, isMovie = false) {
     try {
+        prepareMobilePlayerStart();
         initQasimPlayerControls();
 
         // Önce cache'deki (currentSeries.seasons) episode'u bul — API'ye istek atmaya gerek yok
@@ -1259,20 +1233,8 @@ async function playEpisode(episodeId, isMovie = false) {
         const rawIframeSrc = /^\s*</.test(src) && src.includes('iframe') ? extractIframeSrc(src) : '';
         if (rawIframeSrc) src = rawIframeSrc;
 
-        // Redirect to standalone player page (use player.html for playback)
-        try {
-          const params = new URLSearchParams();
-          params.set('src', src || '');
-          params.set('title', episode.title || (currentSeries?.title || ''));
-          if (episode._id) params.set('contentId', episode._id);
-          params.set('type', isMovie ? 'movie' : 'episode');
-          params.set('landscape', '1');
-          try { sessionStorage.setItem('qasimAutoLandscape', '1'); } catch(e) {}
-          window.location.href = '/player.html?' + params.toString();
-          return;
-        } catch (e) {
-          console.warn('[playEpisode] redirect failed, falling back to inline player', e);
-        }
+        // Artık ayrı player.html sayfasına gitmiyoruz; index içindeki entegre QasimFlix player açılıyor.
+        prepareMobilePlayerStart();
 
         // Drive linkleri artık Drive player iframe'i yerine QasimFlix HTML5 player + /api/video-proxy ile açılır.
         const canUseHtmlPlayer = isGoogleDriveUrl(src) || isDirectVideoUrl(src) || (!isYouTubeUrl(src) && !/^\s*</.test(src));
@@ -1331,6 +1293,7 @@ async function playEpisode(episodeId, isMovie = false) {
 
         closeDetailModal();
         document.getElementById('player-modal').classList.add('open');
+        document.body.style.overflow = 'hidden';
         showQasimControls();
     } catch (err) {
         console.error('Play error:', err);
@@ -1339,6 +1302,9 @@ async function playEpisode(episodeId, isMovie = false) {
 
 function closePlayer() {
     document.getElementById('player-modal').classList.remove('open');
+    document.body.style.overflow = '';
+    try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch(e) {}
+    try { if (document.fullscreenElement) document.exitFullscreen(); } catch(e) {}
     const video = document.getElementById('video-player');
     try { video.pause(); } catch(e) {}
     document.getElementById('video-source').src = '';
@@ -1713,7 +1679,6 @@ function selectMainProfile() {
   ACTIVE_PROFILE = null;
   closeProfileSelectScreen();
   updateActiveProfileBadge();
-  try { loadContinueWatching(); } catch(e) {}
 }
 
 async function selectChildProfile(id, name, hasPin = false) {
@@ -1724,7 +1689,6 @@ async function selectChildProfile(id, name, hasPin = false) {
   ACTIVE_PROFILE = { _id: id, name };
   closeProfileSelectScreen();
   updateActiveProfileBadge();
-  try { loadContinueWatching(); } catch(e) {}
 }
 
 function closeProfileSelectScreen() {
