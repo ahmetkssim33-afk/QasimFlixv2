@@ -35,7 +35,24 @@
   async function checkUpdate(){try{const res=await fetch('/version.json?ts='+Date.now(),{cache:'no-store'}); if(!res.ok)return; const data=await res.json(); if(!data.apkRequired && !data.apkUrl)return; const dismissed=localStorage.getItem(LS_DISMISSED); const build=String(data.build||data.version||''); if(dismissed===build)return; const b=document.getElementById('qf-update-banner'); if(!b)return; b.dataset.build=build; b.querySelector('[data-qf-update-msg]').textContent=data.message||'Yeni sürüm mevcut.'; const a=b.querySelector('[data-qf-update-link]'); if(data.apkUrl){a.href=data.apkUrl; a.style.display='inline-block';} else {a.style.display='none';} b.classList.add('show');}catch(e){}}
   function enhanceInstallTip(){let deferredPrompt=null; window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e; if(localStorage.getItem('qf_install_tip_closed'))return; const tip=document.createElement('div'); tip.className='qf-install-tip show'; tip.innerHTML='<button>Kapat</button>QasimFlix’i telefona uygulama gibi ekleyebilirsin.'; document.body.appendChild(tip); tip.onclick=async(ev)=>{if(ev.target.tagName==='BUTTON'){localStorage.setItem('qf_install_tip_closed','1');tip.remove();return;} if(deferredPrompt){deferredPrompt.prompt(); await deferredPrompt.userChoice; tip.remove();}};});}
   function keepScreenAwake(){document.addEventListener('click',async e=>{if(!e.target.closest('.btn-play,.card,.ep-card,#fullscreen-btn,.landscape-start'))return; try{if('wakeLock' in navigator && !window.qfWakeLock){window.qfWakeLock=await navigator.wakeLock.request('screen'); window.qfWakeLock.addEventListener('release',()=>window.qfWakeLock=null);}}catch(_){}}); document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible') window.qfWakeLock=null;});}
+
+  function syncBottomNavVisibility(){
+    const detailOpen=document.getElementById('detail-modal')?.classList.contains('open');
+    const playerOpen=document.getElementById('player-modal')?.classList.contains('open');
+    const hide=!!(detailOpen||playerOpen);
+    document.body.classList.toggle('qf-hide-bottom-nav',hide);
+  }
+  function observeModalState(){
+    syncBottomNavVisibility();
+    ['detail-modal','player-modal'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(!el||el._qfNavObserver)return;
+      el._qfNavObserver=true;
+      new MutationObserver(syncBottomNavVisibility).observe(el,{attributes:true,attributeFilter:['class']});
+    });
+    document.addEventListener('click',()=>setTimeout(syncBottomNavVisibility,0),true);
+  }
   function overrideDownload(){const original=window.downloadItem; window.downloadItem=function(type,itemId,videoUrl,title){ if(!videoUrl && window.currentSeries?.seasons?.[0]?.episodes?.[0]) videoUrl=window.currentSeries.seasons[0].episodes[0].videoUrl; if(!canDirectDownload(videoUrl)){toast('Bu video çevrimdışı indirme için uygun değil. Sadece direkt MP4 desteklenir.'); return;} registerDownload({title:title||'Video',url:videoUrl,type}); if(original) return original.apply(this,arguments); const a=document.createElement('a'); a.href=videoUrl; a.download=(title||'video')+'.mp4'; a.target='_blank'; document.body.appendChild(a); a.click(); a.remove(); toast('İndirme başlatıldı.'); };
   }
-  ready(()=>{document.body.classList.add('qf-apk-mode'); injectUI(); checkUpdate(); enhanceInstallTip(); keepScreenAwake(); setTimeout(overrideDownload,300); const action=new URLSearchParams(location.search).get('action'); if(action==='downloads') setTimeout(openDownloads,350); if(action==='search') setTimeout(openSearch,350); window.addEventListener('online',()=>toast('Bağlantı geri geldi.')); window.addEventListener('offline',()=>toast('İnternet yok. Çevrimdışı mod.'));});
+  ready(()=>{document.body.classList.add('qf-apk-mode'); injectUI(); observeModalState(); checkUpdate(); enhanceInstallTip(); keepScreenAwake(); setTimeout(overrideDownload,300); const action=new URLSearchParams(location.search).get('action'); if(action==='downloads') setTimeout(openDownloads,350); if(action==='search') setTimeout(openSearch,350); window.addEventListener('online',()=>toast('Bağlantı geri geldi.')); window.addEventListener('offline',()=>toast('İnternet yok. Çevrimdışı mod.'));});
 })();

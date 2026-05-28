@@ -663,6 +663,7 @@ async function openDetail(seriesId, autoPlay = false) {
         }
 
         document.getElementById('detail-modal').classList.add('open');
+        loadRatings(series._id).catch(() => {});
 
         if (autoPlay) {
             if (series.type === 'movie' || series.type === 'documentary') {
@@ -739,7 +740,6 @@ function playMovieDirect() {
         }
     }
     // Bölüm bulunamadı — seri ID'si yanlışlıkla geçirilmesin
-    console.warn('[playMovieDirect] Bu filme bağlı bölüm bulunamadı:', currentSeries._id);
     alert('Bu içerik için henüz video eklenmemiş.');
 }
 
@@ -751,7 +751,7 @@ async function playFirstEpisode() {
 }
 
 function closeDetailModal() {
-    document.getElementById('detail-modal').classList.remove('open');
+    document.getElementById('detail-modal')?.classList.remove('open');
 }
 
 // ═══════════════════════════════════════════
@@ -1582,42 +1582,73 @@ async function loadWatchlist() {
 // RATING & REVIEWS
 // ═══════════════════════════════════════════
 async function submitRating(seriesId) {
-    if (!TOKEN) { alert('Lütfen önce giriş yapın'); return; }
-    const rating = prompt('Puanınız (1-5):');
-    if (!rating) return;
-    const review = prompt('Yorumunuz (isteğe bağlı):');
-    
+    if (!TOKEN) {
+        alert('Yorum yapmak için önce giriş yapmalısın.');
+        return;
+    }
+
+    const ratingRaw = prompt('Puanınız (1-5):');
+    if (!ratingRaw) return;
+    const rating = Number(ratingRaw);
+    if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
+        alert('Puan 1 ile 5 arasında olmalı.');
+        return;
+    }
+
+    const review = prompt('Yorumunuz:') || '';
     try {
         const res = await fetch(API + '/ratings/add', {
             method: 'POST',
             headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ seriesId, rating: parseInt(rating), review })
+            body: JSON.stringify({ seriesId, rating, review })
         });
-        const data = await res.json();
-        if (res.ok) alert(data.message || 'Puanlandırılıştır');
-        else alert(data.error || 'Hata');
-    } catch (err) { console.error(err); alert('Hata'); }
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) {
+            alert(data.message || 'Yorumun kaydedildi.');
+            loadRatings(seriesId).catch(() => {});
+        } else {
+            alert(data.error || 'Yorum kaydedilemedi.');
+        }
+    } catch (err) {
+        alert('Yorum kaydedilemedi. İnternet bağlantını kontrol et.');
+    }
 }
 
 async function loadRatings(seriesId) {
+    const modalBody = document.querySelector('#detail-modal .modal-body');
+    if (!modalBody || !seriesId) return;
+
+    let area = document.getElementById('rating-reviews-area');
+    if (!area) {
+        area = document.createElement('div');
+        area.id = 'rating-reviews-area';
+        area.style.cssText = 'margin-top:20px;border-top:1px solid var(--border);padding-top:20px;';
+        modalBody.appendChild(area);
+    }
+    area.innerHTML = '<h3 style="margin:0 0 12px">Yorumlar</h3><p style="color:var(--muted);font-size:.85rem">Yorumlar yükleniyor...</p>';
+
     try {
-        const res = await fetch(API + '/ratings/' + seriesId);
-        if (res.ok) {
-            const ratings = await res.json();
-            let html = '<div style="margin-top:20px; border-top:1px solid var(--border); padding-top:20px;">';
-            html += '<h3>Yorumlar</h3>';
+        const res = await fetch(API + '/ratings/' + seriesId + '?_=' + Date.now());
+        if (!res.ok) throw new Error('ratings_failed');
+        const ratings = await res.json();
+        let html = '<h3 style="margin:0 0 12px">Yorumlar</h3>';
+        if (!ratings.length) {
+            html += '<p style="color:var(--muted);font-size:.85rem">Henüz yorum yok. İlk yorumu sen yap.</p>';
+        } else {
             ratings.forEach(r => {
-                html += `<div style="margin-bottom:15px; padding:10px; background:var(--surface); border-radius:6px;">`;
-                html += `<strong>${r.userId?.name || 'Anonim'}</strong> - ⭐ ${r.rating}/5<br>`;
-                html += `<small style="color:var(--muted);">${new Date(r.createdAt).toLocaleDateString('tr-TR')}</small><br>`;
-                if (r.review) html += `<p>${r.review}</p>`;
+                const userName = esc(r.userId?.name || r.userId?.email || 'Anonim');
+                const date = r.createdAt ? new Date(r.createdAt).toLocaleDateString('tr-TR') : '';
+                html += `<div class="qf-review-card">`;
+                html += `<strong>${userName}</strong> <span>⭐ ${Number(r.rating || 0)}/5</span>`;
+                if (date) html += `<small>${date}</small>`;
+                if (r.review) html += `<p>${esc(r.review)}</p>`;
                 html += `</div>`;
             });
-            html += '</div>';
-            const modalBody = document.querySelector('.modal-body');
-            if (modalBody) modalBody.innerHTML += html;
         }
-    } catch (err) { console.error(err); }
+        area.innerHTML = html;
+    } catch (err) {
+        area.innerHTML = '<h3 style="margin:0 0 12px">Yorumlar</h3><p style="color:var(--muted);font-size:.85rem">Yorumlar şu an yüklenemedi.</p>';
+    }
 }
 
 // ═══════════════════════════════════════════
