@@ -457,6 +457,22 @@
   }
   @media(orientation:landscape) and (max-height:560px){.topbar{opacity:.92}.video-container{height:100svh;max-height:100svh;aspect-ratio:auto}.info-section{display:none}.mobile-video-controls button{width:52px;height:52px}.mobile-video-controls .play-toggle{width:62px;height:62px}}
 
+
+  /* ── Fullscreen / landscape mobile start ── */
+  .landscape-start{position:absolute;inset:0;z-index:30;display:none;align-items:center;justify-content:center;padding:24px;background:linear-gradient(180deg,rgba(0,0,0,.50),rgba(0,0,0,.84));backdrop-filter:blur(3px)}
+  .landscape-start.show{display:flex}
+  .landscape-card{width:min(420px,92vw);padding:22px 18px;border:1px solid rgba(255,255,255,.12);border-radius:28px;background:rgba(16,16,22,.88);box-shadow:0 30px 80px rgba(0,0,0,.6);text-align:center}
+  .landscape-logo{font-weight:900;font-size:30px;letter-spacing:-.04em;margin-bottom:8px}.landscape-logo b{color:var(--accent)}
+  .landscape-card p{color:rgba(255,255,255,.70);font-size:14px;line-height:1.45;margin-bottom:16px}
+  .landscape-btn{width:100%;min-height:54px;border:0;border-radius:18px;background:linear-gradient(135deg,var(--accent),#ff3b30);color:#fff;font:900 16px var(--font);box-shadow:0 14px 36px rgba(229,9,20,.35)}
+  .landscape-small{margin-top:10px;color:rgba(255,255,255,.48);font-size:12px}
+  body.mobile-cinema{background:#000;overflow:hidden}
+  body.mobile-cinema .topbar{opacity:0;pointer-events:none}
+  body.mobile-cinema .player-section{min-height:100svh}
+  body.mobile-cinema .video-container{height:100svh!important;min-height:100svh!important;max-height:100svh!important;aspect-ratio:auto!important}
+  body.mobile-cinema .info-section,body.mobile-cinema .episodes-section,body.mobile-cinema .related-section{display:none!important}
+  body.mobile-cinema iframe#gdrive-player,body.mobile-cinema #qasimHtmlVideo{height:100%!important}
+
 </style>
 </head>
 <body>
@@ -485,6 +501,16 @@
       <h3>Video oynatılamadı</h3>
       <p>Google Drive erişim izni olmayabilir veya video kaldırılmış olabilir.<br>Drive linkini kontrol edin.</p>
       <button class="try-btn" onclick="retryLoad()">Tekrar Dene</button>
+    </div>
+
+
+    <div class="landscape-start" id="landscapeStart" aria-hidden="true">
+      <div class="landscape-card">
+        <div class="landscape-logo">Qasim<b>Flix</b></div>
+        <p>Video daha büyük açılsın diye yatay tam ekran modunu başlat.</p>
+        <button class="landscape-btn" type="button" onclick="startLandscapePlayback()">▶ Yatay İzle</button>
+        <div class="landscape-small">Telefon izin verirse ekran otomatik yataya döner.</div>
+      </div>
     </div>
 
     <iframe id="gdrive-player" allowfullscreen
@@ -611,6 +637,7 @@ function getParams() {
     related:  p.get('related')  || '',
     contentId: p.get('contentId') || '',
     backUrl:   p.get('back')  || '',
+    landscape: p.get('landscape') || '',
   };
 }
 
@@ -698,6 +725,14 @@ function loadFromSrc(src) {
       </div>
       <div class="seek-toast left" id="seekToastLeft">⏪ 10s</div>
       <div class="seek-toast right" id="seekToastRight">10s ⏩</div>
+      <div class="landscape-start" id="landscapeStart" aria-hidden="true">
+        <div class="landscape-card">
+          <div class="landscape-logo">Qasim<b>Flix</b></div>
+          <p>Video daha büyük açılsın diye yatay tam ekran modunu başlat.</p>
+          <button class="landscape-btn" type="button" onclick="startLandscapePlayback()">▶ Yatay İzle</button>
+          <div class="landscape-small">Telefon izin verirse ekran otomatik yataya döner.</div>
+        </div>
+      </div>
     `;
     overlay.classList.add('hidden');
     document.getElementById('driveOpenBtn').href = src;
@@ -935,6 +970,81 @@ function showToast(msg) {
   toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
 }
 
+
+
+// ── Mobile fullscreen / landscape helper ───────────────
+function isMobileDevice() {
+  return window.matchMedia('(max-width: 900px)').matches || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
+function showLandscapeStart() {
+  if (!isMobileDevice()) return;
+  const el = document.getElementById('landscapeStart');
+  if (el) {
+    el.classList.add('show');
+    el.setAttribute('aria-hidden', 'false');
+  }
+}
+
+function hideLandscapeStart() {
+  const el = document.getElementById('landscapeStart');
+  if (el) {
+    el.classList.remove('show');
+    el.setAttribute('aria-hidden', 'true');
+  }
+}
+
+async function requestFullscreenSafe(target) {
+  if (!target) return false;
+  try {
+    if (target.requestFullscreen) { await target.requestFullscreen(); return true; }
+    if (target.webkitRequestFullscreen) { target.webkitRequestFullscreen(); return true; }
+    if (target.msRequestFullscreen) { target.msRequestFullscreen(); return true; }
+  } catch (e) {
+    console.warn('[QasimFlix] Fullscreen blocked:', e);
+  }
+  return false;
+}
+
+async function lockLandscapeSafe() {
+  try {
+    if (screen.orientation && screen.orientation.lock) {
+      await screen.orientation.lock('landscape');
+      return true;
+    }
+  } catch (e) {
+    console.warn('[QasimFlix] Orientation lock blocked:', e);
+  }
+  return false;
+}
+
+async function startLandscapePlayback() {
+  hideLandscapeStart();
+  const container = document.getElementById('videoContainer');
+  const video = document.getElementById('qasimHtmlVideo');
+
+  document.body.classList.add('mobile-cinema');
+
+  // Direct mp4/webm on iPhone has its own fullscreen method.
+  try {
+    if (video) {
+      if (video.paused) await video.play().catch(() => {});
+      if (video.webkitEnterFullscreen) { video.webkitEnterFullscreen(); }
+    }
+  } catch (e) {}
+
+  await requestFullscreenSafe(video || container);
+  await lockLandscapeSafe();
+  showToast('Yatay tam ekran modu açıldı');
+}
+
+document.addEventListener('fullscreenchange', () => {
+  if (!document.fullscreenElement) document.body.classList.remove('mobile-cinema');
+});
+document.addEventListener('webkitfullscreenchange', () => {
+  if (!document.webkitFullscreenElement) document.body.classList.remove('mobile-cinema');
+});
+
 // ── INIT ─────────────────────────────────────
 (function init() {
   const params = getParams();
@@ -944,6 +1054,13 @@ function showToast(msg) {
     loadFromSrc(params.src);
   } else {
     loadPlayer(params.fileId);
+  }
+
+  // Mobilde izleme tıklanınca yatay tam ekran için kullanıcı dokunuşu gerekir.
+  // Android Chrome destekler; desteklemeyen tarayıcıda büyük başlat butonu kalır.
+  if (params.landscape === '1' || sessionStorage.getItem('qasimAutoLandscape') === '1') {
+    sessionStorage.removeItem('qasimAutoLandscape');
+    setTimeout(showLandscapeStart, 450);
   }
 
   // Parse episodes JSON

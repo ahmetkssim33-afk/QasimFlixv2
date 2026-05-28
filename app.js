@@ -1266,6 +1266,8 @@ async function playEpisode(episodeId, isMovie = false) {
           params.set('title', episode.title || (currentSeries?.title || ''));
           if (episode._id) params.set('contentId', episode._id);
           params.set('type', isMovie ? 'movie' : 'episode');
+          params.set('landscape', '1');
+          try { sessionStorage.setItem('qasimAutoLandscape', '1'); } catch(e) {}
           window.location.href = '/player.html?' + params.toString();
           return;
         } catch (e) {

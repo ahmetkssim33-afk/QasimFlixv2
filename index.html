@@ -809,9 +809,34 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
 @media(max-width:420px){.mobile-search-open .search-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.mbnav-item{font-size:.62rem}.mobile-bottom-nav{left:8px;right:8px}.logo{font-size:1.55rem!important}.lang-select{max-width:86px}.user-name{display:none}}
 @media(orientation:landscape) and (max-height:520px){#detail-modal .modal-box{max-height:100vh;border-radius:0}.mobile-bottom-nav{display:none}.hero{min-height:100vh}}
 
+
+/* ── QasimFlix animated welcome splash ── */
+.qf-splash{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 40%,rgba(229,9,20,.22),transparent 34%),linear-gradient(135deg,#030305,#08080d 48%,#000);overflow:hidden;transition:opacity .55s ease,visibility .55s ease}
+.qf-splash.hide{opacity:0;visibility:hidden;pointer-events:none}
+.qf-splash::before,.qf-splash::after{content:'';position:absolute;width:52vmax;height:52vmax;border-radius:50%;filter:blur(22px);opacity:.22;animation:qfOrb 3.8s ease-in-out infinite alternate}
+.qf-splash::before{background:#e50914;left:-22vmax;top:-18vmax}.qf-splash::after{background:#7c3aed;right:-24vmax;bottom:-22vmax;animation-delay:.8s}
+.qf-splash-card{position:relative;z-index:1;width:min(520px,92vw);padding:36px 24px;text-align:center;border:1px solid rgba(255,255,255,.10);border-radius:34px;background:rgba(12,12,18,.54);backdrop-filter:blur(24px);box-shadow:0 32px 90px rgba(0,0,0,.65);animation:qfCardIn .8s cubic-bezier(.2,.9,.2,1) both}
+.qf-splash-logo{font-family:var(--font-display, sans-serif);font-size:clamp(3rem,15vw,6.5rem);line-height:.9;letter-spacing:.06em;background:linear-gradient(135deg,#fff 0%,#fff 35%,#e50914 70%,#a78bfa 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 0 28px rgba(229,9,20,.45));animation:qfLogoPulse 1.6s ease-in-out infinite alternate}
+.qf-splash-title{margin-top:16px;font-weight:800;font-size:clamp(1.05rem,4vw,1.55rem);letter-spacing:.01em;color:#fff}
+.qf-splash-sub{margin-top:8px;color:rgba(255,255,255,.62);font-size:.92rem}
+.qf-splash-loader{width:min(260px,62vw);height:4px;margin:22px auto 0;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden}.qf-splash-loader span{display:block;height:100%;width:46%;border-radius:inherit;background:linear-gradient(90deg,#e50914,#ff6b6b,#fff);animation:qfLoad 1.25s ease-in-out infinite}
+@keyframes qfCardIn{from{transform:translateY(28px) scale(.96);opacity:0}to{transform:translateY(0) scale(1);opacity:1}}
+@keyframes qfLogoPulse{from{filter:drop-shadow(0 0 16px rgba(229,9,20,.34))}to{filter:drop-shadow(0 0 42px rgba(229,9,20,.75))}}
+@keyframes qfLoad{0%{transform:translateX(-120%)}100%{transform:translateX(240%)}}
+@keyframes qfOrb{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(10vw,8vh,0) scale(1.18)}}
+@media(max-width:600px){.qf-splash-card{border-radius:28px;padding:30px 18px}.qf-splash-sub{font-size:.84rem}}
+
 </style>
 </head>
 <body>
+<div class="qf-splash" id="qfSplash" aria-label="QasimFlix açılış ekranı">
+  <div class="qf-splash-card">
+    <div class="qf-splash-logo">QasimFlix</div>
+    <div class="qf-splash-title">QasimFlix'e hoş geldiniz</div>
+    <div class="qf-splash-sub">Film ve diziler yükleniyor...</div>
+    <div class="qf-splash-loader"><span></span></div>
+  </div>
+</div>
 
 <nav class="navbar" id="navbar">
   <div class="nav-left">
@@ -1081,6 +1106,16 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
     </div>
   </div>
 </div>
+
+<script>
+  // QasimFlix açılış animasyonu
+  window.addEventListener('load', () => {
+    const splash = document.getElementById('qfSplash');
+    if (!splash) return;
+    setTimeout(() => splash.classList.add('hide'), 1500);
+    setTimeout(() => splash.remove(), 2300);
+  });
+</script>
 
 <script>
   // Removed Google/Firebase integration per request.
