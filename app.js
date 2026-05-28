@@ -1190,11 +1190,24 @@ async function playEpisode(episodeId, isMovie = false) {
         const rawIframeSrc = /^\s*</.test(src) && src.includes('iframe') ? extractIframeSrc(src) : '';
         if (rawIframeSrc) src = rawIframeSrc;
 
+        // Redirect to standalone player page (use player.html for playback)
+        try {
+          const params = new URLSearchParams();
+          params.set('src', src || '');
+          params.set('title', episode.title || (currentSeries?.title || ''));
+          if (episode._id) params.set('contentId', episode._id);
+          params.set('type', isMovie ? 'movie' : 'episode');
+          window.location.href = '/player.html?' + params.toString();
+          return;
+        } catch (e) {
+          console.warn('[playEpisode] redirect failed, falling back to inline player', e);
+        }
+
         // Drive linkleri artık Drive player iframe'i yerine QasimFlix HTML5 player + /api/video-proxy ile açılır.
         const canUseHtmlPlayer = isGoogleDriveUrl(src) || isDirectVideoUrl(src) || (!isYouTubeUrl(src) && !/^\s*</.test(src));
 
         if (isYouTubeUrl(src)) {
-            showIframe(toYouTubeEmbed(src));
+          showIframe(toYouTubeEmbed(src));
         } else if (canUseHtmlPlayer) {
             qasimQualitySources = parseQualitySources(episode, src);
             fillQualitySelect(qasimQualitySources);

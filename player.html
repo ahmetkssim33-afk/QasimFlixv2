@@ -566,6 +566,7 @@ function getParams() {
   const p = new URLSearchParams(window.location.search);
   return {
     fileId:  p.get('fileId')  || p.get('id') || '',
+    src:     p.get('src')     || '',
     title:   p.get('title')   || 'İçerik',
     type:    p.get('type')    || 'film',     // film | dizi
     year:    p.get('year')    || '',
@@ -612,6 +613,67 @@ function extractFileId(input) {
   return input;
 }
 
+function isYouTubeUrl(u) {
+  return !!(u && (u.includes('youtube.com') || u.includes('youtu.be')));
+}
+
+function toYouTubeEmbed(u) {
+  if (!u) return u;
+  // try to extract id
+  const m = u.match(/(?:v=|\/)([A-Za-z0-9_-]{11})/);
+  if (m && m[1]) return `https://www.youtube.com/embed/${m[1]}?rel=0&autoplay=1`;
+  // fallback: try youtu.be short link
+  const m2 = u.match(/youtu\.be\/([A-Za-z0-9_-]{11})/);
+  if (m2 && m2[1]) return `https://www.youtube.com/embed/${m2[1]}?rel=0&autoplay=1`;
+  return u;
+}
+
+function isDirectVideoUrl(u) {
+  return !!(u && /\.(mp4|m4v|webm|ogg|m3u8)(?:\?|$)/i.test(u));
+}
+
+function isGoogleDriveUrl(u) {
+  return !!(u && (u.includes('drive.google.com') || /\/file\/d\//.test(u) || /[?&]id=/.test(u)));
+}
+
+// Load from arbitrary src (mp4, m3u8, youtube, drive, iframe)
+function loadFromSrc(src) {
+  if (!src) { showError(); return; }
+  state.currentSrc = src;
+  const iframe = document.getElementById('gdrive-player');
+  const overlay = document.getElementById('gdOverlay');
+  const errEl = document.getElementById('gdError');
+  const container = document.getElementById('videoContainer');
+
+  overlay.classList.remove('hidden');
+  errEl.classList.remove('show');
+
+  if (isYouTubeUrl(src)) {
+    iframe.src = toYouTubeEmbed(src);
+    document.getElementById('driveOpenBtn').href = src;
+    iframe.onload = () => setTimeout(() => overlay.classList.add('hidden'), 800);
+    return;
+  }
+
+  if (isDirectVideoUrl(src)) {
+    // Replace iframe with HTML5 video for direct files
+    container.innerHTML = `<video controls autoplay style="width:100%;height:100%;background:#000"><source src="${src}"></video>`;
+    overlay.classList.add('hidden');
+    document.getElementById('driveOpenBtn').href = src;
+    return;
+  }
+
+  if (isGoogleDriveUrl(src)) {
+    loadPlayer(src);
+    return;
+  }
+
+  // Fallback: embed as iframe
+  iframe.src = src;
+  document.getElementById('driveOpenBtn').href = src;
+  iframe.onload = () => setTimeout(() => overlay.classList.add('hidden'), 800);
+}
+
 // ── Load Player ──────────────────────────────
 function loadPlayer(fileId) {
   if (!fileId) {
@@ -648,7 +710,8 @@ function showError() {
 }
 
 function retryLoad() {
-  if (state.currentFileId) loadPlayer(state.currentFileId);
+  if (state.currentSrc) loadFromSrc(state.currentSrc);
+  else if (state.currentFileId) loadPlayer(state.currentFileId);
 }
 
 // ── Render Info ──────────────────────────────
@@ -835,7 +898,11 @@ function showToast(msg) {
   const params = getParams();
 
   renderInfo(params);
-  loadPlayer(params.fileId);
+  if (params.src) {
+    loadFromSrc(params.src);
+  } else {
+    loadPlayer(params.fileId);
+  }
 
   // Parse episodes JSON
   if (params.episodes) {
