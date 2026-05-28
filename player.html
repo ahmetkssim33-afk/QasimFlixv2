@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>QasimFlix Player</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --accent: #E50914;
+    --accent2: #ff6b35;
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --surface2: #1c1c26;
+    --text: #f0f0f5;
+    --muted: #888899;
+    --border: rgba(255,255,255,0.08);
+    --radius: 10px;
+    --font: 'Outfit', sans-serif;
+  }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── TOPBAR ── */
+  .topbar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px;
+    background: linear-gradient(to bottom, rgba(10,10,15,0.98), transparent);
+    pointer-events: none;
+  }
+  .topbar > * { pointer-events: auto; }
+  .back-btn {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    font-weight: 500;
+    padding: 8px 14px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.2s;
+  }
+  .back-btn:hover { background: rgba(255,255,255,0.14); }
+  .back-btn svg { width:16px; height:16px; }
+  .topbar-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    opacity: 0.9;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .topbar-logo {
+    margin-left: auto;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: -0.5px;
+  }
+
+  /* ── PLAYER WRAPPER ── */
+  .player-section {
+    padding-top: 0;
+    background: #000;
+  }
+
+  .video-container {
+    position: relative;
+    width: 100%;
+    background: #000;
+    aspect-ratio: 16/9;
+    max-height: 56vw;
+    overflow: hidden;
+    cursor: pointer;
+  }
+
+  @media (max-width: 600px) {
+    .video-container { max-height: none; aspect-ratio: 16/9; }
+  }
+
+  iframe#gdrive-player {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+  }
+
+  /* Custom overlay for Google Drive - shows when GDrive is loading */
+  .gd-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+    z-index: 5;
+    gap: 16px;
+    transition: opacity 0.5s;
+  }
+  .gd-overlay.hidden { opacity: 0; pointer-events: none; }
+  .gd-spinner {
+    width: 48px; height: 48px;
+    border: 3px solid rgba(229,9,20,0.2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .gd-overlay p { font-size: 14px; color: var(--muted); }
+
+  /* Error state */
+  .gd-error {
+    position: absolute;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+    z-index: 6;
+    gap: 12px;
+    text-align: center;
+    padding: 24px;
+  }
+  .gd-error.show { display: flex; }
+  .gd-error svg { width: 48px; height: 48px; color: var(--accent); opacity: 0.7; }
+  .gd-error h3 { font-size: 16px; font-weight: 600; }
+  .gd-error p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .gd-error .try-btn {
+    margin-top: 8px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 24px;
+    font-family: var(--font);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  /* ── INFO SECTION ── */
+  .info-section {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 24px 20px 0;
+  }
+  .info-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .info-title {
+    font-size: clamp(20px, 4vw, 28px);
+    font-weight: 700;
+    line-height: 1.2;
+    flex: 1;
+    min-width: 200px;
+  }
+  .info-badges {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+  .badge {
+    font-size: 12px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid;
+  }
+  .badge-year { border-color: var(--border); color: var(--muted); }
+  .badge-genre { border-color: rgba(229,9,20,0.4); color: #ff6b6b; background: rgba(229,9,20,0.08); }
+  .badge-imdb { border-color: rgba(255,187,0,0.4); color: #ffbb00; background: rgba(255,187,0,0.08); }
+  .badge-quality { border-color: rgba(100,220,100,0.4); color: #64dc64; background: rgba(100,220,100,0.08); }
+
+  .info-desc {
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.7;
+    margin-top: 14px;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .info-desc.expanded { -webkit-line-clamp: unset; }
+  .read-more {
+    font-size: 13px;
+    color: var(--accent);
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-family: var(--font);
+    padding: 4px 0;
+    margin-top: 4px;
+  }
+
+  /* ── ACTION BUTTONS ── */
+  .action-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+  .action-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-family: var(--font);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+    text-decoration: none;
+  }
+  .action-btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #c4070f; transform: translateY(-1px); }
+  .btn-secondary {
+    background: rgba(255,255,255,0.1);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { background: rgba(255,255,255,0.16); }
+  .btn-secondary.active { background: rgba(229,9,20,0.15); border-color: rgba(229,9,20,0.4); color: #ff6b6b; }
+
+  /* ── DIVIDER ── */
+  .divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+
+  /* ── EPISODE LIST ── */
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+  .season-tabs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .season-tab {
+    padding: 7px 16px;
+    border-radius: 8px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .season-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  .episode-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+  }
+
+  @media (max-width: 500px) {
+    .episode-grid { grid-template-columns: 1fr; }
+  }
+
+  .episode-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    text-align: left;
+  }
+  .episode-card:hover { background: var(--surface2); border-color: rgba(255,255,255,0.15); transform: translateY(-2px); }
+  .episode-card.active { border-color: var(--accent); background: rgba(229,9,20,0.08); }
+  .ep-num {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--accent);
+    min-width: 32px;
+    text-align: center;
+    line-height: 1;
+  }
+  .ep-card-active .ep-num { color: #ff6b6b; }
+  .ep-info { flex: 1; }
+  .ep-title { font-size: 14px; font-weight: 600; margin-bottom: 3px; }
+  .ep-meta { font-size: 12px; color: var(--muted); }
+  .ep-play-icon { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; flex-shrink: 0; opacity: 0; transition: opacity 0.2s; }
+  .ep-play-icon svg { width: 14px; height: 14px; color: #fff; margin-left: 2px; }
+  .episode-card:hover .ep-play-icon, .episode-card.active .ep-play-icon { opacity: 1; }
+
+  /* ── RELATED ── */
+  .related-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+  }
+  .related-card {
+    cursor: pointer;
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    transition: transform 0.2s;
+  }
+  .related-card:hover { transform: scale(1.03); }
+  .related-thumb {
+    width: 100%;
+    aspect-ratio: 2/3;
+    background: var(--surface2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .related-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .related-thumb-placeholder { font-size: 32px; }
+  .related-info { padding: 10px; }
+  .related-title { font-size: 12px; font-weight: 600; margin-bottom: 4px; line-height: 1.3; }
+  .related-year { font-size: 11px; color: var(--muted); }
+
+  /* ── BOTTOM SAFE AREA ── */
+  .bottom-pad { height: 48px; }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed;
+    bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 10px 20px;
+    border-radius: 24px;
+    z-index: 999;
+    transition: transform 0.3s;
+    white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* Mobile tweaks */
+  @media (max-width: 600px) {
+    .info-section { padding: 18px 14px 0; }
+    .action-row { gap: 8px; }
+    .action-btn { padding: 9px 14px; font-size: 13px; }
+  }
+
+  /* ── SETTINGS PANEL ── */
+  .settings-panel {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    background: rgba(0,0,0,0.7);
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .settings-panel.open { display: flex; }
+  .settings-sheet {
+    background: var(--surface);
+    border-radius: 16px 16px 0 0;
+    width: 100%;
+    max-width: 520px;
+    padding: 20px;
+    border-top: 1px solid var(--border);
+  }
+  .settings-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+  .settings-close { float: right; background: none; border: none; color: var(--muted); font-size: 22px; cursor: pointer; margin-top: -2px; }
+  .settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+  }
+  .settings-row:last-child { border-bottom: none; }
+  .settings-row span { color: var(--muted); font-size: 13px; }
+  .settings-options { display: flex; gap: 8px; flex-wrap: wrap; }
+  .opt-btn {
+    padding: 6px 14px;
+    border-radius: 6px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .opt-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <a class="back-btn" href="javascript:history.back()" id="backBtn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+    Geri
+  </a>
+  <span class="topbar-title" id="topbarTitle">Yükleniyor...</span>
+  <span class="topbar-logo">Q<span style="color:#fff">asim</span><span style="color:var(--accent)">Flix</span></span>
+</div>
+
+<!-- PLAYER -->
+<div class="player-section">
+  <div class="video-container" id="videoContainer">
+
+    <div class="gd-overlay" id="gdOverlay">
+      <div class="gd-spinner"></div>
+      <p>Video yükleniyor...</p>
+    </div>
+
+    <div class="gd-error" id="gdError">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <h3>Video oynatılamadı</h3>
+      <p>Google Drive erişim izni olmayabilir veya video kaldırılmış olabilir.<br>Drive linkini kontrol edin.</p>
+      <button class="try-btn" onclick="retryLoad()">Tekrar Dene</button>
+    </div>
+
+    <iframe id="gdrive-player" allowfullscreen
+      allow="autoplay; fullscreen; picture-in-picture"
+      sandbox="allow-same-origin allow-scripts allow-forms allow-pointer-lock allow-popups allow-top-navigation-by-user-activation"
+      title="Video oynatıcı">
+    </iframe>
+  </div>
+</div>
+
+<!-- INFO -->
+<div class="info-section" id="infoSection">
+  <div class="info-header">
+    <div style="flex:1;">
+      <div class="info-title" id="contentTitle">İçerik Yükleniyor</div>
+      <div class="info-badges" id="badgesRow"></div>
+    </div>
+  </div>
+  <p class="info-desc" id="contentDesc">Açıklama yükleniyor...</p>
+  <button class="read-more" id="readMoreBtn" onclick="toggleDesc()">Devamını oku ↓</button>
+
+  <div class="action-row">
+    <button class="action-btn btn-secondary" onclick="openSettings()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+      Ayarlar
+    </button>
+    <button class="action-btn btn-secondary" id="favBtn" onclick="toggleFav()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+      Favori
+    </button>
+    <a class="action-btn btn-secondary" id="driveOpenBtn" href="#" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      Drive'da Aç
+    </a>
+  </div>
+
+  <hr class="divider">
+
+  <!-- EPISODES (shown only for series) -->
+  <div id="episodeSection" style="display:none">
+    <div class="section-label">Bölümler</div>
+    <div class="season-tabs" id="seasonTabs"></div>
+    <div class="episode-grid" id="episodeGrid"></div>
+    <hr class="divider">
+  </div>
+
+  <!-- RELATED -->
+  <div id="relatedSection" style="display:none">
+    <div class="section-label">Benzer İçerikler</div>
+    <div class="related-grid" id="relatedGrid"></div>
+    <hr class="divider">
+  </div>
+
+  <div class="bottom-pad"></div>
+</div>
+
+<!-- SETTINGS PANEL -->
+<div class="settings-panel" id="settingsPanel" onclick="closeSettingsOutside(event)">
+  <div class="settings-sheet">
+    <div class="settings-title">
+      Oynatıcı Ayarları
+      <button class="settings-close" onclick="closeSettings()">×</button>
+    </div>
+    <div class="settings-row">
+      <span>Oynatma Hızı</span>
+      <div class="settings-options" id="speedOpts">
+        <button class="opt-btn" data-speed="0.5">0.5×</button>
+        <button class="opt-btn" data-speed="0.75">0.75×</button>
+        <button class="opt-btn active" data-speed="1">1×</button>
+        <button class="opt-btn" data-speed="1.25">1.25×</button>
+        <button class="opt-btn" data-speed="1.5">1.5×</button>
+        <button class="opt-btn" data-speed="2">2×</button>
+      </div>
+    </div>
+    <div class="settings-row">
+      <span>Otomatik Oynatma</span>
+      <div class="settings-options">
+        <button class="opt-btn active" id="autoplayOn" onclick="setAutoplay(true)">Açık</button>
+        <button class="opt-btn" id="autoplayOff" onclick="setAutoplay(false)">Kapalı</button>
+      </div>
+    </div>
+    <div class="settings-row">
+      <div>
+        <div style="font-weight:500; margin-bottom:2px;">Google Drive Notu</div>
+        <span>Drive videonuz "Bağlantıya sahip olan herkes" paylaşımında olmalıdır.</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════
+//  QasimFlix Player — Google Drive Entegrasyon
+// ══════════════════════════════════════════════
+
+const state = {
+  currentFileId: null,
+  currentData: null,
+  currentSeason: 1,
+  autoplay: true,
+  isFav: false,
+};
+
+// ── URL Parametrelerini Oku ──────────────────
+function getParams() {
+  const p = new URLSearchParams(window.location.search);
+  return {
+    fileId:  p.get('fileId')  || p.get('id') || '',
+    title:   p.get('title')   || 'İçerik',
+    type:    p.get('type')    || 'film',     // film | dizi
+    year:    p.get('year')    || '',
+    genre:   p.get('genre')   || '',
+    imdb:    p.get('imdb')    || '',
+    quality: p.get('quality') || '',
+    desc:    p.get('desc')    || '',
+    poster:  p.get('poster')  || '',
+    // JSON encoded episode list for series
+    episodes: p.get('episodes') || '',
+    // JSON encoded related content
+    related:  p.get('related')  || '',
+    contentId: p.get('contentId') || '',
+    backUrl:   p.get('back')  || '',
+  };
+}
+
+// ── Google Drive File ID → Embed URL ────────
+function driveEmbed(fileId) {
+  // Supports both file IDs and full drive URLs
+  const extracted = extractFileId(fileId);
+  return `https://drive.google.com/file/d/${extracted}/preview?usp=drivesdk&enablejsapi=0`;
+}
+
+function driveLink(fileId) {
+  const extracted = extractFileId(fileId);
+  return `https://drive.google.com/file/d/${extracted}/view`;
+}
+
+function extractFileId(input) {
+  if (!input) return '';
+  // Already a raw ID (no slashes)
+  if (!input.includes('/')) return input;
+  // Full URL patterns
+  const patterns = [
+    /\/file\/d\/([a-zA-Z0-9_-]+)/,
+    /id=([a-zA-Z0-9_-]+)/,
+    /open\?id=([a-zA-Z0-9_-]+)/,
+  ];
+  for (const re of patterns) {
+    const m = input.match(re);
+    if (m) return m[1];
+  }
+  return input;
+}
+
+// ── Load Player ──────────────────────────────
+function loadPlayer(fileId) {
+  if (!fileId) {
+    showError();
+    return;
+  }
+  state.currentFileId = fileId;
+  const iframe = document.getElementById('gdrive-player');
+  const overlay = document.getElementById('gdOverlay');
+  const errEl = document.getElementById('gdError');
+
+  overlay.classList.remove('hidden');
+  errEl.classList.remove('show');
+
+  const embedUrl = driveEmbed(fileId);
+  iframe.src = embedUrl;
+
+  document.getElementById('driveOpenBtn').href = driveLink(fileId);
+
+  // Hide spinner after load
+  iframe.onload = () => {
+    setTimeout(() => overlay.classList.add('hidden'), 800);
+  };
+
+  // Fallback timeout
+  setTimeout(() => {
+    overlay.classList.add('hidden');
+  }, 8000);
+}
+
+function showError() {
+  document.getElementById('gdOverlay').classList.add('hidden');
+  document.getElementById('gdError').classList.add('show');
+}
+
+function retryLoad() {
+  if (state.currentFileId) loadPlayer(state.currentFileId);
+}
+
+// ── Render Info ──────────────────────────────
+function renderInfo(params) {
+  document.title = params.title + ' — QasimFlix';
+  document.getElementById('topbarTitle').textContent = params.title;
+  document.getElementById('contentTitle').textContent = params.title;
+  document.getElementById('contentDesc').textContent = params.desc || 'Bu içerik için açıklama bulunmuyor.';
+
+  // Badges
+  const badges = document.getElementById('badgesRow');
+  badges.innerHTML = '';
+  if (params.year)    badges.innerHTML += `<span class="badge badge-year">${params.year}</span>`;
+  if (params.genre)   badges.innerHTML += `<span class="badge badge-genre">${params.genre}</span>`;
+  if (params.imdb)    badges.innerHTML += `<span class="badge badge-imdb">⭐ ${params.imdb}</span>`;
+  if (params.quality) badges.innerHTML += `<span class="badge badge-quality">${params.quality}</span>`;
+
+  // Back button
+  if (params.backUrl) {
+    document.getElementById('backBtn').href = params.backUrl;
+  }
+
+  // Desc toggle
+  const desc = document.getElementById('contentDesc');
+  const btn  = document.getElementById('readMoreBtn');
+  if (!params.desc || params.desc.length < 120) btn.style.display = 'none';
+
+  // Fav state
+  const favKey = 'fav_' + (params.contentId || params.title);
+  state.isFav = localStorage.getItem(favKey) === '1';
+  updateFavBtn();
+  state.favKey = favKey;
+}
+
+// ── Episodes ─────────────────────────────────
+function renderEpisodes(episodes) {
+  if (!episodes || !episodes.length) return;
+
+  const section = document.getElementById('episodeSection');
+  section.style.display = 'block';
+
+  // Group by season
+  const seasons = {};
+  episodes.forEach(ep => {
+    const s = ep.season || 1;
+    if (!seasons[s]) seasons[s] = [];
+    seasons[s].push(ep);
+  });
+
+  // Season tabs
+  const tabs = document.getElementById('seasonTabs');
+  tabs.innerHTML = '';
+  Object.keys(seasons).forEach(s => {
+    const btn = document.createElement('button');
+    btn.className = 'season-tab' + (parseInt(s) === state.currentSeason ? ' active' : '');
+    btn.textContent = s == 1 && Object.keys(seasons).length === 1 ? 'Bölümler' : `Sezon ${s}`;
+    btn.onclick = () => {
+      state.currentSeason = parseInt(s);
+      document.querySelectorAll('.season-tab').forEach(t => t.classList.remove('active'));
+      btn.classList.add('active');
+      renderEpisodeGrid(seasons[s]);
+    };
+    tabs.appendChild(btn);
+  });
+
+  renderEpisodeGrid(seasons[state.currentSeason] || episodes);
+}
+
+function renderEpisodeGrid(eps) {
+  const grid = document.getElementById('episodeGrid');
+  grid.innerHTML = '';
+  eps.forEach((ep, i) => {
+    const card = document.createElement('div');
+    card.className = 'episode-card' + (ep.fileId === state.currentFileId ? ' active' : '');
+    card.innerHTML = `
+      <div class="ep-num">${ep.episode || (i+1)}</div>
+      <div class="ep-info">
+        <div class="ep-title">${ep.title || 'Bölüm ' + (ep.episode || i+1)}</div>
+        <div class="ep-meta">${ep.duration || ''} ${ep.duration && ep.date ? '·' : ''} ${ep.date || ''}</div>
+      </div>
+      <div class="ep-play-icon">
+        <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      </div>`;
+    card.onclick = () => {
+      document.querySelectorAll('.episode-card').forEach(c => c.classList.remove('active'));
+      card.classList.add('active');
+      loadPlayer(ep.fileId);
+      state.currentFileId = ep.fileId;
+      document.getElementById('topbarTitle').textContent = ep.title || document.getElementById('contentTitle').textContent;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+    grid.appendChild(card);
+  });
+}
+
+// ── Related ──────────────────────────────────
+function renderRelated(related) {
+  if (!related || !related.length) return;
+  const section = document.getElementById('relatedSection');
+  section.style.display = 'block';
+  const grid = document.getElementById('relatedGrid');
+  grid.innerHTML = '';
+  related.forEach(item => {
+    const card = document.createElement('div');
+    card.className = 'related-card';
+    card.innerHTML = `
+      <div class="related-thumb">
+        ${item.poster
+          ? `<img src="${item.poster}" alt="${item.title}" loading="lazy">`
+          : `<span class="related-thumb-placeholder">🎬</span>`}
+      </div>
+      <div class="related-info">
+        <div class="related-title">${item.title}</div>
+        <div class="related-year">${item.year || ''}</div>
+      </div>`;
+    card.onclick = () => {
+      // Navigate to same player with new params
+      const url = new URL(window.location.href);
+      url.searchParams.set('fileId', item.fileId || '');
+      url.searchParams.set('title', item.title || '');
+      url.searchParams.set('year', item.year || '');
+      if (item.desc) url.searchParams.set('desc', item.desc);
+      window.location.href = url.toString();
+    };
+    grid.appendChild(card);
+  });
+}
+
+// ── Favorites ────────────────────────────────
+function toggleFav() {
+  state.isFav = !state.isFav;
+  localStorage.setItem(state.favKey, state.isFav ? '1' : '0');
+  updateFavBtn();
+  showToast(state.isFav ? '❤️ Favorilere eklendi' : 'Favorilerden çıkarıldı');
+}
+function updateFavBtn() {
+  const btn = document.getElementById('favBtn');
+  if (state.isFav) {
+    btn.classList.add('active');
+    btn.querySelector('svg').setAttribute('fill', 'currentColor');
+  } else {
+    btn.classList.remove('active');
+    btn.querySelector('svg').setAttribute('fill', 'none');
+  }
+}
+
+// ── Description toggle ───────────────────────
+function toggleDesc() {
+  const desc = document.getElementById('contentDesc');
+  const btn  = document.getElementById('readMoreBtn');
+  desc.classList.toggle('expanded');
+  btn.textContent = desc.classList.contains('expanded') ? 'Daha az ↑' : 'Devamını oku ↓';
+}
+
+// ── Settings ─────────────────────────────────
+function openSettings() { document.getElementById('settingsPanel').classList.add('open'); }
+function closeSettings() { document.getElementById('settingsPanel').classList.remove('open'); }
+function closeSettingsOutside(e) { if (e.target.id === 'settingsPanel') closeSettings(); }
+function setAutoplay(val) {
+  state.autoplay = val;
+  document.getElementById('autoplayOn').classList.toggle('active', val);
+  document.getElementById('autoplayOff').classList.toggle('active', !val);
+}
+document.getElementById('speedOpts').addEventListener('click', e => {
+  const btn = e.target.closest('[data-speed]');
+  if (!btn) return;
+  document.querySelectorAll('#speedOpts .opt-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  showToast('Hız: ' + btn.dataset.speed + '×  (Drive oynatıcısında geçerli değil)');
+});
+
+// ── Toast ────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ── INIT ─────────────────────────────────────
+(function init() {
+  const params = getParams();
+
+  renderInfo(params);
+  loadPlayer(params.fileId);
+
+  // Parse episodes JSON
+  if (params.episodes) {
+    try {
+      const eps = JSON.parse(decodeURIComponent(params.episodes));
+      renderEpisodes(eps);
+    } catch(e) {}
+  }
+
+  // Parse related JSON
+  if (params.related) {
+    try {
+      const rel = JSON.parse(decodeURIComponent(params.related));
+      renderRelated(rel);
+    } catch(e) {}
+  }
+})();
+
+// Progress save (simple, Drive iframe içi erişilemez)
+window.addEventListener('beforeunload', () => {
+  if (state.currentFileId) {
+    localStorage.setItem('lastWatched', JSON.stringify({
+      fileId: state.currentFileId,
+      title: document.getElementById('contentTitle').textContent,
+      time: Date.now(),
+    }));
+  }
+});
+</script>
+</body>
+</html>
