@@ -761,6 +761,8 @@ let qasimQualitySources = [];
 let qasimCurrentSourceUrl = '';
 let qasimPlayerBound = false;
 let qasimControlsHideTimer = null;
+let qasimPlayOpenBusy = false;
+let qasimActiveLoadToken = 0;
 
 function isGoogleDriveUrl(url = '') {
     return String(url).includes('drive.google.com') || String(url).includes('docs.google.com');
@@ -913,10 +915,12 @@ function updateQasimControls() {
     }
 }
 
-function setQasimLoading(isLoading) {
+function setQasimLoading(isLoading, message = 'Video hazırlanıyor...') {
     const wrap = document.getElementById('player-wrap');
     if (!wrap) return;
     wrap.classList.toggle('is-loading', !!isLoading);
+    const text = document.getElementById('qasim-loading-text');
+    if (text) text.textContent = message;
 }
 
 function showQasimControls() {
@@ -1080,6 +1084,7 @@ function showIframe(iframeSrc, options = {}) {
     const modal = document.getElementById('player-modal');
     if (!videoPlayer || !embedContainer) return;
 
+    const loadToken = ++qasimActiveLoadToken;
     const isDriveEmbed = options.type === 'drive' || isGoogleDriveUrl(iframeSrc);
 
     try { videoPlayer.pause(); } catch(e) {}
@@ -1093,16 +1098,19 @@ function showIframe(iframeSrc, options = {}) {
     embedContainer.innerHTML = '';
 
     if (modal) {
-        modal.classList.add('embed-mode');
+        modal.classList.add('open', 'embed-mode');
         modal.classList.toggle('drive-embed-mode', !!isDriveEmbed);
     }
+    document.body.style.overflow = 'hidden';
+
     if (playerWrap) {
         playerWrap.classList.add('embed-mode');
         playerWrap.classList.toggle('drive-embed-mode', !!isDriveEmbed);
-        // Drive iframe APK/WebView'de küçük kalmasın diye tam ekran yüksekliği veriyoruz.
         const targetH = window.innerWidth <= 950 ? window.innerHeight : Math.min(window.innerHeight * 0.78, 760);
         playerWrap.style.minHeight = Math.max(260, targetH) + 'px';
     }
+
+    setQasimLoading(true);
 
     const iframe = document.createElement('iframe');
     iframe.src = iframeSrc;
@@ -1112,7 +1120,14 @@ function showIframe(iframeSrc, options = {}) {
     iframe.setAttribute('webkitallowfullscreen', 'true');
     iframe.setAttribute('mozallowfullscreen', 'true');
     iframe.referrerPolicy = 'no-referrer-when-downgrade';
+    iframe.loading = 'eager';
     iframe.style.cssText = 'width:100%;height:100%;border:none;position:absolute;inset:0;background:#000';
+    iframe.addEventListener('load', () => {
+        if (loadToken === qasimActiveLoadToken) setQasimLoading(false);
+    }, { once: true });
+    iframe.addEventListener('error', () => {
+        if (loadToken === qasimActiveLoadToken) setQasimLoading(false);
+    }, { once: true });
     embedContainer.appendChild(iframe);
     embedContainer.style.display = 'block';
 
@@ -1120,16 +1135,13 @@ function showIframe(iframeSrc, options = {}) {
     const quality = document.getElementById('quality-wrap');
     if (sub) sub.style.display = 'none';
     if (quality) quality.style.display = 'none';
-    setQasimLoading(false);
 
-    // Drive player APK'da kötü görünmesin: video açılır açılmaz tam ekran/yatay dene.
     if (isDriveEmbed && isMobileViewport()) {
         setTimeout(() => requestPlayerLandscape(false), 150);
         const start = document.getElementById('qf-landscape-start');
         if (start) start.classList.add('show');
     }
 }
-
 
 async function setVideoSource(url, keepTime = 0, autoPlay = true) {
     const videoPlayer = document.getElementById('video-player');
@@ -1139,13 +1151,18 @@ async function setVideoSource(url, keepTime = 0, autoPlay = true) {
     const playerWrap = document.getElementById('player-wrap');
     if (!videoPlayer || !videoSource || !embedContainer) return;
 
+    const loadToken = ++qasimActiveLoadToken;
     qasimCurrentSourceUrl = url;
     embedContainer.innerHTML = '';
     embedContainer.style.display = 'none';
 
     // Embed'den HTML5 player'a geri dönünce class ve minHeight temizle
     const modal = document.getElementById('player-modal');
-    if (modal) modal.classList.remove('embed-mode', 'drive-embed-mode');
+    if (modal) {
+        modal.classList.add('open');
+        modal.classList.remove('embed-mode', 'drive-embed-mode');
+    }
+    document.body.style.overflow = 'hidden';
     if (playerWrap) {
         playerWrap.style.minHeight = '';
         playerWrap.classList.remove('embed-mode', 'drive-embed-mode');
@@ -1154,6 +1171,13 @@ async function setVideoSource(url, keepTime = 0, autoPlay = true) {
     videoPlayer.style.display = 'block';
     if (controls) controls.style.display = '';
     setQasimLoading(true);
+
+    const hidePlayerLoading = () => {
+        if (loadToken === qasimActiveLoadToken) setQasimLoading(false);
+    };
+    videoPlayer.addEventListener('loadedmetadata', hidePlayerLoading, { once: true });
+    videoPlayer.addEventListener('canplay', hidePlayerLoading, { once: true });
+    videoPlayer.addEventListener('loadeddata', hidePlayerLoading, { once: true });
 
     videoSource.src = makePlayableUrl(url);
     videoPlayer.load();
@@ -1164,7 +1188,7 @@ async function setVideoSource(url, keepTime = 0, autoPlay = true) {
         const playPromise = videoPlayer.play();
         if (playPromise && typeof playPromise.catch === 'function') {
           playPromise.catch(err => {
-            console.warn('[QasimFlix Player] Immediate play attempt failed:', err);
+            
             // Fallback: try muted autoplay (many browsers allow muted autoplay)
             try {
               const prevMuted = videoPlayer.muted;
@@ -1188,7 +1212,7 @@ async function setVideoSource(url, keepTime = 0, autoPlay = true) {
         // Final attempt after metadata is loaded.
         videoPlayer.play().catch(err => {
           // If play is still blocked, prefer to keep the player visible and let user interact.
-          console.warn('[QasimFlix Player] Play blocked after loadedmetadata:', err);
+          
         });
       }
     }, { once: true });
@@ -1246,11 +1270,23 @@ function prepareMobilePlayerStart() {
 }
 
 async function playEpisode(episodeId, isMovie = false) {
+    if (qasimPlayOpenBusy) return;
+    qasimPlayOpenBusy = true;
+    const requestToken = ++qasimActiveLoadToken;
+
     try {
         prepareMobilePlayerStart();
         initQasimPlayerControls();
+        closeDetailModal();
+        setQasimLoading(true);
+        showQasimControls();
 
-        // Önce cache'deki (currentSeries.seasons) episode'u bul — API'ye istek atmaya gerek yok
+        const info = document.getElementById('player-ep-info');
+        if (info) info.textContent = 'Video hazırlanıyor...';
+        const downloadBtnContainer = document.getElementById('player-download-btn-container');
+        if (downloadBtnContainer) downloadBtnContainer.innerHTML = '';
+
+        // Önce cache'deki (currentSeries.seasons) episode'u bul; bulunamazsa modal açık kalırken API arkadan alınır.
         let episode = null;
         const seasons = currentSeries?.seasons || [];
         for (const s of seasons) {
@@ -1258,38 +1294,44 @@ async function playEpisode(episodeId, isMovie = false) {
             if (found) { episode = found; break; }
         }
 
-        // Cache'de bulunamazsa API'den çek
         if (!episode) {
             const res = await fetch(API + '/episode/' + episodeId + '?_=' + Date.now());
             episode = await res.json();
         }
 
-        if (Array.isArray(episode)) {
-            console.error('[playEpisode] array geldi, episode ID yanlış:', episodeId);
-            return;
-        }
-        if (!episode || !episode.videoUrl) {
-            console.error('[playEpisode] videoUrl yok:', episode);
+        if (requestToken !== qasimActiveLoadToken) return;
+
+        if (Array.isArray(episode) || !episode || !episode.videoUrl) {
+            setQasimLoading(false);
+            const infoEl = document.getElementById('player-ep-info');
+            if (infoEl) infoEl.textContent = 'Video bulunamadı';
             return;
         }
 
         currentEpisode = episode;
-        console.log('[playEpisode] videoUrl:', episode.videoUrl);
 
         let src = episode.videoUrl || '';
         const rawIframeSrc = /^\s*</.test(src) && src.includes('iframe') ? extractIframeSrc(src) : '';
         if (rawIframeSrc) src = rawIframeSrc;
 
-        // Artık ayrı player.html sayfasına gitmiyoruz; index içindeki entegre QasimFlix player açılıyor.
-        prepareMobilePlayerStart();
+        // Episode info label, kaynak yüklenmeden önce yazı görünsün.
+        let infoText = '';
+        if (currentSeason) {
+            infoText = `S${pad(currentSeason.seasonNumber)}E${pad(episode.episodeNumber)}: ${episode.title}`;
+        } else {
+            infoText = episode.title || (currentSeries?.title || '');
+        }
+        const infoEl = document.getElementById('player-ep-info');
+        if (infoEl) infoEl.textContent = infoText || 'Video hazırlanıyor...';
 
-        // Kaynağa göre doğru oynatma yöntemi:
-        // Google Drive direkt MP4 stream vermez; bu yüzden Drive videoları preview iframe ile açılır.
-        // Direkt MP4/WebM/HLS linklerde QasimFlix HTML5 player çalışır.
+        if (downloadBtnContainer) {
+            downloadBtnContainer.innerHTML = `<button class="btn-info sm" style="background:var(--accent);color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:0.8rem;" onclick="downloadItem('episode', '${episode._id}', '${src}', '${infoText}')">⬇ İndir</button>`;
+        }
+
         const canUseHtmlPlayer = isDirectVideoUrl(src) || (!isGoogleDriveUrl(src) && !isYouTubeUrl(src) && !/^\s*</.test(src));
 
         if (isYouTubeUrl(src)) {
-          showIframe(toYouTubeEmbed(src), { type: 'youtube' });
+            showIframe(toYouTubeEmbed(src), { type: 'youtube' });
         } else if (isGoogleDriveUrl(src)) {
             showIframe(getGoogleDrivePreviewUrl(src), { type: 'drive' });
         } else if (canUseHtmlPlayer) {
@@ -1298,48 +1340,40 @@ async function playEpisode(episodeId, isMovie = false) {
             const subWrap = document.getElementById('sub-wrap');
             if (subWrap) subWrap.style.display = '';
             loadSubtitles(episode.subtitles || []);
-            await setVideoSource(qasimQualitySources[0]?.url || src, 0, true);
-            await loadProgress(episodeId);
+
             const videoPlayer = document.getElementById('video-player');
-            videoPlayer.ontimeupdate = () => { saveProgress(episodeId); updateQasimControls(); };
-            videoPlayer.onerror = () => {
-                setQasimLoading(false);
-                console.warn('[QasimFlix Player] Video yüklenemedi:', src);
-                alert('Video yüklenemedi. Direkt MP4 link veya Google Drive paylaşım linki kullandığından emin ol.');
-            };
+            if (videoPlayer) {
+                videoPlayer.ontimeupdate = () => { saveProgress(episodeId); updateQasimControls(); };
+                videoPlayer.onerror = () => {
+                    setQasimLoading(false);
+                    const infoErr = document.getElementById('player-ep-info');
+                    if (infoErr) infoErr.textContent = 'Video yüklenemedi';
+                };
+            }
+
+            setVideoSource(qasimQualitySources[0]?.url || src, 0, true);
+
+            // İzleme geçmişi player açılışını bekletmez; video görünürken arka planda uygulanır.
+            loadProgress(episodeId).catch(() => {});
         } else if (rawIframeSrc) {
             showIframe(rawIframeSrc);
         } else if (src) {
             showIframe(src);
         } else {
-            console.warn('No video URL for episode', episodeId);
+            setQasimLoading(false);
         }
-
-        // Episode info label
-        let infoText = '';
-        if (currentSeason) {
-            infoText = `S${pad(currentSeason.seasonNumber)}E${pad(episode.episodeNumber)}: ${episode.title}`;
-        } else {
-            infoText = episode.title || (currentSeries?.title || '');
-        }
-        document.getElementById('player-ep-info').textContent = infoText;
-
-        // İndirme butonunu güncelle
-        const downloadBtnContainer = document.getElementById('player-download-btn-container');
-        if (downloadBtnContainer) {
-            downloadBtnContainer.innerHTML = `<button class="btn-info sm" style="background:var(--accent);color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:0.8rem;" onclick="downloadItem('episode', '${episode._id}', '${src}', '${infoText}')">⬇ İndir</button>`;
-        }
-
-        closeDetailModal();
-        document.getElementById('player-modal').classList.add('open');
-        document.body.style.overflow = 'hidden';
-        showQasimControls();
     } catch (err) {
-        console.error('Play error:', err);
+        setQasimLoading(false);
+        const infoEl = document.getElementById('player-ep-info');
+        if (infoEl) infoEl.textContent = 'Video açılamadı';
+    } finally {
+        setTimeout(() => { qasimPlayOpenBusy = false; }, 700);
     }
 }
 
 function closePlayer() {
+    qasimPlayOpenBusy = false;
+    qasimActiveLoadToken++;
     const modal = document.getElementById('player-modal');
     if (modal) modal.classList.remove('open', 'embed-mode', 'drive-embed-mode');
     document.body.style.overflow = '';
@@ -1347,15 +1381,19 @@ function closePlayer() {
     try { if (document.fullscreenElement) document.exitFullscreen(); } catch(e) {}
     const video = document.getElementById('video-player');
     try { video.pause(); } catch(e) {}
-    document.getElementById('video-source').src = '';
-    try { video.load(); } catch(e) {}
+    const videoSource = document.getElementById('video-source');
+    if (videoSource) videoSource.src = '';
+    try { video?.load(); } catch(e) {}
     const embed = document.getElementById('embed-player');
-    embed.innerHTML = '';
-    embed.style.display = 'none';
-    video.style.display = 'block';
+    if (embed) {
+        embed.innerHTML = '';
+        embed.style.display = 'none';
+    }
+    if (video) video.style.display = 'block';
     const controls = document.getElementById('qasim-video-controls');
     if (controls) controls.style.display = '';
-    document.getElementById('sub-wrap').style.display = '';
+    const subWrapClose = document.getElementById('sub-wrap');
+    if (subWrapClose) subWrapClose.style.display = '';
     const qualityWrap = document.getElementById('quality-wrap');
     if (qualityWrap) qualityWrap.style.display = '';
     // minHeight sıfırla (showIframe tarafından set edilmiş olabilir)
@@ -1434,7 +1472,17 @@ async function loadProgress(episodeId) {
         }
         const data = await res.json();
         if (data && data.progress > 0) {
-            document.getElementById('video-player').currentTime = data.progress;
+            const video = document.getElementById('video-player');
+            if (!video) return;
+            const applyProgress = () => {
+                if (Number.isFinite(video.duration)) {
+                    video.currentTime = Math.min(data.progress, Math.max(0, video.duration - 2));
+                } else {
+                    video.currentTime = data.progress;
+                }
+            };
+            if (video.readyState >= 1) applyProgress();
+            else video.addEventListener('loadedmetadata', applyProgress, { once: true });
         }
     } catch (err) { /* silent */ }
 }

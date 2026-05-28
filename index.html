@@ -446,13 +446,32 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0,0,0,.35);
+  background: #000;
   z-index: 20;
   opacity: 0;
   pointer-events: none;
   transition: opacity .25s;
 }
 .player-wrap.is-loading .qasim-center-loader { opacity: 1; }
+.qasim-loading-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-width: 220px;
+  padding: 24px 28px;
+  border-radius: 18px;
+  background: rgba(0,0,0,.78);
+  border: 1px solid rgba(255,255,255,.08);
+  box-shadow: 0 18px 50px rgba(0,0,0,.55);
+}
+.qasim-loading-text {
+  color: rgba(255,255,255,.88);
+  font-size: .95rem;
+  font-weight: 600;
+  letter-spacing: .01em;
+}
 
 .qasim-spinner {
   width: 52px;
@@ -810,6 +829,17 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
 @keyframes qfSplashLoad { 0% { transform: translateX(-120%); } 100% { transform: translateX(240%); } }
 @media (prefers-reduced-motion: reduce) { #qasimflix-splash::before, .qf-splash-loader i, .qf-splash-inner { animation: none; } }
 
+
+/* Video tıklamasında modal hızlı açılsın; masaüstü oranları korunur. */
+#player-modal { touch-action: manipulation; }
+#player-modal.open .player-modal-box { animation: qfPlayerOpen .12s ease-out both; }
+@keyframes qfPlayerOpen { from { opacity: .86; transform: scale(.985); } to { opacity: 1; transform: scale(1); } }
+@media (max-width: 768px) {
+  #player-modal.open .player-modal-box { animation-duration: .06s; }
+  .ep-card, .card, .card-overlay-play, .btn-play { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+  .qasim-center-loader { transition: opacity .12s linear; }
+}
+
 /* Mobilde entegre player gerçek tam ekran */
 @media (max-width: 768px) {
   #player-modal.open {
@@ -1103,7 +1133,7 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
       <button class="qplayer-close" onclick="closePlayer()" aria-label="Kapat">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
       </button>
-      <div class="qasim-center-loader"><div class="qasim-spinner"></div></div>
+      <div class="qasim-center-loader"><div class="qasim-loading-box"><div class="qasim-spinner"></div><div class="qasim-loading-text" id="qasim-loading-text">Video hazırlanıyor...</div></div></div>
       <div class="qf-landscape-start" id="qf-landscape-start">
         <button type="button" onclick="requestPlayerLandscape(true)">⛶ Tam ekran yatay aç</button>
       </div>
