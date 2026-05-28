@@ -473,6 +473,27 @@
   body.mobile-cinema .info-section,body.mobile-cinema .episodes-section,body.mobile-cinema .related-section{display:none!important}
   body.mobile-cinema iframe#gdrive-player,body.mobile-cinema #qasimHtmlVideo{height:100%!important}
 
+
+  /* ── CLEAN MOBILE PLAYER FIX: no ugly portrait controls, force fullscreen entry ── */
+  @media (max-width: 900px) {
+    html, body { width:100%; min-height:100%; background:#000; overflow:hidden; }
+    .topbar { z-index:70; background:linear-gradient(to bottom,rgba(0,0,0,.78),transparent); }
+    .player-section { height:100svh !important; min-height:100svh !important; padding:0 !important; background:#000; }
+    .video-container { height:100svh !important; min-height:0 !important; max-height:none !important; aspect-ratio:auto !important; margin:0 !important; border-radius:0 !important; background:#000; }
+    iframe#gdrive-player, #qasimHtmlVideo { position:absolute; inset:0; width:100% !important; height:100% !important; border:0; background:#000; }
+    .info-section { display:none !important; }
+    .mobile-video-controls, .seek-toast { display:none !important; }
+    .gd-overlay { background:#000; }
+    .landscape-start { position:fixed; inset:0; z-index:100; display:flex; align-items:center; justify-content:center; padding:24px; background:radial-gradient(circle at top,rgba(229,9,20,.22),transparent 34%),#000; backdrop-filter:none; }
+    .landscape-start:not(.show) { display:flex; }
+    .landscape-card { width:min(430px,92vw); padding:26px 18px; border-radius:30px; background:rgba(18,18,24,.92); border:1px solid rgba(255,255,255,.12); }
+    .landscape-logo { font-size:34px; }
+    .landscape-btn { min-height:58px; font-size:17px; }
+  }
+  body.mobile-cinema .landscape-start { display:none !important; }
+  body.mobile-cinema .topbar { display:none !important; }
+  body.mobile-cinema .video-container { height:100vh !important; }
+
 </style>
 </head>
 <body>
@@ -507,9 +528,9 @@
     <div class="landscape-start" id="landscapeStart" aria-hidden="true">
       <div class="landscape-card">
         <div class="landscape-logo">Qasim<b>Flix</b></div>
-        <p>Video daha büyük açılsın diye yatay tam ekran modunu başlat.</p>
-        <button class="landscape-btn" type="button" onclick="startLandscapePlayback()">▶ Yatay İzle</button>
-        <div class="landscape-small">Telefon izin verirse ekran otomatik yataya döner.</div>
+        <p>Videoyu düzgün izlemek için tam ekran yatay modu aç.</p>
+        <button class="landscape-btn" type="button" onclick="startLandscapePlayback()">▶ Tam Ekran Yatay Aç</button>
+        <div class="landscape-small">Android Chrome destekler. Desteklemezse telefonu elle yataya çevir.</div>
       </div>
     </div>
 
@@ -715,22 +736,15 @@ function loadFromSrc(src) {
   if (isDirectVideoUrl(src)) {
     // Replace iframe with HTML5 video for direct files
     container.innerHTML = `
-      <video id="qasimHtmlVideo" controls playsinline autoplay style="width:100%;height:100%;background:#000;display:block">
+      <video id="qasimHtmlVideo" controls playsinline preload="metadata" style="width:100%;height:100%;background:#000;display:block">
         <source src="${src}">
       </video>
-      <div class="mobile-video-controls" id="mobileVideoControls">
-        <button type="button" data-seek="-10">⏪ 10</button>
-        <button type="button" class="play-toggle" id="mobilePlayToggle">▶</button>
-        <button type="button" data-seek="10">10 ⏩</button>
-      </div>
-      <div class="seek-toast left" id="seekToastLeft">⏪ 10s</div>
-      <div class="seek-toast right" id="seekToastRight">10s ⏩</div>
-      <div class="landscape-start" id="landscapeStart" aria-hidden="true">
+      <div class="landscape-start show" id="landscapeStart" aria-hidden="false">
         <div class="landscape-card">
           <div class="landscape-logo">Qasim<b>Flix</b></div>
-          <p>Video daha büyük açılsın diye yatay tam ekran modunu başlat.</p>
-          <button class="landscape-btn" type="button" onclick="startLandscapePlayback()">▶ Yatay İzle</button>
-          <div class="landscape-small">Telefon izin verirse ekran otomatik yataya döner.</div>
+          <p>Videoyu düzgün izlemek için tam ekran yatay modu aç.</p>
+          <button class="landscape-btn" type="button" onclick="startLandscapePlayback()">▶ Tam Ekran Yatay Aç</button>
+          <div class="landscape-small">Android Chrome destekler. Desteklemezse telefonu elle yataya çevir.</div>
         </div>
       </div>
     `;
@@ -1019,23 +1033,29 @@ async function lockLandscapeSafe() {
 }
 
 async function startLandscapePlayback() {
-  hideLandscapeStart();
   const container = document.getElementById('videoContainer');
   const video = document.getElementById('qasimHtmlVideo');
+  const iframe = document.getElementById('gdrive-player');
+  const target = video || iframe || container;
 
   document.body.classList.add('mobile-cinema');
+  hideLandscapeStart();
 
-  // Direct mp4/webm on iPhone has its own fullscreen method.
   try {
     if (video) {
-      if (video.paused) await video.play().catch(() => {});
-      if (video.webkitEnterFullscreen) { video.webkitEnterFullscreen(); }
+      await video.play().catch(() => {});
+      if (video.webkitEnterFullscreen) {
+        video.webkitEnterFullscreen();
+      }
     }
   } catch (e) {}
 
-  await requestFullscreenSafe(video || container);
+  // For Google Drive iframe, fullscreen the iframe itself first.
+  let ok = await requestFullscreenSafe(target);
+  if (!ok && target !== container) ok = await requestFullscreenSafe(container);
+
   await lockLandscapeSafe();
-  showToast('Yatay tam ekran modu açıldı');
+  showToast('Tam ekran açıldı. Telefonu yataya çevir.');
 }
 
 document.addEventListener('fullscreenchange', () => {
@@ -1058,9 +1078,9 @@ document.addEventListener('webkitfullscreenchange', () => {
 
   // Mobilde izleme tıklanınca yatay tam ekran için kullanıcı dokunuşu gerekir.
   // Android Chrome destekler; desteklemeyen tarayıcıda büyük başlat butonu kalır.
-  if (params.landscape === '1' || sessionStorage.getItem('qasimAutoLandscape') === '1') {
+  if (isMobileDevice()) {
     sessionStorage.removeItem('qasimAutoLandscape');
-    setTimeout(showLandscapeStart, 450);
+    setTimeout(showLandscapeStart, 250);
   }
 
   // Parse episodes JSON
