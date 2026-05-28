@@ -1,5 +1,10 @@
-const CACHE_NAME = 'qasimflix-v7-mobile-player';
-const STATIC = ['/', '/index.html', '/auth.html', '/style.css', '/app.js', '/admin.js', '/player.html', '/favicon.svg'];
+const CACHE_NAME = 'qasimflix-v8-apk-mobile';
+const STATIC = [
+  '/', '/index.html', '/auth.html', '/offline.html', '/style.css', '/qf-apk.css', '/qf-apk.js', '/qf-player-apk.js',
+  '/app.js', '/admin.js', '/player.html', '/manifest.json', '/version.json', '/favicon.svg',
+  '/assets/icons/icon-48.png', '/assets/icons/icon-72.png', '/assets/icons/icon-96.png', '/assets/icons/icon-144.png',
+  '/assets/icons/icon-192.png', '/assets/icons/icon-512.png', '/assets/icons/maskable-512.png'
+];
 
 self.addEventListener('install', event => {
   event.waitUntil(
@@ -19,20 +24,34 @@ self.addEventListener('activate', event => {
   self.clients.claim();
 });
 
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
+});
+
 self.addEventListener('fetch', event => {
   const req = event.request;
   const url = new URL(req.url);
 
   if (req.method !== 'GET' || url.pathname.includes('/api/')) return;
 
-  // HTML/JS/CSS her zaman önce network'ten gelsin; böylece Vercel deploy sonrası telefon eski kodu göstermez.
-  if (req.mode === 'navigate' || /\.(html|js|css)$/i.test(url.pathname)) {
+  if (req.mode === 'navigate') {
     event.respondWith(
       fetch(req, { cache: 'no-store' }).then(res => {
         const copy = res.clone();
         caches.open(CACHE_NAME).then(cache => cache.put(req, copy)).catch(() => {});
         return res;
-      }).catch(() => caches.match(req).then(cached => cached || caches.match('/index.html')))
+      }).catch(() => caches.match(req).then(cached => cached || caches.match('/offline.html')))
+    );
+    return;
+  }
+
+  if (/\.(html|js|css|json)$/i.test(url.pathname)) {
+    event.respondWith(
+      fetch(req, { cache: 'no-store' }).then(res => {
+        const copy = res.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(req, copy)).catch(() => {});
+        return res;
+      }).catch(() => caches.match(req).then(cached => cached || (url.pathname.endsWith('.html') ? caches.match('/offline.html') : undefined)))
     );
     return;
   }
