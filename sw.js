@@ -1,5 +1,5 @@
-const CACHE_NAME = 'qasimflix-v4';
-const STATIC = ['/', '/index.html', '/auth.html', '/style.css', '/favicon.svg'];
+const CACHE_NAME = 'qasimflix-v5-mobile';
+const STATIC = ['/', '/index.html', '/auth.html', '/style.css', '/favicon.svg', '/manifest.json', '/offline.html'];
 
 self.addEventListener('install', e => {
   e.waitUntil(
@@ -33,7 +33,7 @@ self.addEventListener('fetch', e => {
 
   e.respondWith(
     caches.match(e.request).then(cached => cached || fetch(e.request).catch(() =>
-      e.request.mode === 'navigate' ? caches.match('/index.html') : undefined
+      e.request.mode === 'navigate' ? (caches.match('/offline.html') || caches.match('/index.html')) : undefined
     ))
   );
 });

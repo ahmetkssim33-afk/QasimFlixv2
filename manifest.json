@@ -1,0 +1,14 @@
+{
+  "name": "QasimFlix",
+  "short_name": "QasimFlix",
+  "description": "QasimFlix film ve dizi izleme uygulaması",
+  "start_url": "/index.html",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0a0a0f",
+  "theme_color": "#0a0a0f",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

@@ -2,7 +2,11 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="/manifest.json">
 <title>Qasimflix — Dizi & Film İzle</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -760,6 +764,51 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
   animation: qpRipple .45s ease-out forwards;
   z-index: 28;
 }
+
+
+/* ─────────────────────────────────────────────
+   QasimFlix Mobile App Upgrade
+   ───────────────────────────────────────────── */
+.mobile-search-trigger{display:none;width:42px;height:42px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:#fff;font-size:1.05rem;align-items:center;justify-content:center;cursor:pointer}
+.mobile-bottom-nav{display:none}
+.mobile-search-panel{display:none}
+@media(max-width:768px){
+  html{scroll-padding-bottom:88px}
+  body{padding-bottom:calc(78px + env(safe-area-inset-bottom));-webkit-tap-highlight-color:transparent}
+  .navbar{backdrop-filter:blur(18px);background:linear-gradient(to bottom,rgba(8,8,12,.92),rgba(8,8,12,.62));border-bottom:1px solid rgba(255,255,255,.06)}
+  .nav-right .search-box{display:none!important}
+  .mobile-search-trigger{display:flex}
+  .admin-btn,.google-btn{min-height:40px;border-radius:14px}
+  .cards-row{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;padding:4px 3% 12px;margin-left:-3%;margin-right:-3%;scroll-padding-left:3%}
+  .cards-row::-webkit-scrollbar{display:none}
+  .card{flex:0 0 clamp(118px,32vw,168px);scroll-snap-align:start;border-radius:14px;touch-action:pan-x pan-y}
+  .card:hover{transform:none}
+  .card-overlay{opacity:1;background:linear-gradient(to top,rgba(0,0,0,.92),transparent 60%);padding:10px}
+  .heart-btn,.card-overlay-play{min-width:44px;min-height:44px}
+  .hero{min-height:56vh;padding-bottom:22px}
+  .main-content{padding-bottom:24px}
+
+  .mobile-bottom-nav{position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));z-index:260;display:grid;grid-template-columns:repeat(5,1fr);gap:4px;padding:8px;border:1px solid rgba(255,255,255,.10);border-radius:24px;background:rgba(12,12,16,.88);backdrop-filter:blur(22px);box-shadow:0 16px 48px rgba(0,0,0,.55)}
+  .mbnav-item{appearance:none;border:0;background:transparent;color:rgba(255,255,255,.62);border-radius:18px;min-height:54px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-family:var(--font);font-size:.68rem;font-style:normal;cursor:pointer}
+  .mbnav-item span{font-size:1.15rem;line-height:1}.mbnav-item em{font-style:normal;white-space:nowrap}
+  .mbnav-item.active{color:#fff;background:linear-gradient(135deg,rgba(229,9,20,.95),rgba(167,139,250,.65));box-shadow:0 8px 24px rgba(229,9,20,.25)}
+
+  .mobile-search-panel{position:fixed;inset:0;z-index:450;display:flex;flex-direction:column;gap:14px;padding:calc(14px + env(safe-area-inset-top)) 14px calc(92px + env(safe-area-inset-bottom));background:rgba(7,7,10,.98);transform:translateY(105%);opacity:0;pointer-events:none;transition:transform .28s ease,opacity .22s ease}
+  .mobile-search-panel.open{transform:translateY(0);opacity:1;pointer-events:auto}
+  .mobile-search-head{display:flex;align-items:center;gap:10px}.mobile-search-close{width:44px;height:44px;border-radius:14px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.07);color:#fff;font-size:1.3rem}
+  .mobile-search-input-wrap{flex:1;min-height:48px;display:flex;align-items:center;gap:10px;padding:0 14px;border-radius:16px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12)}
+  .mobile-search-input-wrap input{flex:1;border:0;outline:0;background:transparent;color:#fff;font:500 .95rem var(--font)}
+  .mobile-search-hint{color:rgba(255,255,255,.56);font-size:.82rem;padding:0 4px}
+  body.mobile-search-open{overflow:hidden}.mobile-search-open #search-results{position:fixed;inset:88px 0 calc(88px + env(safe-area-inset-bottom));z-index:451;display:block!important;overflow:auto;padding:0 14px 24px;background:transparent}.mobile-search-open #main-sections,.mobile-search-open #hero{display:none!important}.mobile-search-open .search-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+
+  .modal{align-items:flex-end;background:rgba(0,0,0,.66);backdrop-filter:blur(8px)}
+  #detail-modal .modal-box{width:100vw;max-height:88vh;border-radius:24px 24px 0 0;animation:qfSheetUp .24s ease-out;box-shadow:0 -22px 80px rgba(0,0,0,.72)}
+  #detail-modal .modal-hero-img{height:210px}.modal-actions .btn-play,.modal-actions .btn-info{min-height:48px;border-radius:14px;font-weight:800}.modal-desc{font-size:.94rem;line-height:1.65}.modal-body{padding-bottom:calc(18px + env(safe-area-inset-bottom))}
+  @keyframes qfSheetUp{from{transform:translateY(28px);opacity:.75}to{transform:translateY(0);opacity:1}}
+}
+@media(max-width:420px){.mobile-search-open .search-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.mbnav-item{font-size:.62rem}.mobile-bottom-nav{left:8px;right:8px}.logo{font-size:1.55rem!important}.lang-select{max-width:86px}.user-name{display:none}}
+@media(orientation:landscape) and (max-height:520px){#detail-modal .modal-box{max-height:100vh;border-radius:0}.mobile-bottom-nav{display:none}.hero{min-height:100vh}}
+
 </style>
 </head>
 <body>
@@ -781,6 +830,7 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
       <span>🔍</span>
       <input type="text" id="search-input" data-i18n-placeholder="search.placeholder" placeholder="Ara..." oninput="handleSearch(this.value)">
     </div>
+    <button class="mobile-search-trigger" type="button" onclick="openMobileSearch()" aria-label="Arama aç">🔍</button>
     <div style="margin-left:8px;margin-right:6px">
       <select id="lang-select" class="lang-select" onchange="handleLanguageChange(this.value)" aria-label="Dil seçimi">
         <option value="tr">Türkçe</option>
@@ -808,6 +858,27 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
         </div>
       </div>
     </div>  </div>
+</nav>
+
+<!-- MOBILE FULLSCREEN SEARCH -->
+<div class="mobile-search-panel" id="mobile-search-panel" aria-hidden="true">
+  <div class="mobile-search-head">
+    <button class="mobile-search-close" type="button" onclick="closeMobileSearch()">←</button>
+    <div class="mobile-search-input-wrap">
+      <span>🔍</span>
+      <input type="search" id="mobile-search-input" placeholder="Film, dizi veya kategori ara..." oninput="syncMobileSearch(this.value)">
+    </div>
+  </div>
+  <div class="mobile-search-hint">Aramak istediğin film veya dizinin adını yaz.</div>
+</div>
+
+<!-- MOBILE APP NAVIGATION -->
+<nav class="mobile-bottom-nav" aria-label="Mobil menü">
+  <button type="button" class="mbnav-item active" onclick="mobileNavHome(this)"><span>🏠</span><em>Ana Sayfa</em></button>
+  <button type="button" class="mbnav-item" onclick="openMobileSearch();setMobileNavActive(this)"><span>🔍</span><em>Ara</em></button>
+  <button type="button" class="mbnav-item" onclick="mobileNavCategories(this)"><span>🎬</span><em>Kategoriler</em></button>
+  <button type="button" class="mbnav-item" onclick="mobileNavFavorites(this)"><span>❤️</span><em>Favoriler</em></button>
+  <button type="button" class="mbnav-item" onclick="mobileNavProfile(this)"><span>👤</span><em>Profil</em></button>
 </nav>
 
 <div class="loading-spinner" id="loading-spinner">

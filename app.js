@@ -472,6 +472,75 @@ async function doSearch(query) {
     }
 }
 
+
+// ═══════════════════════════════════════════
+// MOBILE NAV + FULLSCREEN SEARCH
+// ═══════════════════════════════════════════
+function setMobileNavActive(btn) {
+    document.querySelectorAll('.mbnav-item').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+}
+
+function openMobileSearch() {
+    const panel = document.getElementById('mobile-search-panel');
+    const input = document.getElementById('mobile-search-input');
+    if (!panel) return;
+    panel.classList.add('open');
+    panel.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('mobile-search-open');
+    const desktopInput = document.getElementById('search-input');
+    if (input && desktopInput) input.value = desktopInput.value || '';
+    setTimeout(() => input && input.focus(), 80);
+}
+
+function closeMobileSearch() {
+    const panel = document.getElementById('mobile-search-panel');
+    if (panel) {
+        panel.classList.remove('open');
+        panel.setAttribute('aria-hidden', 'true');
+    }
+    document.body.classList.remove('mobile-search-open');
+    const input = document.getElementById('mobile-search-input');
+    if (input && !input.value.trim()) doSearch('');
+}
+
+function syncMobileSearch(value) {
+    const desktopInput = document.getElementById('search-input');
+    if (desktopInput) desktopInput.value = value;
+    handleSearch(value);
+}
+
+function mobileNavHome(btn) {
+    setMobileNavActive(btn);
+    closeMobileSearch();
+    showAll();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function mobileNavCategories(btn) {
+    setMobileNavActive(btn);
+    closeMobileSearch();
+    const nav = document.querySelector('.nav-links');
+    if (nav) nav.classList.toggle('open');
+}
+
+function mobileNavFavorites(btn) {
+    setMobileNavActive(btn);
+    closeMobileSearch();
+    if (typeof loadFavorites === 'function') loadFavorites();
+}
+
+function mobileNavProfile(btn) {
+    setMobileNavActive(btn);
+    closeMobileSearch();
+    if (typeof openProfileSelectScreen === 'function' && typeof AUTH_USER !== 'undefined' && AUTH_USER) openProfileSelectScreen();
+    else window.location.href = 'auth.html';
+}
+
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && document.body.classList.contains('mobile-search-open')) closeMobileSearch();
+});
+
 // ═══════════════════════════════════════════
 // CATEGORY FILTER
 // ═══════════════════════════════════════════
@@ -1399,15 +1468,15 @@ async function downloadItem(type, itemId, videoUrl, title) {
 async function addToFavorites(seriesId) {
     if (!TOKEN) { alert('Lütfen önce giriş yapın'); return; }
     try {
-        const res = await fetch(API + '/favorites/add', {
-            method: 'POST',
-            headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ seriesId })
-        });
-        const data = await res.json();
-        if (res.ok) alert(data.message || 'Favorilere eklendi');
-        else alert(data.error || 'Hata');
-    } catch (err) { console.error(err); alert('Hata'); }
+    const res = await fetch(API + '/favorites/add', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ seriesId })
+    });
+    const data = await res.json();
+    if (res.ok) alert(data.message || 'Favorilere eklendi');
+    else alert(data.error || 'Hata');
+  } catch (err) { console.error(err); alert('Hata'); }
 }
 
 async function removeFromFavorites(seriesId) {
@@ -1438,18 +1507,7 @@ async function addToWatchlist(seriesId) {
     } catch (err) { console.error(err); alert('Hata'); }
 }
 
-async function loadFavorites() {
-    if (!TOKEN) { alert('Lütfen önce giriş yapın'); return; }
-    try {
-        const res = await fetch(API + '/favorites', {
-            headers: { 'Authorization': 'Bearer ' + TOKEN }
-        });
-        if (res.ok) {
-            const favorites = await res.json();
-            displaySeriesGrid(favorites, 'Favorilerim');
-        }
-    } catch (err) { console.error(err); }
-}
+
 
 async function loadWatchlist() {
     if (!TOKEN) { alert('Lütfen önce giriş yapın'); return; }
@@ -1459,7 +1517,7 @@ async function loadWatchlist() {
         });
         if (res.ok) {
             const watchlist = await res.json();
-            displaySeriesGrid(watchlist, 'İzlenecekler');
+            displayFavorites(watchlist);
         }
     } catch (err) { console.error(err); }
 }
@@ -1521,7 +1579,7 @@ async function advancedSearch(query, category, year, minRating, sortBy) {
         const res = await fetch(API + '/search/advanced?' + params.toString());
         if (res.ok) {
             const results = await res.json();
-            displaySeriesGrid(results, 'Arama Sonuçları');
+            displayFavorites(results);
         }
     } catch (err) { console.error(err); }
 }
@@ -1653,9 +1711,10 @@ function selectMainProfile() {
   ACTIVE_PROFILE = null;
   closeProfileSelectScreen();
   updateActiveProfileBadge();
+  try { loadContinueWatching(); } catch(e) {}
 }
 
-async function selectChildProfile(id, name, hasPin) {
+async function selectChildProfile(id, name, hasPin = false) {
   if (hasPin) {
     const ok = await showPinModal(id, name);
     if (!ok) return;
@@ -1663,6 +1722,7 @@ async function selectChildProfile(id, name, hasPin) {
   ACTIVE_PROFILE = { _id: id, name };
   closeProfileSelectScreen();
   updateActiveProfileBadge();
+  try { loadContinueWatching(); } catch(e) {}
 }
 
 function closeProfileSelectScreen() {

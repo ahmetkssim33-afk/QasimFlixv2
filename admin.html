@@ -2,7 +2,11 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="/manifest.json">
 <title>CineAdmin — Streaming Platform</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -713,6 +717,22 @@ select{
   width:80px;height:115px;object-fit:cover;
   border-radius:var(--radius);border:1px solid var(--border2);display:none;
 }
+
+
+/* QasimFlix Admin Mobile Upgrade */
+@media(max-width:768px){
+  html{scroll-padding-top:72px} body{padding-bottom:env(safe-area-inset-bottom);overflow-x:hidden}
+  .admin-layout,.dashboard-layout,.app-shell{display:block!important}
+  .sidebar,aside[class*="sidebar"],.admin-sidebar{position:fixed!important;left:0;top:0;bottom:0;width:min(82vw,320px)!important;z-index:500;transform:translateX(-105%);transition:transform .24s ease;background:rgba(12,12,16,.97)!important;backdrop-filter:blur(18px);box-shadow:20px 0 60px rgba(0,0,0,.55)}
+  body.admin-menu-open .sidebar,body.admin-menu-open aside[class*="sidebar"],body.admin-menu-open .admin-sidebar{transform:translateX(0)}
+  .admin-mobile-menu-btn{position:fixed;left:12px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:650;width:54px;height:54px;border-radius:18px;border:1px solid rgba(255,255,255,.12);background:linear-gradient(135deg,#e50914,#7c3aed);color:#fff;font-size:1.25rem;box-shadow:0 14px 34px rgba(0,0,0,.42)}
+  main,.main,.content,.admin-content{width:100%!important;margin-left:0!important;padding:14px!important}
+  .stats-grid,.dashboard-grid,.cards-grid{grid-template-columns:1fr!important;gap:12px!important}
+  form,.form-grid,.modal form{grid-template-columns:1fr!important}.form-row{display:block!important}.form-row>*{width:100%!important;margin-bottom:10px!important}
+  input,select,textarea,button{min-height:44px}.modal-content,.modal-box,.dialog,.panel{width:100vw!important;max-width:100vw!important;max-height:92vh!important;border-radius:22px 22px 0 0!important;margin:0!important}.modal{align-items:flex-end!important}
+  table{display:block;overflow-x:auto;white-space:nowrap}.btn,.button,button[type="submit"]{border-radius:14px!important}
+}
+
 </style>
 </head>
 <body>
@@ -2271,5 +2291,6 @@ function setLoading(btn, loading, label) {
   }
 }
 </script>
+<button class="admin-mobile-menu-btn" type="button" onclick="document.body.classList.toggle('admin-menu-open')">☰</button>
 </body>
 </html>
