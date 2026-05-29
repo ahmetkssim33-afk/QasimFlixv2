@@ -176,9 +176,10 @@ async function toggleSave(type, itemId) {
             headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
             body: JSON.stringify({ type, itemId })
         });
-        if (!res.ok) { const e = await res.json(); alert(e.error || 'Hata'); return; }
-        alert('Kaydedildi');
-    } catch (e) { console.error(e); alert('Sunucu hatası'); }
+        if (!res.ok) { const e = await res.json().catch(() => ({})); alert(e.error || 'Kaydetme işlemi başarısız.'); return; }
+        const data = await res.json().catch(() => ({}));
+        alert(data.message || 'Kaydedildi');
+    } catch (e) { alert('Kaydetme işlemi başarısız.'); }
 }
 
 async function loadContinueWatching() {
@@ -663,6 +664,7 @@ async function openDetail(seriesId, autoPlay = false) {
         }
 
         document.getElementById('detail-modal').classList.add('open');
+        if (window.qfSetBottomNavHidden) window.qfSetBottomNavHidden(true);
         loadRatings(series._id).catch(() => {});
 
         if (autoPlay) {
@@ -752,6 +754,7 @@ async function playFirstEpisode() {
 
 function closeDetailModal() {
     document.getElementById('detail-modal')?.classList.remove('open');
+    if (window.qfSetBottomNavHidden) window.qfSetBottomNavHidden(false);
 }
 
 // ═══════════════════════════════════════════
@@ -1532,7 +1535,7 @@ async function addToFavorites(seriesId) {
     const data = await res.json();
     if (res.ok) alert(data.message || 'Favorilere eklendi');
     else alert(data.error || 'Hata');
-  } catch (err) { console.error(err); alert('Hata'); }
+  } catch (err) { alert('Favori işlemi başarısız.'); }
 }
 
 async function removeFromFavorites(seriesId) {
@@ -1546,7 +1549,7 @@ async function removeFromFavorites(seriesId) {
         const data = await res.json();
         if (res.ok) alert(data.message || 'Favorilerden çıkartıldı');
         else alert(data.error || 'Hata');
-    } catch (err) { console.error(err); alert('Hata'); }
+    } catch (err) { alert('Favori işlemi başarısız.'); }
 }
 
 async function addToWatchlist(seriesId) {
@@ -1560,7 +1563,7 @@ async function addToWatchlist(seriesId) {
         const data = await res.json();
         if (res.ok) alert(data.message || 'İzlenecekler listesine eklendi');
         else alert(data.error || 'Hata');
-    } catch (err) { console.error(err); alert('Hata'); }
+    } catch (err) { alert('İzlenecekler listesine eklenemedi.'); }
 }
 
 
@@ -1718,7 +1721,7 @@ async function updateProfile(name, profilePicture) {
             await initAuth();
             alert('Profil güncellendi');
         }
-    } catch (err) { console.error(err); alert('Hata'); }
+    } catch (err) { alert('Favori işlemi başarısız.'); }
 }
 
 // ═══════════════════════════════════════════
@@ -1735,7 +1738,7 @@ async function createChildProfile(name, ageRestriction, pinCode) {
         if (res.ok) {
             alert('Çocuk profili oluşturuldu');
         }
-    } catch (err) { console.error(err); alert('Hata'); }
+    } catch (err) { alert('Favori işlemi başarısız.'); }
 }
 
 // ═══════════════════════════════════════════

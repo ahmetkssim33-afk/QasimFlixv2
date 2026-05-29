@@ -24,7 +24,7 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 // Use shared DB connector & centralized models
 const { connectDB } = require('../lib/db');
-const { Series, Season, Episode, WatchProgress, Category, Film, User } = require('../lib/models');
+const { Series, Season, Episode, WatchProgress, Category, Film, User, Rating } = require('../lib/models');
 
 // Local schema definitions removed — models are imported from ../lib/models
 // (keeps serverless redeploys and hot reloads from re-defining models)
@@ -459,17 +459,51 @@ app.delete("/api/episodes/:id", async (req, res) => {
 // API ENDPOINTS — İZLEME GEÇMİŞİ
 // ═══════════════════════════════════════════════════════════
 
+function isValidObjectId(id) {
+  return !!id && mongoose.Types.ObjectId.isValid(String(id));
+}
+
 app.post("/api/progress", async (req, res) => {
   try {
-    const { userId, seriesId, episodeId, progress } = req.body;
+    const userId = getUserIdFromReq(req) || req.body.userId;
+    const { seriesId, episodeId, progress } = req.body;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    if (!isValidObjectId(seriesId) || !isValidObjectId(episodeId)) {
+      return res.status(400).json({ error: 'Geçersiz içerik bilgisi.' });
+    }
     const updated = await WatchProgress.findOneAndUpdate(
-      { userId, episodeId },
-      { userId, seriesId, episodeId, progress, lastWatchedAt: new Date() },
-      { upsert: true, new: true }
+      { userId: String(userId), episodeId },
+      { userId: String(userId), seriesId, episodeId, progress: Number(progress) || 0, lastWatchedAt: new Date() },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
     );
     res.json(updated);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'İzleme geçmişi kaydedilemedi.' });
+  }
+});
+
+// /continue/me ve /continue/:userId, /:userId/:episodeId rotasından ÖNCE durmalı.
+app.get("/api/progress/continue/me", async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const recentWatches = await WatchProgress.find({ userId: String(userId) })
+      .sort({ lastWatchedAt: -1 }).limit(10)
+      .populate("seriesId").populate("episodeId");
+    res.json(recentWatches);
+  } catch (err) {
+    res.status(500).json({ error: 'İzleme geçmişi yüklenemedi.' });
+  }
+});
+
+app.get("/api/progress/continue/:userId", async (req, res) => {
+  try {
+    const recentWatches = await WatchProgress.find({ userId: String(req.params.userId) })
+      .sort({ lastWatchedAt: -1 }).limit(10)
+      .populate("seriesId").populate("episodeId");
+    res.json(recentWatches);
+  } catch (err) {
+    res.status(500).json({ error: 'İzleme geçmişi yüklenemedi.' });
   }
 });
 
@@ -477,47 +511,24 @@ app.get("/api/progress/me/:episodeId", async (req, res) => {
   try {
     const userId = getUserIdFromReq(req);
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-    const progress = await WatchProgress.findOne({ userId, episodeId: req.params.episodeId });
+    if (!isValidObjectId(req.params.episodeId)) return res.json({ progress: 0 });
+    const progress = await WatchProgress.findOne({ userId: String(userId), episodeId: req.params.episodeId });
     res.json(progress || { progress: 0 });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'İzleme geçmişi yüklenemedi.' });
   }
 });
 
-// NOTE: /me/:episodeId must be registered BEFORE /:userId/:episodeId
 app.get("/api/progress/:userId/:episodeId", async (req, res) => {
   try {
+    if (!isValidObjectId(req.params.episodeId)) return res.json({ progress: 0 });
     const progress = await WatchProgress.findOne({
-      userId: req.params.userId,
+      userId: String(req.params.userId),
       episodeId: req.params.episodeId
     });
     res.json(progress || { progress: 0 });
   } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// NOTE: /continue/me must be registered BEFORE /continue/:userId
-app.get("/api/progress/continue/me", async (req, res) => {
-  try {
-    const userId = getUserIdFromReq(req);
-    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-    const recentWatches = await WatchProgress.find({ userId })
-      .sort({ lastWatchedAt: -1 }).limit(10)
-      .populate("seriesId").populate("episodeId");
-    res.json(recentWatches);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.get("/api/progress/continue/:userId", async (req, res) => {
-  try {
-    const recentWatches = await WatchProgress.find({ userId: req.params.userId })
-      .sort({ lastWatchedAt: -1 }).limit(10).populate("seriesId");
-    res.json(recentWatches);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'İzleme geçmişi yüklenemedi.' });
   }
 });
 
@@ -673,41 +684,169 @@ app.get('/api/auth/me', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════
+// API ENDPOINTS — KULLANICI KAYIT / FAVORİ / İZLENECEKLER
+// ═══════════════════════════════════════════════════════════
+
+app.post('/api/user/saved', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ error: 'Lütfen önce giriş yapın.' });
+    const { type, itemId } = req.body;
+    if (!isValidObjectId(itemId)) return res.status(400).json({ error: 'Geçersiz içerik bilgisi.' });
+    const field = type === 'film' ? 'savedFilms' : 'savedSeries';
+    await User.findByIdAndUpdate(userId, { $addToSet: { [field]: itemId } }, { new: true });
+    res.json({ success: true, message: 'Kaydedildi' });
+  } catch (err) {
+    res.status(500).json({ error: 'Kaydetme işlemi başarısız.' });
+  }
+});
+
+app.post('/api/favorites/add', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ error: 'Lütfen önce giriş yapın.' });
+    const { seriesId } = req.body;
+    if (!isValidObjectId(seriesId)) return res.status(400).json({ error: 'Geçersiz içerik bilgisi.' });
+    await User.findByIdAndUpdate(userId, { $addToSet: { favorites: seriesId } });
+    await WatchProgress.findOneAndUpdate(
+      { userId: String(userId), seriesId },
+      { userId: String(userId), seriesId, isFavorite: true, lastWatchedAt: new Date() },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+    res.json({ success: true, message: 'Favorilere eklendi' });
+  } catch (err) {
+    res.status(500).json({ error: 'Favori eklenemedi.' });
+  }
+});
+
+app.post('/api/favorites/remove', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ error: 'Lütfen önce giriş yapın.' });
+    const { seriesId } = req.body;
+    if (!isValidObjectId(seriesId)) return res.status(400).json({ error: 'Geçersiz içerik bilgisi.' });
+    await User.findByIdAndUpdate(userId, { $pull: { favorites: seriesId } });
+    await WatchProgress.updateMany({ userId: String(userId), seriesId }, { $set: { isFavorite: false } });
+    res.json({ success: true, message: 'Favorilerden çıkartıldı' });
+  } catch (err) {
+    res.status(500).json({ error: 'Favori kaldırılamadı.' });
+  }
+});
+
+app.post('/api/watchlist/add', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ error: 'Lütfen önce giriş yapın.' });
+    const { seriesId } = req.body;
+    if (!isValidObjectId(seriesId)) return res.status(400).json({ error: 'Geçersiz içerik bilgisi.' });
+    await User.findByIdAndUpdate(userId, { $addToSet: { watchlist: seriesId } });
+    res.json({ success: true, message: 'İzlenecekler listesine eklendi' });
+  } catch (err) {
+    res.status(500).json({ error: 'İzlenecekler listesine eklenemedi.' });
+  }
+});
+
+app.get('/api/watchlist', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ error: 'Lütfen önce giriş yapın.' });
+    const user = await User.findById(userId).populate('watchlist').lean();
+    res.json((user && user.watchlist) || []);
+  } catch (err) {
+    res.status(500).json({ error: 'İzlenecekler listesi yüklenemedi.' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
 // API ENDPOINTS — FAVORİLER (WISHLIST)
 // ═══════════════════════════════════════════════════════════
 
 app.get('/api/favorites', async (req, res) => {
   try {
     const userId = getUserIdFromReq(req);
-    const progress = await WatchProgress.find({ userId, isFavorite: true });
-    const seriesIds = [...new Set(progress.map(p => p.seriesId))];
+    if (!userId) return res.status(401).json({ error: 'Lütfen önce giriş yapın.' });
+    const user = await User.findById(userId).select('favorites').lean();
+    const favFromUser = (user && user.favorites ? user.favorites : []).map(String);
+    const progress = await WatchProgress.find({ userId: String(userId), isFavorite: true }).select('seriesId').lean();
+    const favFromProgress = progress.map(p => String(p.seriesId)).filter(Boolean);
+    const seriesIds = [...new Set([...favFromUser, ...favFromProgress])].filter(isValidObjectId);
     const favorites = await Series.find({ _id: { $in: seriesIds } });
     res.json(favorites);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Favoriler yüklenemedi.' });
   }
 });
 
 app.post('/api/favorites/:seriesId', async (req, res) => {
   try {
     const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ error: 'Lütfen önce giriş yapın.' });
     const seriesId = req.params.seriesId;
-    const existing = await WatchProgress.findOne({ userId, seriesId });
-    
-    if (existing) {
-      existing.isFavorite = !existing.isFavorite;
-      await existing.save();
-    } else {
-      const newFav = new WatchProgress({ userId, seriesId, isFavorite: true });
-      await newFav.save();
-    }
-    res.json({ success: true });
+    if (!isValidObjectId(seriesId)) return res.status(400).json({ error: 'Geçersiz içerik bilgisi.' });
+    const existing = await WatchProgress.findOne({ userId: String(userId), seriesId });
+    const nextValue = !(existing && existing.isFavorite);
+    await WatchProgress.findOneAndUpdate(
+      { userId: String(userId), seriesId },
+      { userId: String(userId), seriesId, isFavorite: nextValue, lastWatchedAt: new Date() },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+    await User.findByIdAndUpdate(userId, nextValue ? { $addToSet: { favorites: seriesId } } : { $pull: { favorites: seriesId } });
+    res.json({ success: true, isFavorite: nextValue, message: nextValue ? 'Favorilere eklendi' : 'Favorilerden çıkartıldı' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Favori işlemi başarısız.' });
   }
 });
 
 // ═══════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════
+// API ENDPOINTS — PUAN & YORUMLAR
+// ═══════════════════════════════════════════════════════════
+app.post('/api/ratings/add', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ error: 'Yorum yapmak için giriş yapmalısın.' });
+
+    const { seriesId, rating, review } = req.body;
+    const numericRating = Number(rating);
+    if (!isValidObjectId(seriesId)) return res.status(400).json({ error: 'Geçersiz içerik bilgisi.' });
+    if (!Number.isFinite(numericRating) || numericRating < 1 || numericRating > 5) {
+      return res.status(400).json({ error: 'Puan 1 ile 5 arasında olmalı.' });
+    }
+
+    const cleanReview = String(review || '').trim().slice(0, 1000);
+    const ratingDoc = await Rating.findOneAndUpdate(
+      { userId, seriesId },
+      { userId, seriesId, rating: numericRating, review: cleanReview, createdAt: new Date() },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    const ratings = await Rating.find({ seriesId });
+    if (ratings.length) {
+      const avgRating = ratings.reduce((sum, item) => sum + Number(item.rating || 0), 0) / ratings.length;
+      await Series.findByIdAndUpdate(seriesId, { rating: avgRating.toFixed(1) });
+    }
+
+    res.json({ success: true, message: 'Yorumun kaydedildi.', rating: ratingDoc });
+  } catch (err) {
+    res.status(500).json({ error: 'Yorum kaydedilemedi.' });
+  }
+});
+
+app.get('/api/ratings/:seriesId', async (req, res) => {
+  try {
+    if (!isValidObjectId(req.params.seriesId)) return res.json([]);
+    const ratings = await Rating.find({ seriesId: req.params.seriesId })
+      .populate('userId', 'name email')
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .lean();
+    res.json(ratings);
+  } catch (err) {
+    res.status(500).json({ error: 'Yorumlar yüklenemedi.' });
+  }
+});
+
 // API ENDPOINTS — KULLANICI PROFİL YÖNETİMİ
 // ═══════════════════════════════════════════════════════════
 

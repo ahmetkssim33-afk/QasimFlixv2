@@ -36,11 +36,25 @@
   function enhanceInstallTip(){let deferredPrompt=null; window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e; if(localStorage.getItem('qf_install_tip_closed'))return; const tip=document.createElement('div'); tip.className='qf-install-tip show'; tip.innerHTML='<button>Kapat</button>QasimFlix’i telefona uygulama gibi ekleyebilirsin.'; document.body.appendChild(tip); tip.onclick=async(ev)=>{if(ev.target.tagName==='BUTTON'){localStorage.setItem('qf_install_tip_closed','1');tip.remove();return;} if(deferredPrompt){deferredPrompt.prompt(); await deferredPrompt.userChoice; tip.remove();}};});}
   function keepScreenAwake(){document.addEventListener('click',async e=>{if(!e.target.closest('.btn-play,.card,.ep-card,#fullscreen-btn,.landscape-start'))return; try{if('wakeLock' in navigator && !window.qfWakeLock){window.qfWakeLock=await navigator.wakeLock.request('screen'); window.qfWakeLock.addEventListener('release',()=>window.qfWakeLock=null);}}catch(_){}}); document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible') window.qfWakeLock=null;});}
 
+  function modalIsVisible(el){
+    if(!el) return false;
+    const cs=getComputedStyle(el);
+    return el.classList.contains('open') || (cs.display!=='none' && cs.visibility!=='hidden' && Number(cs.opacity||1)>0 && el.getBoundingClientRect().height>80);
+  }
+  function setBottomNavHidden(hide){
+    const nav=document.getElementById('qf-mobile-bottom-nav');
+    document.body.classList.toggle('qf-hide-bottom-nav',!!hide);
+    if(nav){
+      nav.style.display=hide?'none':'';
+      nav.style.pointerEvents=hide?'none':'';
+    }
+    document.body.style.paddingBottom=hide?'0':'';
+  }
+  window.qfSetBottomNavHidden=setBottomNavHidden;
   function syncBottomNavVisibility(){
-    const detailOpen=document.getElementById('detail-modal')?.classList.contains('open');
-    const playerOpen=document.getElementById('player-modal')?.classList.contains('open');
-    const hide=!!(detailOpen||playerOpen);
-    document.body.classList.toggle('qf-hide-bottom-nav',hide);
+    const detailOpen=modalIsVisible(document.getElementById('detail-modal'));
+    const playerOpen=modalIsVisible(document.getElementById('player-modal'));
+    setBottomNavHidden(!!(detailOpen||playerOpen));
   }
   function observeModalState(){
     syncBottomNavVisibility();
@@ -48,9 +62,15 @@
       const el=document.getElementById(id);
       if(!el||el._qfNavObserver)return;
       el._qfNavObserver=true;
-      new MutationObserver(syncBottomNavVisibility).observe(el,{attributes:true,attributeFilter:['class']});
+      new MutationObserver(syncBottomNavVisibility).observe(el,{attributes:true,attributeFilter:['class','style','aria-hidden']});
     });
+    const wrap=(name,after)=>{const fn=window[name]; if(typeof fn==='function'&&!fn._qfWrapped){window[name]=function(){const r=fn.apply(this,arguments); setTimeout(after,0); setTimeout(syncBottomNavVisibility,80); return r;}; window[name]._qfWrapped=true;}};
+    wrap('openDetail',()=>setBottomNavHidden(true));
+    wrap('closeDetailModal',()=>setBottomNavHidden(false));
+    wrap('openPlayerShell',()=>setBottomNavHidden(true));
+    wrap('closePlayer',()=>setBottomNavHidden(false));
     document.addEventListener('click',()=>setTimeout(syncBottomNavVisibility,0),true);
+    window.addEventListener('popstate',()=>setTimeout(syncBottomNavVisibility,0));
   }
   function overrideDownload(){const original=window.downloadItem; window.downloadItem=function(type,itemId,videoUrl,title){ if(!videoUrl && window.currentSeries?.seasons?.[0]?.episodes?.[0]) videoUrl=window.currentSeries.seasons[0].episodes[0].videoUrl; if(!canDirectDownload(videoUrl)){toast('Bu video çevrimdışı indirme için uygun değil. Sadece direkt MP4 desteklenir.'); return;} registerDownload({title:title||'Video',url:videoUrl,type}); if(original) return original.apply(this,arguments); const a=document.createElement('a'); a.href=videoUrl; a.download=(title||'video')+'.mp4'; a.target='_blank'; document.body.appendChild(a); a.click(); a.remove(); toast('İndirme başlatıldı.'); };
   }
