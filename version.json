@@ -1,7 +1,10 @@
 {
-  "version": "1.0.0",
-  "build": 20260529,
+  "version": "1.0.1",
+  "build": 2026052901,
   "apkRequired": false,
-  "message": "QasimFlix güncel.",
-  "apkUrl": ""
+  "message": "Yeni QasimFlix güncellemesi geldi. Önbellek otomatik temizlenip uygulama yenilenecek.",
+  "apkUrl": "",
+  "notifyUpdates": true,
+  "notifyNewContent": true,
+  "forceClearCache": true
 }

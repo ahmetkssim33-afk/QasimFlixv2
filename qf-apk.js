@@ -154,3 +154,178 @@
   document.addEventListener('qf-lang-changed', renderDynamicText);
   ready(()=>{ document.body.classList.add('qf-apk-mode'); injectUI(); observeModalState(); checkUpdate(); enhanceInstallTip(); keepScreenAwake(); setTimeout(overrideDownload,300); const action=new URLSearchParams(location.search).get('action'); if(action==='downloads') setTimeout(openDownloads,350); if(action==='search') setTimeout(openSearch,350); window.addEventListener('online',()=>toast(t('toast.online'))); window.addEventListener('offline',()=>toast(t('toast.offline'))); });
 })();
+
+// QasimFlix APK update + content notification guard
+(function(){
+  'use strict';
+
+  const VERSION_URL = '/version.json';
+  const SERIES_URL = '/api/series?limit=1&page=1';
+  const LS_BUILD = 'qf_last_seen_build';
+  const LS_UPDATE_RELOADED = 'qf_update_reloaded_build';
+  const LS_LATEST_CONTENT = 'qf_latest_content_id';
+  const LS_SETTINGS = 'qasimflix_settings';
+  const CHECK_INTERVAL = 5 * 60 * 1000;
+
+  function ready(fn){
+    document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', fn) : fn();
+  }
+
+  function getSettings(){
+    try { return JSON.parse(localStorage.getItem(LS_SETTINGS) || '{}') || {}; }
+    catch (_) { return {}; }
+  }
+
+  function notificationsEnabled(){
+    return !!getSettings().notifications;
+  }
+
+  function toast(message){
+    if (window.qfToast) return window.qfToast(message);
+    let el = document.querySelector('.qf-apk-toast');
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'qf-apk-toast';
+      document.body.appendChild(el);
+    }
+    el.textContent = message;
+    el.classList.add('show');
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.classList.remove('show'), 3500);
+  }
+
+  async function sendLocalNotification(title, body, url){
+    toast(body || title);
+
+    if (!notificationsEnabled()) return;
+    if (!('Notification' in window)) return;
+
+    try {
+      let permission = Notification.permission;
+      if (permission === 'default') permission = await Notification.requestPermission();
+      if (permission !== 'granted') return;
+
+      const options = {
+        body: body || '',
+        tag: 'qasimflix-' + String(title || '').toLowerCase().replace(/\s+/g, '-'),
+        renotify: true,
+        data: { url: url || '/' },
+        icon: '/assets/icons/icon-192.png',
+        badge: '/assets/icons/icon-96.png'
+      };
+
+      const reg = await navigator.serviceWorker?.ready?.catch(() => null);
+      if (reg && reg.showNotification) {
+        await reg.showNotification(title, options);
+      } else {
+        const n = new Notification(title, options);
+        n.onclick = () => { window.focus(); if (url) location.href = url; n.close(); };
+      }
+    } catch (_) {}
+  }
+
+  async function clearStaticCaches(){
+    try {
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(key => caches.delete(key)));
+      }
+      if (navigator.serviceWorker?.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: 'QF_CLEAR_OLD_CACHES' });
+      }
+    } catch (_) {}
+  }
+
+  function showUpdatingOverlay(message){
+    let el = document.getElementById('qf-auto-update-overlay');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'qf-auto-update-overlay';
+      el.innerHTML = '<div><b>QasimFlix güncelleniyor</b><p></p></div>';
+      document.body.appendChild(el);
+    }
+    const p = el.querySelector('p');
+    if (p) p.textContent = message || 'Yeni sürüm hazırlanıyor. Depolama sıfırlamadan yenileniyor.';
+    el.classList.add('show');
+  }
+
+  async function fetchJson(url){
+    const res = await fetch(url + (url.includes('?') ? '&' : '?') + 't=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return res.json();
+  }
+
+  async function checkVersionChange(){
+    try {
+      const data = await fetchJson(VERSION_URL);
+      const build = String(data.build || data.version || '').trim();
+      if (!build) return;
+
+      const oldBuild = localStorage.getItem(LS_BUILD);
+      const alreadyReloadedFor = localStorage.getItem(LS_UPDATE_RELOADED);
+
+      if (!oldBuild) {
+        localStorage.setItem(LS_BUILD, build);
+        return;
+      }
+
+      if (oldBuild !== build) {
+        localStorage.setItem(LS_BUILD, build);
+        await sendLocalNotification('QasimFlix güncellendi', data.message || 'Yeni sürüm geldi. Uygulama yenileniyor.', '/');
+
+        if (alreadyReloadedFor !== build) {
+          localStorage.setItem(LS_UPDATE_RELOADED, build);
+          showUpdatingOverlay(data.message);
+          await clearStaticCaches();
+          setTimeout(() => location.reload(), 900);
+        }
+      }
+    } catch (_) {}
+  }
+
+  function normalizeSeriesPayload(payload){
+    const list = Array.isArray(payload) ? payload : (payload && Array.isArray(payload.series) ? payload.series : []);
+    return list[0] || null;
+  }
+
+  async function checkNewContent(){
+    try {
+      const latest = normalizeSeriesPayload(await fetchJson(SERIES_URL));
+      if (!latest) return;
+
+      const id = String(latest._id || latest.id || latest.slug || latest.title || '').trim();
+      if (!id) return;
+
+      const old = localStorage.getItem(LS_LATEST_CONTENT);
+      if (!old) {
+        localStorage.setItem(LS_LATEST_CONTENT, id);
+        return;
+      }
+
+      if (old !== id) {
+        localStorage.setItem(LS_LATEST_CONTENT, id);
+        const type = latest.type === 'movie' ? 'film' : 'dizi';
+        const title = latest.title || latest.name || 'Yeni içerik';
+        await sendLocalNotification('Yeni ' + type + ' eklendi', title + ' artık QasimFlix’te.', '/');
+      }
+    } catch (_) {}
+  }
+
+  function startChecks(){
+    checkVersionChange();
+    setTimeout(checkNewContent, 2500);
+    setInterval(() => {
+      if (document.hidden) return;
+      checkVersionChange();
+      checkNewContent();
+    }, CHECK_INTERVAL);
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        checkVersionChange();
+        checkNewContent();
+      }
+    });
+  }
+
+  ready(startChecks);
+})();
