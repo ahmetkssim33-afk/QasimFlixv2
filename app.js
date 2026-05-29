@@ -1150,10 +1150,12 @@ function showIframe(iframeSrc, options = {}) {
     if (quality) quality.style.display = 'none';
 
     if (isDriveEmbed && isMobileViewport()) {
-        const autoTry = !window.qfGetSetting || window.qfGetSetting('tryFullscreen', true) || window.qfGetSetting('tryLandscape', true);
+        // Drive iframe kendi native kontrollerini gösterdiği için otomatik fullscreen yapma;
+        // sadece sayfa içi sinema modunu ve mümkünse yatay kilidi dene.
+        const autoTry = !window.qfGetSetting || window.qfGetSetting('tryLandscape', true);
         if (autoTry) setTimeout(() => requestPlayerLandscape(false), 150);
         const start = document.getElementById('qf-landscape-start');
-        if (start && autoTry) start.classList.add('show');
+        if (start && autoTry) start.classList.remove('show');
     }
 }
 
@@ -1251,14 +1253,26 @@ async function requestPlayerLandscape(force = false) {
     const modal = document.getElementById('player-modal');
     const wrap = document.getElementById('player-wrap');
     const video = document.getElementById('video-player');
-    const target = wrap || video || modal;
+    // Android/WebView'de <video> veya iframe'i native fullscreen'e sokunca resimdeki gibi
+    // büyük/çirkin sistem kontrolleri çıkıyor. Bu yüzden her zaman kendi modal/wrap alanımızı kullanıyoruz.
+    const target = wrap || modal;
     if (!target) return false;
 
-    const shouldFullscreen = force || !window.qfGetSetting || window.qfGetSetting('tryFullscreen', true);
     const shouldLandscape = force || !window.qfGetSetting || window.qfGetSetting('tryLandscape', true);
+    // Otomatikte browser fullscreen istemiyoruz; modal zaten CSS ile 100 ekran oluyor.
+    // Kullanıcı butona basarsa sadece wrapper fullscreen denenir, video'nun native player'ı açılmaz.
+    const shouldFullscreen = force && (!window.qfGetSetting || window.qfGetSetting('tryFullscreen', true));
     if (!shouldFullscreen && !shouldLandscape) return false;
 
     try {
+        if (video) {
+            video.controls = false;
+            video.removeAttribute('controls');
+            video.setAttribute('playsinline', '');
+            video.setAttribute('webkit-playsinline', '');
+        }
+        document.body.classList.add('qf-player-mobile-open');
+        if (modal) modal.classList.add('qf-mobile-cinema');
         if (shouldFullscreen && !document.fullscreenElement) {
             if (target.requestFullscreen) await target.requestFullscreen();
             else if (target.webkitRequestFullscreen) target.webkitRequestFullscreen();
@@ -1281,8 +1295,9 @@ function prepareMobilePlayerStart() {
     document.body.style.overflow = 'hidden';
     if (isMobileViewport()) {
         const start = document.getElementById('qf-landscape-start');
-        const autoTry = !window.qfGetSetting || window.qfGetSetting('tryFullscreen', true) || window.qfGetSetting('tryLandscape', true);
-        if (start && autoTry) start.classList.add('show');
+        const autoTry = !window.qfGetSetting || window.qfGetSetting('tryLandscape', true);
+        // Açılışta ekranı hemen siyah sinema moduna al; native Android player'a geçme.
+        if (start) start.classList.remove('show');
         if (autoTry) requestPlayerLandscape(false).then(ok => {
             if (ok) start?.classList.remove('show');
         });
@@ -1402,6 +1417,8 @@ function closePlayer() {
     document.body.style.overflow = '';
     try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch(e) {}
     try { if (document.fullscreenElement) document.exitFullscreen(); } catch(e) {}
+    document.body.classList.remove('qf-player-mobile-open');
+    try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch(e) {}
     const video = document.getElementById('video-player');
     try { video.pause(); } catch(e) {}
     const videoSource = document.getElementById('video-source');
