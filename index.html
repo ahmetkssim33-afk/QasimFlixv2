@@ -1007,9 +1007,17 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
       <input type="text" id="search-input" data-i18n-placeholder="search.placeholder" placeholder="Ara..." oninput="handleSearch(this.value)">
     </div>
     <div style="margin-left:8px;margin-right:6px">
-      <select id="lang-select" class="lang-select" onchange="handleLanguageChange(this.value)" aria-label="Dil seçimi">
+      <select id="lang-select" class="lang-select" onchange="handleLanguageChange(this.value)" aria-label="Dil seçimi" data-i18n-aria-label="settings.language">
         <option value="tr">Türkçe</option>
         <option value="ar">العربية</option>
+        <option value="en">English</option>
+        <option value="en-GB">English UK</option>
+        <option value="es">Español</option>
+        <option value="it">Italiano</option>
+        <option value="fr">Français</option>
+        <option value="de">Deutsch</option>
+        <option value="ru">Русский</option>
+        <option value="zh">中文</option>
       </select>
     </div>
     <a href="admin.html" class="admin-btn" id="admin-link" style="display:none">⚙ Admin</a>
@@ -1024,7 +1032,8 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
             <div class="user-dropdown-email" id="dd-email"></div>
           </div>
           <div class="user-dropdown-item" onclick="openProfileSelectScreen()">👤 Profil Değiştir</div>
-          <div class="user-dropdown-item" onclick="openProfileManageModal()">⚙️ Profil Yönetimi</div>
+          <div class="user-dropdown-item" onclick="openProfileManageModal()" data-i18n="profile.manage">⚙️ Profil Yönetimi</div>
+          <div class="user-dropdown-item" onclick="window.qfOpenSettings ? qfOpenSettings() : null" data-i18n="settings.open">⚙️ Ayarlar</div>
           <div class="user-dropdown-item" onclick="loadFavorites()">❤️ Favorilerim</div>
           <div class="user-dropdown-item" onclick="loadWatchlist()">📋 İzlenecekler</div>
           <div class="user-dropdown-item" onclick="toggleDarkMode()">🌙 Tema Değiştir</div>
@@ -1318,67 +1327,70 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
     });
   }
 </script>
-<!-- Language selector + RTL support -->
+<!-- APP_I18N: public / mobile / APK language system. Admin panel is untouched. -->
 <script>
   (function(){
-    const key = 'qfLang';
-    const T = {
-      tr: {
-        'nav.home':'Ana Sayfa',
-        'nav.series':'Diziler',
-        'nav.local':'Yerli Diziler',
-        'nav.documentaries':'Belgeseller',
-        'nav.movies':'Filmler',
-        'search.placeholder':'Ara...',
-        'hero.welcome':'Qasimflix\'e Hoş Geldiniz',
-        'hero.desc':'Admin panelinden içerik ekleyerek başlayın.',
-        'local.new':'🌟 Yeni Eklenen Yerli Diziler'
-      },
-      ar: {
-        'nav.home':'الصفحة الرئيسية',
-        'nav.series':'مسلسلات',
-        'nav.local':'مسلسلات محلية',
-        'nav.documentaries':'وثائقيات',
-        'nav.movies':'أفلام',
-        'search.placeholder':'ابحث...',
-        'hero.welcome':'مرحبًا بك في Qasimflix',
-        'hero.desc':'ابدأ بإضافة محتوى من لوحة التحكم.',
-        'local.new':'🌟 المسلسلات المحلية المضافة حديثًا'
-      }
+    const LANG_KEY = 'qasimflix_lang';
+    const OLD_LANG_KEY = 'qfLang';
+    const DEFAULT_LANG = 'tr';
+    const LANG_META = {
+      tr:{label:'Türkçe',dir:'ltr'}, ar:{label:'العربية',dir:'rtl'}, en:{label:'English',dir:'ltr'},
+      'en-GB':{label:'English UK',dir:'ltr'}, es:{label:'Español',dir:'ltr'}, it:{label:'Italiano',dir:'ltr'},
+      fr:{label:'Français',dir:'ltr'}, de:{label:'Deutsch',dir:'ltr'}, ru:{label:'Русский',dir:'ltr'}, zh:{label:'中文',dir:'ltr'}
     };
-
-    function applyLang(l) {
-      document.documentElement.lang = l === 'ar' ? 'ar' : 'tr';
-      if (l === 'ar') {
-        document.documentElement.setAttribute('dir','rtl');
-        document.body.classList.add('rtl');
-        document.body.style.fontFamily = "'Cairo', sans-serif";
-      } else {
-        document.documentElement.setAttribute('dir','ltr');
-        document.body.classList.remove('rtl');
-        document.body.style.fontFamily = '';
-      }
-      try { const sel = document.getElementById('lang-select'); if (sel) sel.value = l; } catch(e){}
-
-      // translate elements with data-i18n
-      document.querySelectorAll('[data-i18n]').forEach(el => {
-        const key = el.getAttribute('data-i18n');
-        if (T[l] && T[l][key]) el.textContent = T[l][key];
-      });
-      // placeholders
-      document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
-        const k = el.getAttribute('data-i18n-placeholder');
-        if (T[l] && T[l][k]) el.setAttribute('placeholder', T[l][k]);
-      });
-
-      // specific ids
-      const heroTitle = document.getElementById('hero-title'); if (heroTitle) heroTitle.textContent = T[l]['hero.welcome'] || heroTitle.textContent;
-      const heroDesc = document.getElementById('hero-desc'); if (heroDesc) heroDesc.textContent = T[l]['hero.desc'] || heroDesc.textContent;
+    const APP_I18N = {
+      tr:{
+        'nav.home':'Ana Sayfa','nav.series':'Diziler','nav.local':'Yerli Diziler','nav.documentaries':'Belgeseller','nav.movies':'Filmler',
+        'nav.search':'Arama','nav.downloads':'İndirilenler','nav.favorites':'Favoriler','nav.profile':'Profil',
+        'search.placeholder':'Ara...','hero.welcome':'Qasimflix\'e Hoş Geldiniz','hero.desc':'Admin panelinden içerik ekleyerek başlayın.','local.new':'🌟 Yeni Eklenen Yerli Diziler',
+        'profile.manage':'⚙️ Profil Yönetimi','profile.switch':'👤 Profil Değiştir','profile.title':'Profil','profile.login':'Giriş / Kayıt','profile.account':'Hesap','profile.watchlist':'📋 İzlenecekler','profile.signout':'🚪 Çıkış Yap',
+        'settings.open':'⚙️ Ayarlar','settings.title':'Ayarlar','settings.subtitle':'Mobil/APK tercihleri','settings.language':'Dil seçimi','settings.autoplay':'Otomatik oynatma','settings.fullscreen':'Video açılınca tam ekran dene','settings.landscape':'Video açılınca yatay moda geçmeyi dene','settings.notifications':'Bildirimler','settings.clearCache':'Önbelleği temizle','settings.version':'Uygulama sürümü','settings.close':'Kapat','settings.on':'Açık','settings.off':'Kapalı','settings.saved':'Ayar kaydedildi','settings.cacheCleared':'Önbellek temizlendi','settings.cacheError':'Önbellek temizlenemedi','settings.notSupported':'Bu cihaz desteklemiyor','settings.updated':'Dil güncellendi',
+        'downloads.empty':'Henüz indirme yok.<br>MP4 destekli içeriklerde “İndir” butonuna basınca burada görünür.','downloads.open':'Aç','downloads.title':'İndirilenler','update.title':'Yeni APK sürümü var','update.message':'Uygulamayı güncellemen önerilir.','update.action':'Güncelle','update.later':'Sonra','install.tip':'QasimFlix’i telefona uygulama gibi ekleyebilirsin.','install.close':'Kapat','toast.offline':'İnternet yok. Çevrimdışı mod.','toast.online':'Bağlantı geri geldi.','download.unsupported':'Bu video çevrimdışı indirme için uygun değil. Sadece direkt MP4 desteklenir.','download.started':'İndirme başlatıldı.'
+      },
+      ar:{
+        'nav.home':'الصفحة الرئيسية','nav.series':'مسلسلات','nav.local':'مسلسلات محلية','nav.documentaries':'وثائقيات','nav.movies':'أفلام','nav.search':'بحث','nav.downloads':'التنزيلات','nav.favorites':'المفضلة','nav.profile':'الملف',
+        'search.placeholder':'ابحث...','hero.welcome':'مرحبًا بك في Qasimflix','hero.desc':'ابدأ بإضافة محتوى من لوحة التحكم.','local.new':'🌟 المسلسلات المحلية المضافة حديثًا','profile.manage':'⚙️ إدارة الملفات','profile.switch':'👤 تبديل الملف','profile.title':'الملف الشخصي','profile.login':'تسجيل الدخول / إنشاء حساب','profile.account':'الحساب','profile.watchlist':'📋 قائمة المشاهدة','profile.signout':'🚪 تسجيل الخروج',
+        'settings.open':'⚙️ الإعدادات','settings.title':'الإعدادات','settings.subtitle':'تفضيلات الهاتف والتطبيق','settings.language':'اختيار اللغة','settings.autoplay':'التشغيل التلقائي','settings.fullscreen':'جرّب ملء الشاشة عند فتح الفيديو','settings.landscape':'جرّب الوضع الأفقي عند فتح الفيديو','settings.notifications':'الإشعارات','settings.clearCache':'مسح الذاكرة المؤقتة','settings.version':'إصدار التطبيق','settings.close':'إغلاق','settings.on':'تشغيل','settings.off':'إيقاف','settings.saved':'تم حفظ الإعداد','settings.cacheCleared':'تم مسح الذاكرة المؤقتة','settings.cacheError':'تعذر مسح الذاكرة المؤقتة','settings.notSupported':'غير مدعوم على هذا الجهاز','settings.updated':'تم تحديث اللغة',
+        'downloads.empty':'لا توجد تنزيلات بعد.<br>ستظهر هنا عند الضغط على زر التنزيل لمحتوى MP4.','downloads.open':'فتح','downloads.title':'التنزيلات','update.title':'يوجد إصدار APK جديد','update.message':'ننصحك بتحديث التطبيق.','update.action':'تحديث','update.later':'لاحقًا','install.tip':'يمكنك إضافة QasimFlix كتطبيق على هاتفك.','install.close':'إغلاق','toast.offline':'لا يوجد إنترنت. وضع عدم الاتصال.','toast.online':'عاد الاتصال.','download.unsupported':'هذا الفيديو غير مناسب للتنزيل دون اتصال. يتم دعم MP4 المباشر فقط.','download.started':'بدأ التنزيل.'
+      },
+      en:{'nav.home':'Home','nav.series':'Series','nav.local':'Local Series','nav.documentaries':'Documentaries','nav.movies':'Movies','nav.search':'Search','nav.downloads':'Downloads','nav.favorites':'Favorites','nav.profile':'Profile','search.placeholder':'Search...','hero.welcome':'Welcome to Qasimflix','hero.desc':'Start by adding content from the admin panel.','local.new':'🌟 Newly Added Local Series','profile.manage':'⚙️ Profile Management','profile.switch':'👤 Switch Profile','profile.title':'Profile','profile.login':'Login / Sign up','profile.account':'Account','profile.watchlist':'📋 Watchlist','profile.signout':'🚪 Sign out','settings.open':'⚙️ Settings','settings.title':'Settings','settings.subtitle':'Mobile/APK preferences','settings.language':'Language','settings.autoplay':'Autoplay','settings.fullscreen':'Try fullscreen when video opens','settings.landscape':'Try landscape mode when video opens','settings.notifications':'Notifications','settings.clearCache':'Clear cache','settings.version':'App version','settings.close':'Close','settings.on':'On','settings.off':'Off','settings.saved':'Setting saved','settings.cacheCleared':'Cache cleared','settings.cacheError':'Cache could not be cleared','settings.notSupported':'Not supported on this device','settings.updated':'Language updated','downloads.empty':'No downloads yet.<br>Supported MP4 content will appear here after you tap Download.','downloads.open':'Open','downloads.title':'Downloads','update.title':'New APK version available','update.message':'We recommend updating the app.','update.action':'Update','update.later':'Later','install.tip':'You can add QasimFlix to your phone like an app.','install.close':'Close','toast.offline':'No internet. Offline mode.','toast.online':'Connection is back.','download.unsupported':'This video is not available for offline download. Only direct MP4 is supported.','download.started':'Download started.'},
+      'en-GB':{'nav.home':'Home','nav.series':'Series','nav.local':'Local Series','nav.documentaries':'Documentaries','nav.movies':'Films','nav.search':'Search','nav.downloads':'Downloads','nav.favorites':'Favourites','nav.profile':'Profile','search.placeholder':'Search...','hero.welcome':'Welcome to Qasimflix','hero.desc':'Start by adding content from the admin panel.','local.new':'🌟 Newly Added Local Series','profile.manage':'⚙️ Profile Management','profile.switch':'👤 Switch Profile','profile.title':'Profile','profile.login':'Log in / Register','profile.account':'Account','profile.watchlist':'📋 Watchlist','profile.signout':'🚪 Sign out','settings.open':'⚙️ Settings','settings.title':'Settings','settings.subtitle':'Mobile/APK preferences','settings.language':'Language','settings.autoplay':'Autoplay','settings.fullscreen':'Try full screen when video opens','settings.landscape':'Try landscape mode when video opens','settings.notifications':'Notifications','settings.clearCache':'Clear cache','settings.version':'App version','settings.close':'Close','settings.on':'On','settings.off':'Off','settings.saved':'Setting saved','settings.cacheCleared':'Cache cleared','settings.cacheError':'Cache could not be cleared','settings.notSupported':'Not supported on this device','settings.updated':'Language updated','downloads.empty':'No downloads yet.<br>Supported MP4 content will appear here after you tap Download.','downloads.open':'Open','downloads.title':'Downloads','update.title':'New APK version available','update.message':'We recommend updating the app.','update.action':'Update','update.later':'Later','install.tip':'You can add QasimFlix to your phone like an app.','install.close':'Close','toast.offline':'No internet. Offline mode.','toast.online':'Connection is back.','download.unsupported':'This video is not available for offline download. Only direct MP4 is supported.','download.started':'Download started.'},
+      es:{'nav.home':'Inicio','nav.series':'Series','nav.local':'Series locales','nav.documentaries':'Documentales','nav.movies':'Películas','nav.search':'Buscar','nav.downloads':'Descargas','nav.favorites':'Favoritos','nav.profile':'Perfil','search.placeholder':'Buscar...','hero.welcome':'Bienvenido a Qasimflix','hero.desc':'Empieza agregando contenido desde el panel de admin.','local.new':'🌟 Series locales recién añadidas','profile.manage':'⚙️ Gestión de perfiles','profile.switch':'👤 Cambiar perfil','profile.title':'Perfil','profile.login':'Iniciar sesión / Registro','profile.account':'Cuenta','profile.watchlist':'📋 Lista','profile.signout':'🚪 Salir','settings.open':'⚙️ Ajustes','settings.title':'Ajustes','settings.subtitle':'Preferencias móvil/APK','settings.language':'Idioma','settings.autoplay':'Reproducción automática','settings.fullscreen':'Intentar pantalla completa al abrir vídeo','settings.landscape':'Intentar modo horizontal al abrir vídeo','settings.notifications':'Notificaciones','settings.clearCache':'Limpiar caché','settings.version':'Versión de la app','settings.close':'Cerrar','settings.on':'Activado','settings.off':'Desactivado','settings.saved':'Ajuste guardado','settings.cacheCleared':'Caché limpiada','settings.cacheError':'No se pudo limpiar la caché','settings.notSupported':'No compatible con este dispositivo','settings.updated':'Idioma actualizado','downloads.title':'Descargas','downloads.open':'Abrir'},
+      it:{'nav.home':'Home','nav.series':'Serie','nav.local':'Serie locali','nav.documentaries':'Documentari','nav.movies':'Film','nav.search':'Cerca','nav.downloads':'Download','nav.favorites':'Preferiti','nav.profile':'Profilo','search.placeholder':'Cerca...','hero.welcome':'Benvenuto su Qasimflix','hero.desc':'Inizia aggiungendo contenuti dal pannello admin.','local.new':'🌟 Serie locali appena aggiunte','profile.manage':'⚙️ Gestione profili','profile.switch':'👤 Cambia profilo','profile.title':'Profilo','profile.login':'Accesso / Registrazione','settings.open':'⚙️ Impostazioni','settings.title':'Impostazioni','settings.subtitle':'Preferenze mobile/APK','settings.language':'Lingua','settings.autoplay':'Riproduzione automatica','settings.fullscreen':'Prova schermo intero quando si apre il video','settings.landscape':'Prova modalità orizzontale quando si apre il video','settings.notifications':'Notifiche','settings.clearCache':'Svuota cache','settings.version':'Versione app','settings.close':'Chiudi','settings.on':'Attivo','settings.off':'Disattivo','settings.saved':'Impostazione salvata','settings.cacheCleared':'Cache svuotata','settings.updated':'Lingua aggiornata','downloads.title':'Download','downloads.open':'Apri'},
+      fr:{'nav.home':'Accueil','nav.series':'Séries','nav.local':'Séries locales','nav.documentaries':'Documentaires','nav.movies':'Films','nav.search':'Recherche','nav.downloads':'Téléchargements','nav.favorites':'Favoris','nav.profile':'Profil','search.placeholder':'Rechercher...','hero.welcome':'Bienvenue sur Qasimflix','hero.desc':'Commencez par ajouter du contenu depuis le panneau admin.','local.new':'🌟 Séries locales récemment ajoutées','profile.manage':'⚙️ Gestion des profils','profile.switch':'👤 Changer de profil','profile.title':'Profil','profile.login':'Connexion / Inscription','settings.open':'⚙️ Paramètres','settings.title':'Paramètres','settings.subtitle':'Préférences mobile/APK','settings.language':'Langue','settings.autoplay':'Lecture automatique','settings.fullscreen':'Essayer le plein écran à l’ouverture de la vidéo','settings.landscape':'Essayer le mode paysage à l’ouverture de la vidéo','settings.notifications':'Notifications','settings.clearCache':'Vider le cache','settings.version':'Version de l’app','settings.close':'Fermer','settings.on':'Activé','settings.off':'Désactivé','settings.saved':'Paramètre enregistré','settings.cacheCleared':'Cache vidé','settings.updated':'Langue mise à jour','downloads.title':'Téléchargements','downloads.open':'Ouvrir'},
+      de:{'nav.home':'Startseite','nav.series':'Serien','nav.local':'Lokale Serien','nav.documentaries':'Dokus','nav.movies':'Filme','nav.search':'Suche','nav.downloads':'Downloads','nav.favorites':'Favoriten','nav.profile':'Profil','search.placeholder':'Suchen...','hero.welcome':'Willkommen bei Qasimflix','hero.desc':'Beginne, indem du Inhalte im Admin-Panel hinzufügst.','local.new':'🌟 Neu hinzugefügte lokale Serien','profile.manage':'⚙️ Profilverwaltung','profile.switch':'👤 Profil wechseln','profile.title':'Profil','profile.login':'Anmelden / Registrieren','settings.open':'⚙️ Einstellungen','settings.title':'Einstellungen','settings.subtitle':'Mobile/APK-Einstellungen','settings.language':'Sprache','settings.autoplay':'Automatische Wiedergabe','settings.fullscreen':'Beim Öffnen des Videos Vollbild versuchen','settings.landscape':'Beim Öffnen des Videos Querformat versuchen','settings.notifications':'Benachrichtigungen','settings.clearCache':'Cache leeren','settings.version':'App-Version','settings.close':'Schließen','settings.on':'Ein','settings.off':'Aus','settings.saved':'Einstellung gespeichert','settings.cacheCleared':'Cache geleert','settings.updated':'Sprache aktualisiert','downloads.title':'Downloads','downloads.open':'Öffnen'},
+      ru:{'nav.home':'Главная','nav.series':'Сериалы','nav.local':'Местные сериалы','nav.documentaries':'Документальные','nav.movies':'Фильмы','nav.search':'Поиск','nav.downloads':'Загрузки','nav.favorites':'Избранное','nav.profile':'Профиль','search.placeholder':'Поиск...','hero.welcome':'Добро пожаловать в Qasimflix','hero.desc':'Начните с добавления контента в админ-панели.','local.new':'🌟 Новые местные сериалы','profile.manage':'⚙️ Управление профилями','profile.switch':'👤 Сменить профиль','profile.title':'Профиль','profile.login':'Вход / Регистрация','settings.open':'⚙️ Настройки','settings.title':'Настройки','settings.subtitle':'Настройки мобильной версии/APK','settings.language':'Язык','settings.autoplay':'Автовоспроизведение','settings.fullscreen':'Пробовать полноэкранный режим при открытии видео','settings.landscape':'Пробовать горизонтальный режим при открытии видео','settings.notifications':'Уведомления','settings.clearCache':'Очистить кэш','settings.version':'Версия приложения','settings.close':'Закрыть','settings.on':'Вкл','settings.off':'Выкл','settings.saved':'Настройка сохранена','settings.cacheCleared':'Кэш очищен','settings.updated':'Язык обновлён','downloads.title':'Загрузки','downloads.open':'Открыть'},
+      zh:{'nav.home':'首页','nav.series':'剧集','nav.local':'本地剧集','nav.documentaries':'纪录片','nav.movies':'电影','nav.search':'搜索','nav.downloads':'下载','nav.favorites':'收藏','nav.profile':'个人资料','search.placeholder':'搜索...','hero.welcome':'欢迎来到 Qasimflix','hero.desc':'请先从管理面板添加内容。','local.new':'🌟 新增本地剧集','profile.manage':'⚙️ 资料管理','profile.switch':'👤 切换资料','profile.title':'个人资料','profile.login':'登录 / 注册','settings.open':'⚙️ 设置','settings.title':'设置','settings.subtitle':'移动/APK 偏好','settings.language':'语言','settings.autoplay':'自动播放','settings.fullscreen':'视频打开时尝试全屏','settings.landscape':'视频打开时尝试横屏','settings.notifications':'通知','settings.clearCache':'清除缓存','settings.version':'应用版本','settings.close':'关闭','settings.on':'开启','settings.off':'关闭','settings.saved':'设置已保存','settings.cacheCleared':'缓存已清除','settings.updated':'语言已更新','downloads.title':'下载','downloads.open':'打开'}
+    };
+    function normaliseLang(l){ return LANG_META[l] ? l : DEFAULT_LANG; }
+    function t(key, lang){
+      const l = normaliseLang(lang || localStorage.getItem(LANG_KEY) || localStorage.getItem(OLD_LANG_KEY) || DEFAULT_LANG);
+      return (APP_I18N[l] && APP_I18N[l][key]) || (APP_I18N.tr && APP_I18N.tr[key]) || key;
     }
-
-    window.handleLanguageChange = function(l){ localStorage.setItem(key,l); applyLang(l); };
-    const initial = localStorage.getItem(key) || 'tr';
-    applyLang(initial);
+    function applyLang(l){
+      l = normaliseLang(l);
+      localStorage.setItem(LANG_KEY, l);
+      localStorage.setItem(OLD_LANG_KEY, l);
+      document.documentElement.lang = l;
+      document.documentElement.setAttribute('dir', LANG_META[l].dir);
+      if(document.body){
+        document.body.classList.toggle('rtl', LANG_META[l].dir === 'rtl');
+        document.body.style.fontFamily = l === 'ar' ? "'Cairo', sans-serif" : '';
+      }
+      const sel = document.getElementById('lang-select'); if(sel) sel.value = l;
+      document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.getAttribute('data-i18n'), l); });
+      document.querySelectorAll('[data-i18n-placeholder]').forEach(el => { el.setAttribute('placeholder', t(el.getAttribute('data-i18n-placeholder'), l)); });
+      document.querySelectorAll('[data-i18n-aria-label]').forEach(el => { el.setAttribute('aria-label', t(el.getAttribute('data-i18n-aria-label'), l)); });
+      const heroTitle = document.getElementById('hero-title'); if (heroTitle && /Qasimflix|مرحبا|Welcome|Bienvenido|Benvenuto|Bienvenue|Willkommen|Добро|欢迎/i.test(heroTitle.textContent || '')) heroTitle.textContent = t('hero.welcome', l);
+      const heroDesc = document.getElementById('hero-desc'); if (heroDesc && !heroDesc.dataset.contentDesc) heroDesc.textContent = t('hero.desc', l);
+      document.dispatchEvent(new CustomEvent('qf-lang-changed', {detail:{lang:l}}));
+    }
+    window.APP_I18N = Object.assign(window.APP_I18N || {}, APP_I18N);
+    window.qfLangMeta = LANG_META;
+    window.qfT = t;
+    window.qfApplyLang = applyLang;
+    window.handleLanguageChange = function(l){ applyLang(l); if(window.qfToast) window.qfToast(t('settings.updated', l)); };
+    applyLang(localStorage.getItem(LANG_KEY) || localStorage.getItem(OLD_LANG_KEY) || DEFAULT_LANG);
   })();
 </script>
 <script src="app.js"></script>

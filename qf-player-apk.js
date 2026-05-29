@@ -8,7 +8,7 @@
   function backSmart(e){ if(document.fullscreenElement || document.webkitFullscreenElement || document.body.classList.contains('mobile-cinema')){ e?.preventDefault?.(); document.body.classList.remove('mobile-cinema'); exitFullscreen(); try{history.pushState(null,'',location.href);}catch(_){ } return true;} return false; }
   window.addEventListener('popstate',e=>{ if(backSmart(e)) return; });
   document.addEventListener('keydown',e=>{if(e.key==='Escape') backSmart(e);});
-  document.addEventListener('click',e=>{ if(e.target.closest('.landscape-start,.action-btn,.mobile-video-controls,.video-container')){ wake(); if(mobile) setTimeout(landscape,250); } },true);
+  document.addEventListener('click',e=>{ if(e.target.closest('.landscape-start,.action-btn,.mobile-video-controls,.video-container')){ wake(); if(mobile && (!window.qfGetSetting || window.qfGetSetting('tryLandscape', true))) setTimeout(landscape,250); } },true);
   window.addEventListener('online',()=>toast('Bağlantı geri geldi.'));
   window.addEventListener('offline',()=>toast('İnternet yok. Video açılmazsa tekrar dene.'));
   if(mobile){ try{history.replaceState({qf:true},'',location.href); history.pushState({qf:true},'',location.href);}catch(_){ } }

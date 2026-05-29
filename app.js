@@ -331,7 +331,7 @@ function renderHero(list) {
     }
 
     document.getElementById('hero-title').textContent = item.title;
-    const lang = localStorage.getItem('qfLang') || 'tr';
+    const lang = localStorage.getItem('qasimflix_lang') || localStorage.getItem('qfLang') || 'tr';
     const descText = (lang === 'ar') ? (item.description_ar || item.description || item.description_tr || '') : (item.description_tr || item.description || item.description_ar || '');
     document.getElementById('hero-desc').textContent = descText || (lang === 'ar' ? 'ابدأ بإضافة محتوى من لوحة التحكم.' : 'Keşfet ve izle.');
 
@@ -632,7 +632,7 @@ async function openDetail(seriesId, autoPlay = false) {
         document.getElementById('modal-meta').innerHTML = meta.join('<span style="color:#444">•</span>');
 
         // Show description according to selected language
-        const lang2 = localStorage.getItem('qfLang') || 'tr';
+        const lang2 = localStorage.getItem('qasimflix_lang') || localStorage.getItem('qfLang') || 'tr';
         const modalDesc = (lang2 === 'ar') ? (series.description_ar || series.description || series.description_tr || '') : (series.description_tr || series.description || series.description_ar || '');
         document.getElementById('modal-desc').textContent = modalDesc || (lang2 === 'ar' ? 'لا يوجد وصف.' : 'Açıklama yok.');
 
@@ -1140,13 +1140,15 @@ function showIframe(iframeSrc, options = {}) {
     if (quality) quality.style.display = 'none';
 
     if (isDriveEmbed && isMobileViewport()) {
-        setTimeout(() => requestPlayerLandscape(false), 150);
+        const autoTry = !window.qfGetSetting || window.qfGetSetting('tryFullscreen', true) || window.qfGetSetting('tryLandscape', true);
+        if (autoTry) setTimeout(() => requestPlayerLandscape(false), 150);
         const start = document.getElementById('qf-landscape-start');
-        if (start) start.classList.add('show');
+        if (start && autoTry) start.classList.add('show');
     }
 }
 
 async function setVideoSource(url, keepTime = 0, autoPlay = true) {
+    if (autoPlay && window.qfGetSetting && window.qfGetSetting('autoplay', true) === false) autoPlay = false;
     const videoPlayer = document.getElementById('video-player');
     const videoSource = document.getElementById('video-source');
     const embedContainer = document.getElementById('embed-player');
@@ -1242,12 +1244,16 @@ async function requestPlayerLandscape(force = false) {
     const target = wrap || video || modal;
     if (!target) return false;
 
+    const shouldFullscreen = force || !window.qfGetSetting || window.qfGetSetting('tryFullscreen', true);
+    const shouldLandscape = force || !window.qfGetSetting || window.qfGetSetting('tryLandscape', true);
+    if (!shouldFullscreen && !shouldLandscape) return false;
+
     try {
-        if (!document.fullscreenElement) {
+        if (shouldFullscreen && !document.fullscreenElement) {
             if (target.requestFullscreen) await target.requestFullscreen();
             else if (target.webkitRequestFullscreen) target.webkitRequestFullscreen();
         }
-        if (screen.orientation && screen.orientation.lock) {
+        if (shouldLandscape && screen.orientation && screen.orientation.lock) {
             await screen.orientation.lock('landscape').catch(() => {});
         }
         document.getElementById('qf-landscape-start')?.classList.remove('show');
@@ -1265,8 +1271,9 @@ function prepareMobilePlayerStart() {
     document.body.style.overflow = 'hidden';
     if (isMobileViewport()) {
         const start = document.getElementById('qf-landscape-start');
-        if (start) start.classList.add('show');
-        requestPlayerLandscape(false).then(ok => {
+        const autoTry = !window.qfGetSetting || window.qfGetSetting('tryFullscreen', true) || window.qfGetSetting('tryLandscape', true);
+        if (start && autoTry) start.classList.add('show');
+        if (autoTry) requestPlayerLandscape(false).then(ok => {
             if (ok) start?.classList.remove('show');
         });
     }
