@@ -13,6 +13,13 @@ let currentEpisode = null;
 let currentFilter = null; // null=all, 'series', 'movie'
 let allData = []; // global cache for all content
 
+function qfText(key) {
+    return window.qfT ? window.qfT(key) : key;
+}
+function qfCurrentLang() {
+    return localStorage.getItem('qasimflix_lang') || localStorage.getItem('qfLang') || 'tr';
+}
+
 // ═══════════════════════════════════════════
 // LOADING SPINNER
 // ═══════════════════════════════════════════
@@ -64,7 +71,7 @@ async function loadFavorites() {
 function displayFavorites(items) {
     const row = document.getElementById('search-results') || document.querySelector('.results-container');
     if (!row) {
-        alert('Sonuç alanı bulunamadı');
+        alert(qfText('alert.resultsMissing'));
         return;
     }
     row.innerHTML = items.map(item => renderCard(item, null, null, null)).join('');
@@ -176,10 +183,10 @@ async function toggleSave(type, itemId) {
             headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
             body: JSON.stringify({ type, itemId })
         });
-        if (!res.ok) { const e = await res.json().catch(() => ({})); alert(e.error || 'Kaydetme işlemi başarısız.'); return; }
+        if (!res.ok) { const e = await res.json().catch(() => ({})); alert(e.error || qfText('alert.saveError')); return; }
         const data = await res.json().catch(() => ({}));
         alert(data.message || 'Kaydedildi');
-    } catch (e) { alert('Kaydetme işlemi başarısız.'); }
+    } catch (e) { alert(qfText('alert.saveError')); }
 }
 
 async function loadContinueWatching() {
@@ -365,7 +372,7 @@ function renderRow(rowId, list) {
     row.innerHTML = '';
 
     if (!list.length) {
-        row.innerHTML = '<div class="empty-state" style="width:100%"><div class="icon">📭</div><p>Henüz içerik yok</p></div>';
+        row.innerHTML = `<div class="empty-state" style="width:100%"><div class="icon">📭</div><p data-i18n="section.empty">${qfText('section.empty')}</p></div>`;
         return;
     }
 
@@ -378,11 +385,11 @@ function renderRow(rowId, list) {
 
 function createCard(item) {
     const tKey = item.type || 'series';
-    let typeLabel = '📺 Dizi';
+    let typeLabel = qfText('content.series'); let typeI18n = 'content.series';
     let typeCls = 'badge-series';
-    if (tKey === 'movie') { typeLabel = '🎬 Film'; typeCls = 'badge-movie'; }
-    else if (tKey === 'documentary') { typeLabel = '🎞 Belgesel'; typeCls = 'badge-documentary'; }
-    else if (tKey === 'yerli') { typeLabel = '🇸 Yerli Dizi'; typeCls = 'badge-red'; }
+    if (tKey === 'movie') { typeLabel = qfText('content.movie'); typeI18n = 'content.movie'; typeCls = 'badge-movie'; }
+    else if (tKey === 'documentary') { typeLabel = qfText('content.documentary'); typeI18n = 'content.documentary'; typeCls = 'badge-documentary'; }
+    else if (tKey === 'yerli') { typeLabel = qfText('content.localSeries'); typeI18n = 'content.localSeries'; typeCls = 'badge-red'; }
     const cat = item.categories?.[0] || '';
     const rating = item.rating ? item.rating : '';
 
@@ -398,7 +405,7 @@ function createCard(item) {
         <span class="icon">${tKey === 'movie' ? '🎬' : tKey === 'documentary' ? '🎞' : '📺'}</span>
         <span>${esc(item.title)}</span>
       </div>
-      <span class="badge-type ${typeCls}">${typeLabel}</span>
+      <span class="badge-type ${typeCls}" data-i18n="${typeI18n}">${typeLabel}</span>
       ${rating ? `<span class="badge-rating">⭐ ${rating}</span>` : ''}
       <button class="heart-btn" onclick="event.stopPropagation();toggleFavorite('${item._id}')">❤️</button>
       <div class="card-overlay" onclick="openDetail('${item._id}')">
@@ -627,32 +634,32 @@ async function openDetail(seriesId, autoPlay = false) {
         const meta = [];
         if (series.rating) meta.push(`<span class="rating">⭐ ${series.rating}/10</span>`);
         if (series.releaseYear) meta.push(`<span>${series.releaseYear}</span>`);
-        if (series.type) meta.push(`<span>${series.type === 'movie' ? '🎬 Film' : series.type === 'documentary' ? '🎞 Belgesel' : '📺 Dizi'}</span>`);
+        if (series.type) meta.push(`<span data-i18n="${series.type === 'movie' ? 'content.movie' : series.type === 'documentary' ? 'content.documentary' : 'content.series'}">${series.type === 'movie' ? qfText('content.movie') : series.type === 'documentary' ? qfText('content.documentary') : qfText('content.series')}</span>`);
         if (series.categories?.length) meta.push(`<span>${series.categories.join(', ')}</span>`);
         document.getElementById('modal-meta').innerHTML = meta.join('<span style="color:#444">•</span>');
 
         // Show description according to selected language
-        const lang2 = localStorage.getItem('qasimflix_lang') || localStorage.getItem('qfLang') || 'tr';
+        const lang2 = qfCurrentLang();
         const modalDesc = (lang2 === 'ar') ? (series.description_ar || series.description || series.description_tr || '') : (series.description_tr || series.description || series.description_ar || '');
-        document.getElementById('modal-desc').textContent = modalDesc || (lang2 === 'ar' ? 'لا يوجد وصف.' : 'Açıklama yok.');
+        document.getElementById('modal-desc').textContent = modalDesc || qfText('content.noDescription');
 
         // Action buttons
         const actions = document.getElementById('modal-actions');
         if (series.type === 'movie' || series.type === 'documentary') {
-            const watchLabel = series.type === 'documentary' ? '▶ İzle' : '▶ İzle';
+            const watchLabel = qfText('action.watch');
             actions.innerHTML = `
-                <button class="btn-play" onclick="playMovieDirect()">${watchLabel}</button>
-                <button class="btn-info" onclick="toggleSave('film','${series._id}')">★ Kaydet</button>
-                <button class="btn-info" onclick="addToFavorites('${series._id}')">❤️ Favori</button>
-                <button class="btn-info" onclick="submitRating('${series._id}')">⭐ Puanla</button>
-                <button class="btn-info" onclick="downloadItem('film','${series._id}', null, '${esc(series.title)}')">⬇ İndir</button>`;
+                <button class="btn-play" onclick="playMovieDirect()" data-i18n="action.watch">${watchLabel}</button>
+                <button class="btn-info" onclick="toggleSave('film','${series._id}')" data-i18n="action.save">${qfText('action.save')}</button>
+                <button class="btn-info" onclick="addToFavorites('${series._id}')" data-i18n="action.favorite">${qfText('action.favorite')}</button>
+                <button class="btn-info" onclick="submitRating('${series._id}')" data-i18n="action.rate">${qfText('action.rate')}</button>
+                <button class="btn-info" onclick="downloadItem('film','${series._id}', null, '${esc(series.title)}')" data-i18n="action.download">${qfText('action.download')}</button>`;
         } else {
             actions.innerHTML = `
-                <button class="btn-play" onclick="playFirstEpisode()">▶ İzle</button>
-                <button class="btn-info" onclick="toggleSave('series','${series._id}')">★ Kaydet</button>
-                <button class="btn-info" onclick="addToFavorites('${series._id}')">❤️ Favori</button>
-                <button class="btn-info" onclick="addToWatchlist('${series._id}')">📋 İzlenecekler</button>
-                <button class="btn-info" onclick="submitRating('${series._id}')">⭐ Puanla</button>`;
+                <button class="btn-play" onclick="playFirstEpisode()" data-i18n="action.watch">${qfText('action.watch')}</button>
+                <button class="btn-info" onclick="toggleSave('series','${series._id}')" data-i18n="action.save">${qfText('action.save')}</button>
+                <button class="btn-info" onclick="addToFavorites('${series._id}')" data-i18n="action.favorite">${qfText('action.favorite')}</button>
+                <button class="btn-info" onclick="addToWatchlist('${series._id}')" data-i18n="action.watchlist">${qfText('action.watchlist')}</button>
+                <button class="btn-info" onclick="submitRating('${series._id}')" data-i18n="action.rate">${qfText('action.rate')}</button>`;
         }
 
         // Seasons / Episodes
@@ -660,7 +667,7 @@ async function openDetail(seriesId, autoPlay = false) {
         if (series.seasons && series.seasons.length > 0) {
             renderSeasonsArea(series.seasons);
         } else {
-            area.innerHTML = '<p style="color:var(--muted2);font-size:.85rem">Sezon bulunamadı.</p>';
+            area.innerHTML = `<p style="color:var(--muted2);font-size:.85rem" data-i18n="content.noSeason">${qfText('content.noSeason')}</p>`;
         }
 
         document.getElementById('detail-modal').classList.add('open');
@@ -682,11 +689,11 @@ async function openDetail(seriesId, autoPlay = false) {
 function renderSeasonsArea(seasons) {
     const area = document.getElementById('seasons-area');
     const tabs = seasons.map((s, i) =>
-        `<button class="season-tab${i === 0 ? ' active' : ''}" onclick="switchSeason(${i},this)">Sezon ${s.seasonNumber}</button>`
+        `<button class="season-tab${i === 0 ? ' active' : ''}" onclick="switchSeason(${i},this)"><span data-i18n="content.season">${qfText('content.season')}</span> ${s.seasonNumber}</button>`
     ).join('');
 
     area.innerHTML = `
-        <div class="season-label">Sezonlar</div>
+        <div class="season-label" data-i18n="content.seasons">${qfText('content.seasons')}</div>
         <div class="season-tabs" id="season-tabs">${tabs}</div>
         <div class="episodes-list" id="episodes-list"></div>`;
 
@@ -707,7 +714,7 @@ function showSeasonEpisodes(season) {
     list.innerHTML = '';
 
     if (!season.episodes?.length) {
-        list.innerHTML = '<p style="color:var(--muted2);font-size:.82rem">Bu sezonda bölüm yok.</p>';
+        list.innerHTML = `<p style="color:var(--muted2);font-size:.82rem" data-i18n="content.noEpisodes">${qfText('content.noEpisodes')}</p>`;
         return;
     }
 
@@ -716,10 +723,10 @@ function showSeasonEpisodes(season) {
             ? `<img class="ep-thumb-img" src="${esc(ep.thumbnail)}" alt="" loading="lazy" onerror="this.style.background='#1a1a2e'">`
             : `<div class="ep-thumb-img" style="background:linear-gradient(135deg,#1a1a2e,#16213e);display:flex;align-items:center;justify-content:center;color:var(--muted2)">▶</div>`;
 
-        const dur = ep.duration ? Math.floor(ep.duration / 60) + ' dk' : '';
+        const dur = ep.duration ? Math.floor(ep.duration / 60) + ' ' + qfText('content.minute') : '';
         list.innerHTML += `
         <div class="ep-card" onclick="playEpisode('${ep._id}')">
-          <div class="ep-num">E${ep.episodeNumber}</div>
+          <div class="ep-num"><span data-i18n="content.episode">${qfText('content.episode')}</span> ${ep.episodeNumber}</div>
           ${thumbHtml}
           <div class="ep-info">
             <div class="ep-title">${esc(ep.title)}</div>
@@ -1335,7 +1342,7 @@ async function playEpisode(episodeId, isMovie = false) {
         if (infoEl) infoEl.textContent = infoText || 'Video hazırlanıyor...';
 
         if (downloadBtnContainer) {
-            downloadBtnContainer.innerHTML = `<button class="btn-info sm" style="background:var(--accent);color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:0.8rem;" onclick="downloadItem('episode', '${episode._id}', '${src}', '${infoText}')">⬇ İndir</button>`;
+            downloadBtnContainer.innerHTML = `<button class="btn-info sm" style="background:var(--accent);color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:0.8rem;" onclick="downloadItem('episode', '${episode._id}', '${src}', '${infoText}')" data-i18n="action.download">${qfText('action.download')}</button>`;
         }
 
         const canUseHtmlPlayer = isDirectVideoUrl(src) || (!isGoogleDriveUrl(src) && !isYouTubeUrl(src) && !/^\s*</.test(src));
@@ -1524,7 +1531,7 @@ async function downloadItem(type, itemId, videoUrl, title) {
         alert(title + ' indirmesi başlatılıyor. Tarayıcınızın indirmeler bölümünü kontrol edin.');
     } catch (err) {
         console.error('Download error:', err);
-        alert('İndirme başlatılamadı.');
+        alert(qfText('download.unsupported'));
     }
 }
 
@@ -1540,9 +1547,9 @@ async function addToFavorites(seriesId) {
       body: JSON.stringify({ seriesId })
     });
     const data = await res.json();
-    if (res.ok) alert(data.message || 'Favorilere eklendi');
+    if (res.ok) alert(data.message || qfText('alert.favoritesAdded'));
     else alert(data.error || 'Hata');
-  } catch (err) { alert('Favori işlemi başarısız.'); }
+  } catch (err) { alert(qfText('alert.favoriteError')); }
 }
 
 async function removeFromFavorites(seriesId) {
@@ -1554,9 +1561,9 @@ async function removeFromFavorites(seriesId) {
             body: JSON.stringify({ seriesId })
         });
         const data = await res.json();
-        if (res.ok) alert(data.message || 'Favorilerden çıkartıldı');
+        if (res.ok) alert(data.message || qfText('alert.favoriteRemoved'));
         else alert(data.error || 'Hata');
-    } catch (err) { alert('Favori işlemi başarısız.'); }
+    } catch (err) { alert(qfText('alert.favoriteError')); }
 }
 
 async function addToWatchlist(seriesId) {
@@ -1568,9 +1575,9 @@ async function addToWatchlist(seriesId) {
             body: JSON.stringify({ seriesId })
         });
         const data = await res.json();
-        if (res.ok) alert(data.message || 'İzlenecekler listesine eklendi');
+        if (res.ok) alert(data.message || qfText('alert.watchlistAdded'));
         else alert(data.error || 'Hata');
-    } catch (err) { alert('İzlenecekler listesine eklenemedi.'); }
+    } catch (err) { alert(qfText('alert.watchlistError')); }
 }
 
 
@@ -1728,7 +1735,7 @@ async function updateProfile(name, profilePicture) {
             await initAuth();
             alert('Profil güncellendi');
         }
-    } catch (err) { alert('Favori işlemi başarısız.'); }
+    } catch (err) { alert(qfText('alert.favoriteError')); }
 }
 
 // ═══════════════════════════════════════════
@@ -1745,7 +1752,7 @@ async function createChildProfile(name, ageRestriction, pinCode) {
         if (res.ok) {
             alert('Çocuk profili oluşturuldu');
         }
-    } catch (err) { alert('Favori işlemi başarısız.'); }
+    } catch (err) { alert(qfText('alert.favoriteError')); }
 }
 
 // ═══════════════════════════════════════════

@@ -1034,8 +1034,8 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
           <div class="user-dropdown-item" onclick="openProfileSelectScreen()">👤 Profil Değiştir</div>
           <div class="user-dropdown-item" onclick="openProfileManageModal()" data-i18n="profile.manage">⚙️ Profil Yönetimi</div>
           <div class="user-dropdown-item" onclick="window.qfOpenSettings ? qfOpenSettings() : null" data-i18n="settings.open">⚙️ Ayarlar</div>
-          <div class="user-dropdown-item" onclick="loadFavorites()">❤️ Favorilerim</div>
-          <div class="user-dropdown-item" onclick="loadWatchlist()">📋 İzlenecekler</div>
+          <div class="user-dropdown-item" onclick="loadFavorites()" data-i18n="profile.myFavorites">❤️ Favorilerim</div>
+          <div class="user-dropdown-item" onclick="loadWatchlist()" data-i18n="profile.watchlist">📋 İzlenecekler</div>
           <div class="user-dropdown-item" onclick="toggleDarkMode()">🌙 Tema Değiştir</div>
           <div class="user-dropdown-item" onclick="openLoginHistory()">🕐 Giriş Geçmişim</div>
           <div class="user-dropdown-item" onclick="signOut()" style="color:#ff6b6b">🚪 Çıkış Yap</div>
@@ -1060,7 +1060,7 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
     </div>
     <p class="hero-desc" id="hero-desc">Admin panelinden içerik ekleyerek başlayın.</p>
     <div class="hero-actions">
-      <button class="btn-play" id="hero-play-btn" onclick="heroPlay()" style="display:none">▶ İzle</button>
+      <button class="btn-play" id="hero-play-btn" onclick="heroPlay()" style="display:none" data-i18n="action.watch">▶ İzle</button>
       <button class="btn-info" id="hero-info-btn" onclick="heroInfo()" style="display:none">ℹ Daha Fazla</button>
     </div>
   </div>
@@ -1078,12 +1078,12 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
 
   <div id="main-sections">
     <div class="section" id="continue-section" style="display:none">
-      <div class="section-title">⏯ Kaldığın Yerden Devam Et</div>
+      <div class="section-title" data-i18n="section.continue">⏯ Kaldığın Yerden Devam Et</div>
       <div class="cards-row" id="continue-row"></div>
     </div>
 
     <div class="section" id="popular-section">
-      <div class="section-title">🔥 Popüler İçerikler</div>
+      <div class="section-title" data-i18n="section.popular">🔥 Popüler İçerikler</div>
       <div class="cards-row" id="popular-row">
         <div class="skeleton skeleton-card"></div>
         <div class="skeleton skeleton-card"></div>
@@ -1362,6 +1362,58 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
       ru:{'nav.home':'Главная','nav.series':'Сериалы','nav.local':'Местные сериалы','nav.documentaries':'Документальные','nav.movies':'Фильмы','nav.search':'Поиск','nav.downloads':'Загрузки','nav.favorites':'Избранное','nav.profile':'Профиль','search.placeholder':'Поиск...','hero.welcome':'Добро пожаловать в Qasimflix','hero.desc':'Начните с добавления контента в админ-панели.','local.new':'🌟 Новые местные сериалы','profile.manage':'⚙️ Управление профилями','profile.switch':'👤 Сменить профиль','profile.title':'Профиль','profile.login':'Вход / Регистрация','settings.open':'⚙️ Настройки','settings.title':'Настройки','settings.subtitle':'Настройки мобильной версии/APK','settings.language':'Язык','settings.autoplay':'Автовоспроизведение','settings.fullscreen':'Пробовать полноэкранный режим при открытии видео','settings.landscape':'Пробовать горизонтальный режим при открытии видео','settings.notifications':'Уведомления','settings.clearCache':'Очистить кэш','settings.version':'Версия приложения','settings.close':'Закрыть','settings.on':'Вкл','settings.off':'Выкл','settings.saved':'Настройка сохранена','settings.cacheCleared':'Кэш очищен','settings.updated':'Язык обновлён','downloads.title':'Загрузки','downloads.open':'Открыть'},
       zh:{'nav.home':'首页','nav.series':'剧集','nav.local':'本地剧集','nav.documentaries':'纪录片','nav.movies':'电影','nav.search':'搜索','nav.downloads':'下载','nav.favorites':'收藏','nav.profile':'个人资料','search.placeholder':'搜索...','hero.welcome':'欢迎来到 Qasimflix','hero.desc':'请先从管理面板添加内容。','local.new':'🌟 新增本地剧集','profile.manage':'⚙️ 资料管理','profile.switch':'👤 切换资料','profile.title':'个人资料','profile.login':'登录 / 注册','settings.open':'⚙️ 设置','settings.title':'设置','settings.subtitle':'移动/APK 偏好','settings.language':'语言','settings.autoplay':'自动播放','settings.fullscreen':'视频打开时尝试全屏','settings.landscape':'视频打开时尝试横屏','settings.notifications':'通知','settings.clearCache':'清除缓存','settings.version':'应用版本','settings.close':'关闭','settings.on':'开启','settings.off':'关闭','settings.saved':'设置已保存','settings.cacheCleared':'缓存已清除','settings.updated':'语言已更新','downloads.title':'下载','downloads.open':'打开'}
     };
+
+    const APP_I18N_EXTRA = {
+      tr:{
+        'section.continue':'⏯ Kaldığın Yerden Devam Et','section.popular':'🔥 Popüler İçerikler','section.empty':'Henüz içerik yok',
+        'action.watch':'▶ İzle','action.save':'★ Kaydet','action.favorite':'❤️ Favori','action.rate':'⭐ Puanla','action.watchlist':'📋 İzlenecekler',
+        'content.series':'📺 Dizi','content.movie':'🎬 Film','content.documentary':'🎞 Belgesel','content.localSeries':'🇸 Yerli Dizi','content.noSeason':'Sezon bulunamadı.',
+        'profile.myFavorites':'❤️ Favorilerim','alert.favoritesAdded':'Favorilere eklendi','alert.favoriteRemoved':'Favorilerden çıkartıldı','alert.favoriteError':'Favori işlemi başarısız.','alert.watchlistAdded':'İzlenecekler listesine eklendi','alert.watchlistError':'İzlenecekler listesine eklenemedi.','alert.saveError':'Kaydetme işlemi başarısız.','alert.resultsMissing':'Sonuç alanı bulunamadı'
+      },
+      ar:{
+        'section.continue':'⏯ تابع من حيث توقفت','section.popular':'🔥 المحتوى الشائع','section.empty':'لا يوجد محتوى بعد',
+        'action.watch':'▶ شاهد','action.save':'★ حفظ','action.favorite':'❤️ المفضلة','action.rate':'⭐ قيّم','action.watchlist':'📋 قائمة المشاهدة',
+        'content.series':'📺 مسلسل','content.movie':'🎬 فيلم','content.documentary':'🎞 وثائقي','content.localSeries':'🇸 مسلسل محلي','content.noSeason':'لا توجد مواسم.',
+        'profile.myFavorites':'❤️ مفضلتي','alert.favoritesAdded':'تمت الإضافة إلى المفضلة','alert.favoriteRemoved':'تمت الإزالة من المفضلة','alert.favoriteError':'فشلت عملية المفضلة.','alert.watchlistAdded':'تمت الإضافة إلى قائمة المشاهدة','alert.watchlistError':'تعذرت الإضافة إلى قائمة المشاهدة.','alert.saveError':'فشلت عملية الحفظ.','alert.resultsMissing':'لم يتم العثور على منطقة النتائج'
+      },
+      en:{
+        'section.continue':'⏯ Continue Watching','section.popular':'🔥 Popular Content','section.empty':'No content yet',
+        'action.watch':'▶ Watch','action.save':'★ Save','action.favorite':'❤️ Favourite','action.rate':'⭐ Rate','action.watchlist':'📋 Watchlist',
+        'content.series':'📺 Series','content.movie':'🎬 Movie','content.documentary':'🎞 Documentary','content.localSeries':'🇸 Local Series','content.noSeason':'No seasons found.',
+        'profile.myFavorites':'❤️ My Favourites','alert.favoritesAdded':'Added to favourites','alert.favoriteRemoved':'Removed from favourites','alert.favoriteError':'Favourite action failed.','alert.watchlistAdded':'Added to watchlist','alert.watchlistError':'Could not add to watchlist.','alert.saveError':'Save failed.','alert.resultsMissing':'Results area not found'
+      },
+      'en-GB':{
+        'section.continue':'⏯ Continue Watching','section.popular':'🔥 Popular Content','section.empty':'No content yet',
+        'action.watch':'▶ Watch','action.save':'★ Save','action.favorite':'❤️ Favourite','action.rate':'⭐ Rate','action.watchlist':'📋 Watchlist',
+        'content.series':'📺 Series','content.movie':'🎬 Film','content.documentary':'🎞 Documentary','content.localSeries':'🇸 Local Series','content.noSeason':'No seasons found.',
+        'profile.myFavorites':'❤️ My Favourites','alert.favoritesAdded':'Added to favourites','alert.favoriteRemoved':'Removed from favourites','alert.favoriteError':'Favourite action failed.','alert.watchlistAdded':'Added to watchlist','alert.watchlistError':'Could not add to watchlist.','alert.saveError':'Save failed.','alert.resultsMissing':'Results area not found'
+      },
+      es:{'section.continue':'⏯ Seguir viendo','section.popular':'🔥 Contenido popular','section.empty':'Todavía no hay contenido','action.watch':'▶ Ver','action.save':'★ Guardar','action.favorite':'❤️ Favorito','action.rate':'⭐ Valorar','action.watchlist':'📋 Lista','content.series':'📺 Serie','content.movie':'🎬 Película','content.documentary':'🎞 Documental','content.localSeries':'🇸 Serie local','content.noSeason':'No se encontraron temporadas.','profile.myFavorites':'❤️ Mis favoritos'},
+      it:{'section.continue':'⏯ Continua a guardare','section.popular':'🔥 Contenuti popolari','section.empty':'Nessun contenuto ancora','action.watch':'▶ Guarda','action.save':'★ Salva','action.favorite':'❤️ Preferito','action.rate':'⭐ Valuta','action.watchlist':'📋 Lista','content.series':'📺 Serie','content.movie':'🎬 Film','content.documentary':'🎞 Documentario','content.localSeries':'🇸 Serie locale','content.noSeason':'Nessuna stagione trovata.','profile.myFavorites':'❤️ I miei preferiti'},
+      fr:{'section.continue':'⏯ Reprendre la lecture','section.popular':'🔥 Contenu populaire','section.empty':'Aucun contenu pour le moment','action.watch':'▶ Regarder','action.save':'★ Enregistrer','action.favorite':'❤️ Favori','action.rate':'⭐ Noter','action.watchlist':'📋 Liste','content.series':'📺 Série','content.movie':'🎬 Film','content.documentary':'🎞 Documentaire','content.localSeries':'🇸 Série locale','content.noSeason':'Aucune saison trouvée.','profile.myFavorites':'❤️ Mes favoris'},
+      de:{'section.continue':'⏯ Weiterschauen','section.popular':'🔥 Beliebte Inhalte','section.empty':'Noch keine Inhalte','action.watch':'▶ Ansehen','action.save':'★ Speichern','action.favorite':'❤️ Favorit','action.rate':'⭐ Bewerten','action.watchlist':'📋 Merkliste','content.series':'📺 Serie','content.movie':'🎬 Film','content.documentary':'🎞 Doku','content.localSeries':'🇸 Lokale Serie','content.noSeason':'Keine Staffeln gefunden.','profile.myFavorites':'❤️ Meine Favoriten'},
+      ru:{'section.continue':'⏯ Продолжить просмотр','section.popular':'🔥 Популярный контент','section.empty':'Контента пока нет','action.watch':'▶ Смотреть','action.save':'★ Сохранить','action.favorite':'❤️ Избранное','action.rate':'⭐ Оценить','action.watchlist':'📋 Список просмотра','content.series':'📺 Сериал','content.movie':'🎬 Фильм','content.documentary':'🎞 Документальный','content.localSeries':'🇸 Местный сериал','content.noSeason':'Сезоны не найдены.','profile.myFavorites':'❤️ Мои избранные'},
+      zh:{'section.continue':'⏯ 继续观看','section.popular':'🔥 热门内容','section.empty':'暂无内容','action.watch':'▶ 观看','action.save':'★ 保存','action.favorite':'❤️ 收藏','action.rate':'⭐ 评分','action.watchlist':'📋 观看列表','content.series':'📺 剧集','content.movie':'🎬 电影','content.documentary':'🎞 纪录片','content.localSeries':'🇸 本地剧集','content.noSeason':'未找到季。','profile.myFavorites':'❤️ 我的收藏'}
+    };
+    Object.keys(APP_I18N_EXTRA).forEach(lang => {
+      APP_I18N[lang] = Object.assign(APP_I18N[lang] || {}, APP_I18N_EXTRA[lang]);
+    });
+
+    const APP_I18N_MORE = {
+      tr:{'action.download':'⬇ İndir','content.seasons':'Sezonlar','content.season':'Sezon','content.episode':'Bölüm','content.noEpisodes':'Bu sezonda bölüm yok.','content.noDescription':'Açıklama yok.','content.minute':'dk'},
+      ar:{'action.download':'⬇ تنزيل','content.seasons':'المواسم','content.season':'الموسم','content.episode':'حلقة','content.noEpisodes':'لا توجد حلقات في هذا الموسم.','content.noDescription':'لا يوجد وصف.','content.minute':'د'},
+      en:{'action.download':'⬇ Download','content.seasons':'Seasons','content.season':'Season','content.episode':'Episode','content.noEpisodes':'No episodes in this season.','content.noDescription':'No description.','content.minute':'min'},
+      'en-GB':{'action.download':'⬇ Download','content.seasons':'Seasons','content.season':'Season','content.episode':'Episode','content.noEpisodes':'No episodes in this season.','content.noDescription':'No description.','content.minute':'min'},
+      es:{'action.download':'⬇ Descargar','content.seasons':'Temporadas','content.season':'Temporada','content.episode':'Episodio','content.noEpisodes':'No hay episodios en esta temporada.','content.noDescription':'Sin descripción.','content.minute':'min'},
+      it:{'action.download':'⬇ Scarica','content.seasons':'Stagioni','content.season':'Stagione','content.episode':'Episodio','content.noEpisodes':'Nessun episodio in questa stagione.','content.noDescription':'Nessuna descrizione.','content.minute':'min'},
+      fr:{'action.download':'⬇ Télécharger','content.seasons':'Saisons','content.season':'Saison','content.episode':'Épisode','content.noEpisodes':'Aucun épisode dans cette saison.','content.noDescription':'Aucune description.','content.minute':'min'},
+      de:{'action.download':'⬇ Herunterladen','content.seasons':'Staffeln','content.season':'Staffel','content.episode':'Folge','content.noEpisodes':'Keine Folgen in dieser Staffel.','content.noDescription':'Keine Beschreibung.','content.minute':'Min.'},
+      ru:{'action.download':'⬇ Скачать','content.seasons':'Сезоны','content.season':'Сезон','content.episode':'Серия','content.noEpisodes':'В этом сезоне нет серий.','content.noDescription':'Нет описания.','content.minute':'мин'},
+      zh:{'action.download':'⬇ 下载','content.seasons':'季','content.season':'季','content.episode':'集','content.noEpisodes':'本季暂无剧集。','content.noDescription':'暂无简介。','content.minute':'分钟'}
+    };
+    Object.keys(APP_I18N_MORE).forEach(lang => {
+      APP_I18N[lang] = Object.assign(APP_I18N[lang] || {}, APP_I18N_MORE[lang]);
+    });
     function normaliseLang(l){ return LANG_META[l] ? l : DEFAULT_LANG; }
     function t(key, lang){
       const l = normaliseLang(lang || localStorage.getItem(LANG_KEY) || localStorage.getItem(OLD_LANG_KEY) || DEFAULT_LANG);
