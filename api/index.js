@@ -639,15 +639,21 @@ async function sendResetEmail(toEmail, token) {
     return { sent: false, resetLink };
   }
 
+  const smtpPort = parseInt(process.env.SMTP_PORT || '587', 10);
+  const smtpUser = String(process.env.SMTP_USER || '').trim();
+  const smtpPass = String(process.env.SMTP_PASS || '').replace(/\s+/g, '');
+
   const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT || '587', 10),
-    secure: process.env.SMTP_SECURE === 'true',
-    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+    host: String(process.env.SMTP_HOST || '').trim(),
+    port: smtpPort,
+    secure: process.env.SMTP_SECURE === 'true' || smtpPort === 465,
+    auth: { user: smtpUser, pass: smtpPass }
   });
 
+  await transporter.verify();
+
   await transporter.sendMail({
-    from: process.env.EMAIL_FROM || process.env.SMTP_USER,
+    from: process.env.EMAIL_FROM || smtpUser,
     to: toEmail,
     subject: 'QasimFlix şifre sıfırlama bağlantısı',
     html: `
