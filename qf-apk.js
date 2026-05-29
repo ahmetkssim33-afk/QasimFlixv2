@@ -12,7 +12,18 @@
   if (mobile || standalone || APK_UA) document.documentElement.classList.add('qf-mobile-root'), document.body && document.body.classList.add('qf-apk-mode');
 
   function ready(fn){ document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', fn) : fn(); }
-  function t(key){ return window.qfT ? window.qfT(key) : key; }
+  const REPORT_I18N = {
+    tr:{'settings.report':'Sorun bildir','report.title':'Sorun bildir','report.type':'Sorun türü','report.type.bug':'Genel hata','report.type.player':'Video / oynatma','report.type.account':'Hesap / giriş','report.type.other':'Diğer','report.message':'Yaşadığın sorunu kısaca yaz...','report.contact':'İletişim (opsiyonel e-posta)','report.send':'Raporu gönder','report.sent':'Rapor gönderildi. Admin paneline düştü.','report.error':'Rapor gönderilemedi.','report.required':'Lütfen sorunu yaz.'},
+    ar:{'settings.report':'الإبلاغ عن مشكلة','report.title':'الإبلاغ عن مشكلة','report.type':'نوع المشكلة','report.type.bug':'خطأ عام','report.type.player':'الفيديو / التشغيل','report.type.account':'الحساب / الدخول','report.type.other':'أخرى','report.message':'اكتب المشكلة باختصار...','report.contact':'وسيلة تواصل (اختياري)','report.send':'إرسال البلاغ','report.sent':'تم إرسال البلاغ إلى لوحة الإدارة.','report.error':'تعذر إرسال البلاغ.','report.required':'يرجى كتابة المشكلة.'},
+    en:{'settings.report':'Report a problem','report.title':'Report a problem','report.type':'Problem type','report.type.bug':'General bug','report.type.player':'Video / playback','report.type.account':'Account / login','report.type.other':'Other','report.message':'Briefly describe the problem...','report.contact':'Contact (optional email)','report.send':'Send report','report.sent':'Report sent to the admin panel.','report.error':'Report could not be sent.','report.required':'Please describe the problem.'}
+  };
+  function t(key){
+    const fromApp = window.qfT ? window.qfT(key) : key;
+    if (fromApp && fromApp !== key) return fromApp;
+    const lang = (localStorage.getItem(LANG_KEY) || localStorage.getItem(OLD_LANG_KEY) || 'tr');
+    const shortLang = String(lang).split('-')[0];
+    return (REPORT_I18N[lang] && REPORT_I18N[lang][key]) || (REPORT_I18N[shortLang] && REPORT_I18N[shortLang][key]) || (REPORT_I18N.tr && REPORT_I18N.tr[key]) || key;
+  }
   function toast(msg){ let el=document.querySelector('.qf-apk-toast'); if(!el){ el=document.createElement('div'); el.className='qf-apk-toast'; document.body.appendChild(el); } el.textContent=msg; el.classList.add('show'); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),2600); } window.qfToast=toast;
   function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
   function escapeAttr(s){ return escapeHtml(s).replace(/`/g,'&#96;'); }
@@ -69,6 +80,7 @@
     const sheet=document.getElementById('qf-settings-sheet'); if(!sheet)return; const settings=getSettings();
     const langSelect=sheet.querySelector('[data-qf-lang-select]'); if(langSelect) langSelect.value=getCurrentLang();
     sheet.querySelectorAll('[data-i18n]').forEach(el=>{ el.textContent=t(el.getAttribute('data-i18n')); });
+    sheet.querySelectorAll('[data-i18n-placeholder]').forEach(el=>{ el.setAttribute('placeholder', t(el.getAttribute('data-i18n-placeholder'))); });
     sheet.querySelectorAll('[data-qf-setting]').forEach(btn=>{ const k=btn.dataset.qfSetting; const checked=!!settings[k]; btn.classList.toggle('on',checked); btn.setAttribute('aria-pressed', String(checked)); const b=btn.querySelector('b'); if(b)b.textContent=checked?t('settings.on'):t('settings.off'); });
     const v=sheet.querySelector('[data-qf-version]'); if(v) v.textContent=versionText();
   }
@@ -99,6 +111,60 @@
     else s.notifications=false;
     saveSettings(s); renderSettingsState(); if(s.notifications) toast(t('settings.saved'));
   }
+  function getReportUserInfo(){
+    return {
+      userId: localStorage.getItem('userId') || window.USER_ID || 'guest',
+      userName: (window.AUTH_USER && (window.AUTH_USER.name || window.AUTH_USER.email)) || document.getElementById('user-display-name')?.textContent || '',
+      userEmail: (window.AUTH_USER && window.AUTH_USER.email) || document.getElementById('dd-email')?.textContent || '',
+      token: localStorage.getItem('token') || window.TOKEN || ''
+    };
+  }
+
+  function toggleReportForm(force){
+    const form = document.querySelector('[data-qf-report-form]');
+    if (!form) return;
+    const show = typeof force === 'boolean' ? force : form.hidden;
+    form.hidden = !show;
+    if (show) setTimeout(() => document.getElementById('qf-report-message')?.focus(), 60);
+  }
+
+  async function submitIssueReport(){
+    const messageEl = document.getElementById('qf-report-message');
+    const statusEl = document.getElementById('qf-report-status');
+    const sendBtn = document.querySelector('[data-qf-report-send]');
+    const message = (messageEl?.value || '').trim();
+    if (!message) { if(statusEl) statusEl.textContent = t('report.required'); return; }
+    if (sendBtn) sendBtn.disabled = true;
+    try {
+      const info = getReportUserInfo();
+      const headers = { 'Content-Type': 'application/json' };
+      if (info.token) headers.Authorization = 'Bearer ' + info.token;
+      const body = {
+        type: document.getElementById('qf-report-type')?.value || 'bug',
+        message,
+        contact: document.getElementById('qf-report-contact')?.value || '',
+        pageUrl: location.href,
+        userAgent: navigator.userAgent,
+        userId: info.userId,
+        userName: info.userName,
+        userEmail: info.userEmail
+      };
+      const res = await fetch('/api/reports', { method:'POST', headers, body: JSON.stringify(body) });
+      const data = await res.json().catch(()=>({}));
+      if (!res.ok) throw new Error(data.error || 'report failed');
+      if (messageEl) messageEl.value = '';
+      const contact = document.getElementById('qf-report-contact'); if (contact) contact.value = '';
+      if(statusEl) statusEl.textContent = t('report.sent');
+      toast(t('report.sent'));
+      setTimeout(() => toggleReportForm(false), 900);
+    } catch (e) {
+      if(statusEl) statusEl.textContent = t('report.error');
+      toast(t('report.error'));
+    } finally {
+      if (sendBtn) sendBtn.disabled = false;
+    }
+  }
+
 
   function injectUI(){
     if(document.getElementById('qf-mobile-bottom-nav')) return;
@@ -131,10 +197,19 @@
       <div class="qf-setting-row"><span data-i18n="settings.fullscreen">${t('settings.fullscreen')}</span>${switchMarkup('tryFullscreen',getSetting('tryFullscreen',true))}</div>
       <div class="qf-setting-row"><span data-i18n="settings.landscape">${t('settings.landscape')}</span>${switchMarkup('tryLandscape',getSetting('tryLandscape',true))}</div>
       <div class="qf-setting-row"><span data-i18n="settings.notifications">${t('settings.notifications')}</span>${switchMarkup('notifications',getSetting('notifications',false))}</div>
+      <div class="qf-report-box">
+        <button class="qf-report-toggle" type="button" data-qf-report-open data-i18n="settings.report">${t('settings.report')}</button>
+        <div class="qf-report-form" data-qf-report-form hidden>
+          <label><span data-i18n="report.type">${t('report.type')}</span><select id="qf-report-type"><option value="bug">${t('report.type.bug')}</option><option value="player">${t('report.type.player')}</option><option value="account">${t('report.type.account')}</option><option value="other">${t('report.type.other')}</option></select></label>
+          <textarea id="qf-report-message" maxlength="2000" data-i18n-placeholder="report.message" placeholder="${escapeAttr(t('report.message'))}"></textarea>
+          <input id="qf-report-contact" maxlength="180" data-i18n-placeholder="report.contact" placeholder="${escapeAttr(t('report.contact'))}">
+          <div class="qf-report-actions"><button type="button" data-qf-report-send data-i18n="report.send">${t('report.send')}</button><span id="qf-report-status"></span></div>
+        </div>
+      </div>
       <button class="qf-clear-cache" type="button" data-i18n="settings.clearCache">${t('settings.clearCache')}</button>
       <div class="qf-app-version"><span data-i18n="settings.version">${t('settings.version')}</span><b data-qf-version>${versionText()}</b></div>`; document.body.appendChild(settings);
     settings.querySelector('[data-qf-lang-select]').addEventListener('change', e=>setLanguage(e.target.value));
-    settings.addEventListener('click', e=>{ const sw=e.target.closest('[data-qf-setting]'); if(sw){ const key=sw.dataset.qfSetting; const next=!getSetting(key,false); if(key==='notifications') enableNotifications(next); else window.qfSetSetting(key,next); } if(e.target.closest('.qf-clear-cache')) clearAppCache(); });
+    settings.addEventListener('click', e=>{ const sw=e.target.closest('[data-qf-setting]'); if(sw){ const key=sw.dataset.qfSetting; const next=!getSetting(key,false); if(key==='notifications') enableNotifications(next); else window.qfSetSetting(key,next); } if(e.target.closest('.qf-clear-cache')) clearAppCache(); if(e.target.closest('[data-qf-report-open]')) toggleReportForm(); if(e.target.closest('[data-qf-report-send]')) submitIssueReport(); });
 
     const banner=document.createElement('div'); banner.id='qf-update-banner'; banner.className='qf-update-banner'; banner.innerHTML='<div style="flex:1"><strong data-i18n="update.title">'+t('update.title')+'</strong><p data-qf-update-msg data-i18n="update.message">'+t('update.message')+'</p></div><a data-qf-update-link href="#" target="_blank" rel="noopener" data-i18n="update.action">'+t('update.action')+'</a><button type="button" data-qf-update-close data-i18n="update.later">'+t('update.later')+'</button>'; document.body.appendChild(banner); banner.querySelector('[data-qf-update-close]').onclick=()=>{localStorage.setItem(LS_DISMISSED,banner.dataset.build||'');banner.classList.remove('show')};
     loadVersion(); renderDynamicText();

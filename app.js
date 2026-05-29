@@ -776,6 +776,95 @@ let qasimPlayerBound = false;
 let qasimControlsHideTimer = null;
 let qasimPlayOpenBusy = false;
 let qasimActiveLoadToken = 0;
+let qasimAutoNextTimer = null;
+let qasimAutoNextBusy = false;
+
+function clearEpisodeAutoNextTimer() {
+    if (qasimAutoNextTimer) clearTimeout(qasimAutoNextTimer);
+    qasimAutoNextTimer = null;
+}
+
+function getEpisodeLocation(episodeId) {
+    const seasons = currentSeries?.seasons || [];
+    for (let si = 0; si < seasons.length; si++) {
+        const episodes = seasons[si].episodes || [];
+        const ei = episodes.findIndex(e => String(e._id) === String(episodeId));
+        if (ei >= 0) return { seasonIndex: si, episodeIndex: ei, season: seasons[si], episode: episodes[ei] };
+    }
+    return null;
+}
+
+function getNextEpisodeLocation() {
+    if (!currentEpisode || !currentSeries?.seasons?.length) return null;
+    const loc = getEpisodeLocation(currentEpisode._id);
+    if (!loc) return null;
+    const sameSeason = loc.season.episodes || [];
+    if (loc.episodeIndex < sameSeason.length - 1) {
+        return { seasonIndex: loc.seasonIndex, episodeIndex: loc.episodeIndex + 1, season: loc.season, episode: sameSeason[loc.episodeIndex + 1] };
+    }
+    const seasons = currentSeries.seasons || [];
+    for (let si = loc.seasonIndex + 1; si < seasons.length; si++) {
+        const episodes = seasons[si].episodes || [];
+        if (episodes.length) return { seasonIndex: si, episodeIndex: 0, season: seasons[si], episode: episodes[0] };
+    }
+    return null;
+}
+
+function syncSeasonUIForAutoNext(seasonIndex, season) {
+    if (!season) return;
+    currentSeason = season;
+    window.currentSeason = currentSeason;
+    document.querySelectorAll('.season-tab').forEach((tab, idx) => tab.classList.toggle('active', idx === seasonIndex));
+    const list = document.getElementById('episodes-list');
+    if (list && currentSeries?.seasons?.[seasonIndex]) showSeasonEpisodes(currentSeries.seasons[seasonIndex]);
+}
+
+async function markEpisodeCompletedForAutoNext() {
+    try {
+        if (!currentEpisode || !currentSeries) return;
+        const video = document.getElementById('video-player');
+        const finalProgress = Math.floor(video?.duration || currentEpisode.duration || video?.currentTime || 1);
+        const headers = { 'Content-Type': 'application/json' };
+        if (TOKEN) headers.Authorization = 'Bearer ' + TOKEN;
+        const body = { seriesId: currentSeries._id, episodeId: currentEpisode._id, progress: finalProgress || 1 };
+        if (!TOKEN) body.userId = USER_ID;
+        await fetch(API + '/progress', { method: 'POST', headers, body: JSON.stringify(body) });
+    } catch (_) {}
+}
+
+async function handleEpisodeEndedAutoNext(reason = 'ended') {
+    if (qasimAutoNextBusy || !currentEpisode) return;
+    qasimAutoNextBusy = true;
+    clearEpisodeAutoNextTimer();
+    await markEpisodeCompletedForAutoNext();
+
+    const next = getNextEpisodeLocation();
+    const infoEl = document.getElementById('player-ep-info');
+    if (next?.episode?._id) {
+        if (infoEl) infoEl.textContent = 'Sonraki bölüm açılıyor...';
+        if (window.qfToast) window.qfToast('Sonraki bölüme geçiliyor');
+        syncSeasonUIForAutoNext(next.seasonIndex, next.season);
+        setTimeout(() => {
+            qasimAutoNextBusy = false;
+            playEpisode(next.episode._id);
+        }, reason === 'iframe-timer' ? 1200 : 800);
+        return;
+    }
+
+    qasimAutoNextBusy = false;
+    if (window.qfToast) window.qfToast('Sezon bitti');
+    // Son bölümde player kapanır ve kullanıcı bölüm listesine geri döner.
+    closePlayer();
+    if (currentSeries?._id) setTimeout(() => openDetail(currentSeries._id), 250);
+}
+
+function scheduleIframeAutoNextFallback(episode) {
+    clearEpisodeAutoNextTimer();
+    const duration = Number(episode?.duration || 0);
+    // iframe/Google Drive içinde gerçek "ended" olayı alınamaz; süre girildiyse emniyetli otomatik geçiş yapılır.
+    if (!Number.isFinite(duration) || duration < 30) return;
+    qasimAutoNextTimer = setTimeout(() => handleEpisodeEndedAutoNext('iframe-timer'), (duration + 3) * 1000);
+}
 
 function isGoogleDriveUrl(url = '') {
     return String(url).includes('drive.google.com') || String(url).includes('docs.google.com');
@@ -1292,6 +1381,8 @@ function prepareMobilePlayerStart() {
 async function playEpisode(episodeId, isMovie = false) {
     if (qasimPlayOpenBusy) return;
     qasimPlayOpenBusy = true;
+    qasimAutoNextBusy = false;
+    clearEpisodeAutoNextTimer();
     const requestToken = ++qasimActiveLoadToken;
 
     try {
@@ -1355,8 +1446,10 @@ async function playEpisode(episodeId, isMovie = false) {
 
         if (isYouTubeUrl(src)) {
             showIframe(toYouTubeEmbed(src), { type: 'youtube' });
+            scheduleIframeAutoNextFallback(episode);
         } else if (isGoogleDriveUrl(src)) {
             showIframe(getGoogleDrivePreviewUrl(src), { type: 'drive' });
+            scheduleIframeAutoNextFallback(episode);
         } else if (canUseHtmlPlayer) {
             qasimQualitySources = parseQualitySources(episode, src);
             fillQualitySelect(qasimQualitySources);
@@ -1366,7 +1459,10 @@ async function playEpisode(episodeId, isMovie = false) {
 
             const videoPlayer = document.getElementById('video-player');
             if (videoPlayer) {
+                clearEpisodeAutoNextTimer();
+                qasimAutoNextBusy = false;
                 videoPlayer.ontimeupdate = () => { saveProgress(episodeId); updateQasimControls(); };
+                videoPlayer.onended = () => handleEpisodeEndedAutoNext('ended');
                 videoPlayer.onerror = () => {
                     setQasimLoading(false);
                     const infoErr = document.getElementById('player-ep-info');
@@ -1380,8 +1476,10 @@ async function playEpisode(episodeId, isMovie = false) {
             loadProgress(episodeId).catch(() => {});
         } else if (rawIframeSrc) {
             showIframe(rawIframeSrc);
+            scheduleIframeAutoNextFallback(episode);
         } else if (src) {
             showIframe(src);
+            scheduleIframeAutoNextFallback(episode);
         } else {
             setQasimLoading(false);
         }
@@ -1396,6 +1494,8 @@ async function playEpisode(episodeId, isMovie = false) {
 
 function closePlayer() {
     qasimPlayOpenBusy = false;
+    qasimAutoNextBusy = false;
+    clearEpisodeAutoNextTimer();
     qasimActiveLoadToken++;
     const modal = document.getElementById('player-modal');
     if (modal) modal.classList.remove('open', 'embed-mode', 'drive-embed-mode');

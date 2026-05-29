@@ -17,7 +17,7 @@ const app = express();
 // ───────────────────────────────────────────────────────────
 app.use(cors({
   origin: "*",
-  methods: ["GET","POST","PUT","DELETE"],
+  methods: ["GET","POST","PUT","PATCH","DELETE"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
 app.use(express.json({ limit: "50mb" }));
@@ -25,7 +25,7 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 // Use shared DB connector & centralized models
 const { connectDB } = require('../lib/db');
-const { Series, Season, Episode, WatchProgress, Category, Film, User, Rating, ContentRequest } = require('../lib/models');
+const { Series, Season, Episode, WatchProgress, Category, Film, User, Rating, ContentRequest, IssueReport } = require('../lib/models');
 
 // Local schema definitions removed — models are imported from ../lib/models
 // (keeps serverless redeploys and hot reloads from re-defining models)
@@ -1001,6 +1001,69 @@ app.delete('/api/content-requests/:id', async (req, res) => {
     res.json({ success: true, message: 'İstek silindi' });
   } catch (err) {
     res.status(500).json({ error: 'İstek silinemedi.' });
+  }
+});
+
+
+// ═══════════════════════════════════════════════════════════
+// API ENDPOINTS — SORUN RAPORLARI
+// ═══════════════════════════════════════════════════════════
+app.post('/api/reports', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req) || req.body.userId || '';
+    const type = ['bug', 'player', 'account', 'other'].includes(req.body.type) ? req.body.type : 'bug';
+    const message = String(req.body.message || '').trim();
+    if (!message) return res.status(400).json({ error: 'Rapor mesajı zorunlu.' });
+
+    const doc = await IssueReport.create({
+      type,
+      message: message.slice(0, 2000),
+      pageUrl: String(req.body.pageUrl || '').slice(0, 500),
+      userAgent: String(req.body.userAgent || '').slice(0, 500),
+      userId: String(userId || '').slice(0, 120),
+      userName: String(req.body.userName || '').slice(0, 120),
+      userEmail: String(req.body.userEmail || '').slice(0, 180),
+      contact: String(req.body.contact || '').slice(0, 180),
+      status: 'open'
+    });
+    res.status(201).json({ success: true, report: doc, message: 'Rapor gönderildi' });
+  } catch (err) {
+    res.status(500).json({ error: 'Rapor gönderilemedi.' });
+  }
+});
+
+app.get('/api/reports', async (req, res) => {
+  try {
+    const status = String(req.query.status || '').trim();
+    const filter = status ? { status } : {};
+    const docs = await IssueReport.find(filter).sort({ createdAt: -1 }).limit(300).lean();
+    res.json(docs);
+  } catch (err) {
+    res.status(500).json({ error: 'Raporlar yüklenemedi.' });
+  }
+});
+
+app.patch('/api/reports/:id', async (req, res) => {
+  try {
+    if (!isValidObjectId(req.params.id)) return res.status(400).json({ error: 'Geçersiz rapor.' });
+    const status = ['open', 'read', 'resolved'].includes(req.body.status) ? req.body.status : 'read';
+    const update = { status, updatedAt: new Date() };
+    if (status === 'resolved') update.resolvedAt = new Date();
+    if (status === 'open') update.resolvedAt = undefined;
+    const doc = await IssueReport.findByIdAndUpdate(req.params.id, update, { new: true });
+    res.json(doc);
+  } catch (err) {
+    res.status(500).json({ error: 'Rapor güncellenemedi.' });
+  }
+});
+
+app.delete('/api/reports/:id', async (req, res) => {
+  try {
+    if (!isValidObjectId(req.params.id)) return res.status(400).json({ error: 'Geçersiz rapor.' });
+    await IssueReport.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: 'Rapor silindi' });
+  } catch (err) {
+    res.status(500).json({ error: 'Rapor silinemedi.' });
   }
 });
 

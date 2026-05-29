@@ -44,7 +44,7 @@ const upload = multer({
 app.use('/uploads', express.static(uploadsDir));
 // Use shared DB connector and centralized models
 const { connectDB } = require('./lib/db');
-const { Series, Season, Episode, WatchProgress, Category, Film, User, Rating, Analytics, EmailLog, ContentRequest } = require('./lib/models');
+const { Series, Season, Episode, WatchProgress, Category, Film, User, Rating, Analytics, EmailLog, ContentRequest, IssueReport } = require('./lib/models');
 
 // Helper: try to extract user id from Authorization header (Bearer token)
 function getUserIdFromReq(req) {
@@ -606,6 +606,34 @@ app.delete('/api/content-requests/:id', async (req, res) => {
   try { await ContentRequest.findByIdAndDelete(req.params.id); res.json({success:true,message:'İstek silindi'}); }
   catch (err) { res.status(500).json({ error:'İstek silinemedi.' }); }
 });
+
+// ═══════════════════════════════════════════════════════════
+// API ENDPOINTS — SORUN RAPORLARI
+// ═══════════════════════════════════════════════════════════
+function isValidObjectIdLocal(id) { return !!id && mongoose.Types.ObjectId.isValid(String(id)); }
+app.post('/api/reports', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req) || req.body.userId || '';
+    const type = ['bug', 'player', 'account', 'other'].includes(req.body.type) ? req.body.type : 'bug';
+    const message = String(req.body.message || '').trim();
+    if (!message) return res.status(400).json({ error: 'Rapor mesajı zorunlu.' });
+    const doc = await IssueReport.create({ type, message: message.slice(0,2000), pageUrl: String(req.body.pageUrl||'').slice(0,500), userAgent: String(req.body.userAgent||'').slice(0,500), userId: String(userId||'').slice(0,120), userName: String(req.body.userName||'').slice(0,120), userEmail: String(req.body.userEmail||'').slice(0,180), contact: String(req.body.contact||'').slice(0,180), status:'open' });
+    res.status(201).json({ success:true, report:doc, message:'Rapor gönderildi' });
+  } catch (err) { res.status(500).json({ error:'Rapor gönderilemedi.' }); }
+});
+app.get('/api/reports', async (req, res) => {
+  try { const status=String(req.query.status||'').trim(); const filter=status?{status}:{}; res.json(await IssueReport.find(filter).sort({createdAt:-1}).limit(300).lean()); }
+  catch (err) { res.status(500).json({ error:'Raporlar yüklenemedi.' }); }
+});
+app.patch('/api/reports/:id', async (req, res) => {
+  try { if(!isValidObjectIdLocal(req.params.id)) return res.status(400).json({ error:'Geçersiz rapor.' }); const status=['open','read','resolved'].includes(req.body.status)?req.body.status:'read'; const update={status,updatedAt:new Date()}; if(status==='resolved') update.resolvedAt=new Date(); if(status==='open') update.resolvedAt=undefined; res.json(await IssueReport.findByIdAndUpdate(req.params.id, update, {new:true})); }
+  catch (err) { res.status(500).json({ error:'Rapor güncellenemedi.' }); }
+});
+app.delete('/api/reports/:id', async (req, res) => {
+  try { if(!isValidObjectIdLocal(req.params.id)) return res.status(400).json({ error:'Geçersiz rapor.' }); await IssueReport.findByIdAndDelete(req.params.id); res.json({success:true,message:'Rapor silindi'}); }
+  catch (err) { res.status(500).json({ error:'Rapor silinemedi.' }); }
+});
+
 app.post('/api/user/list-action', async (req, res) => {
   try {
     const userId = getUserIdFromReq(req) || req.body.userId;
