@@ -705,6 +705,7 @@
     document.getElementById('forgotForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const email = document.getElementById('forgotEmail').value.trim();
+      if (!email) return showAlert('forgot-alert', 'E-posta adresinizi yazın', 'error');
       setLoading('forgotBtn', true);
       try {
         const res = await fetch(`${API}/auth/forgot-password`, {
@@ -712,10 +713,12 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email }),
         });
-        const data = await res.json();
-        showAlert('forgot-alert', data.message, res.ok ? 'success' : 'error');
-      } catch {
-        showAlert('forgot-alert', 'Bağlantı hatası', 'error');
+        const text = await res.text();
+        let data = {};
+        try { data = text ? JSON.parse(text) : {}; } catch { data = { message: text }; }
+        showAlert('forgot-alert', data.message || (res.ok ? 'Bağlantı gönderildi' : 'Şifre sıfırlama hatası'), res.ok ? 'success' : 'error');
+      } catch (err) {
+        showAlert('forgot-alert', 'Bağlantı hatası: ' + (err.message || 'Sunucuya ulaşılamadı'), 'error');
       } finally {
         setLoading('forgotBtn', false);
       }

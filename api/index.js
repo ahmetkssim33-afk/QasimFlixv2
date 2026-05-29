@@ -7,6 +7,7 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const nodemailer = require('nodemailer');
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_jwt_secret_change_me';
 
 const app = express();
@@ -625,6 +626,43 @@ app.get("/api", (req, res) => {
 // Added so serverless `/api` routes include authentication handlers
 // ═══════════════════════════════════════════════════════════
 
+
+// Email helper for password reset (works on Vercel serverless)
+async function sendResetEmail(toEmail, token) {
+  const appUrl = (process.env.APP_URL || process.env.PUBLIC_APP_URL || 'https://qasim-flixv2-swnm.vercel.app').replace(/\/$/, '');
+  const resetLink = `${appUrl}/auth?resetToken=${encodeURIComponent(token)}`;
+
+  // If SMTP is not configured, do not crash the password reset request.
+  // On production you must add SMTP_HOST, SMTP_USER, SMTP_PASS in Vercel for real email delivery.
+  if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    console.warn('SMTP ayarlı değil. Reset link mail olarak gönderilemedi:', resetLink);
+    return { sent: false, resetLink };
+  }
+
+  const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: parseInt(process.env.SMTP_PORT || '587', 10),
+    secure: process.env.SMTP_SECURE === 'true',
+    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+  });
+
+  await transporter.sendMail({
+    from: process.env.EMAIL_FROM || process.env.SMTP_USER,
+    to: toEmail,
+    subject: 'QasimFlix şifre sıfırlama bağlantısı',
+    html: `
+      <div style="font-family:Arial,sans-serif;background:#111;color:#fff;padding:24px;border-radius:12px">
+        <h2 style="margin-top:0">Şifre sıfırlama</h2>
+        <p>Şifrenizi yenilemek için aşağıdaki bağlantıya tıklayın. Bağlantı 1 saat geçerlidir.</p>
+        <p><a href="${resetLink}" style="display:inline-block;background:#e50914;color:#fff;padding:12px 18px;border-radius:8px;text-decoration:none">Şifremi yenile</a></p>
+        <p style="color:#aaa;font-size:13px">Buton çalışmazsa bu bağlantıyı tarayıcıya yapıştırın:<br>${resetLink}</p>
+      </div>
+    `
+  });
+
+  return { sent: true, resetLink };
+}
+
 function getUserIdFromReq(req) {
   try {
     const auth = req.headers && req.headers.authorization;
@@ -669,6 +707,67 @@ app.post('/api/auth/login', async (req, res) => {
     res.json({ token, user: { _id: user._id, email: user.email, name: user.name } });
   } catch (err) {
     res.status(500).json({ error: err.message, message: err.message });
+  }
+});
+
+
+app.post('/api/auth/forgot-password', async (req, res) => {
+  try {
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    if (!email) return res.status(400).json({ error: 'Email required', message: 'E-posta gerekli' });
+
+    const user = await User.findOne({ email });
+
+    // Güvenlik için e-posta kayıtlı değilse bile aynı mesajı döndür.
+    if (user) {
+      const token = jwt.sign({ id: user._id, action: 'reset-password' }, JWT_SECRET, { expiresIn: '1h' });
+      user.resetToken = token;
+      user.resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000);
+      await user.save();
+      await sendResetEmail(email, token);
+    }
+
+    res.json({ success: true, message: 'Eğer e-posta kayıtlıysa şifre sıfırlama bağlantısı gönderildi.' });
+  } catch (err) {
+    console.error('forgot-password error:', err);
+    res.status(500).json({ error: 'Password reset failed', message: 'Şifre sıfırlama bağlantısı gönderilemedi.' });
+  }
+});
+
+app.post('/api/auth/reset-password', async (req, res) => {
+  try {
+    const token = String(req.body?.token || '').trim();
+    const password = String(req.body?.password || '');
+    const passwordConfirm = String(req.body?.passwordConfirm || '');
+
+    if (!token || !password) return res.status(400).json({ error: 'Token and password required', message: 'Token ve yeni şifre gerekli' });
+    if (password.length < 6) return res.status(400).json({ error: 'Password too short', message: 'Şifre en az 6 karakter olmalıdır' });
+    if (passwordConfirm && password !== passwordConfirm) return res.status(400).json({ error: 'Passwords do not match', message: 'Şifreler eşleşmiyor' });
+
+    let payload;
+    try {
+      payload = jwt.verify(token, JWT_SECRET);
+    } catch (e) {
+      return res.status(400).json({ error: 'Invalid or expired token', message: 'Bağlantı geçersiz veya süresi dolmuş.' });
+    }
+
+    const user = await User.findOne({
+      _id: payload.id,
+      resetToken: token,
+      resetTokenExpiry: { $gt: new Date() }
+    });
+
+    if (!user) return res.status(400).json({ error: 'Invalid or expired token', message: 'Bağlantı geçersiz veya süresi dolmuş.' });
+
+    user.passwordHash = await bcrypt.hash(password, 10);
+    user.resetToken = undefined;
+    user.resetTokenExpiry = undefined;
+    await user.save();
+
+    res.json({ success: true, message: 'Şifre başarıyla yenilendi. Şimdi giriş yapabilirsiniz.' });
+  } catch (err) {
+    console.error('reset-password error:', err);
+    res.status(500).json({ error: 'Reset failed', message: 'Şifre yenilenemedi.' });
   }
 });
 
