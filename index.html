@@ -1462,7 +1462,6 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
   setTimeout(hideSplash, 2600);
 })();
 </script>
-</script>
 
 <script type="module">
   import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -1534,15 +1533,14 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
   onMessage(messaging, (payload) => {
     console.log('Ön planda bildirim geldi:', payload);
 
-    new Notification(payload.notification?.title || 'QasimFlix', {
-      body: payload.notification?.body || 'Yeni içerik eklendi',
-      icon: '/icons/icon-192.png'
-    });
+    if (Notification.permission === 'granted') {
+      new Notification(payload.notification?.title || 'QasimFlix', {
+        body: payload.notification?.body || 'Yeni içerik eklendi',
+        icon: '/icons/icon-192.png',
+        data: { url: payload.data?.url || '/' }
+      });
+    }
   });
 </script>
-
-</body>
-</html>
-
 </body>
 </html>
