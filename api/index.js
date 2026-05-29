@@ -25,7 +25,7 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 // Use shared DB connector & centralized models
 const { connectDB } = require('../lib/db');
-const { Series, Season, Episode, WatchProgress, Category, Film, User, Rating } = require('../lib/models');
+const { Series, Season, Episode, WatchProgress, Category, Film, User, Rating, ContentRequest } = require('../lib/models');
 
 // Local schema definitions removed — models are imported from ../lib/models
 // (keeps serverless redeploys and hot reloads from re-defining models)
@@ -567,12 +567,54 @@ app.get("/api/series/search/:query", async (req, res) => {
       $or: [
         { title: { $regex: query, $options: 'i' } },
         { description: { $regex: query, $options: 'i' } },
-        { categories: { $regex: query, $options: 'i' } }
+        { description_tr: { $regex: query, $options: 'i' } },
+        { description_ar: { $regex: query, $options: 'i' } },
+        { categories: { $regex: query, $options: 'i' } },
+        { type: { $regex: query, $options: 'i' } },
+        ...(Number.isFinite(Number(query)) ? [{ releaseYear: Number(query) }] : [])
       ]
     }).limit(30);
     res.json(results);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+
+// Gelişmiş genel arama — film, dizi, bölüm, tür, yıl, açıklama
+app.get('/api/search/full', async (req, res) => {
+  try {
+    const q = String(req.query.q || '').trim();
+    if (!q) return res.json([]);
+    const rx = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    const year = Number(q);
+    const seriesMatches = await Series.find({
+      $or: [
+        { title: rx }, { description: rx }, { description_tr: rx }, { description_ar: rx },
+        { categories: rx }, { type: rx },
+        ...(Number.isFinite(year) ? [{ releaseYear: year }] : [])
+      ]
+    }).limit(40).lean();
+
+    const episodeMatches = await Episode.find({
+      $or: [{ title: rx }, { description: rx }, ...(Number.isFinite(year) ? [{ duration: year }] : [])]
+    }).limit(40).populate('seriesId').lean();
+
+    const map = new Map();
+    for (const s of seriesMatches) map.set(String(s._id), { ...s, matchType: 'series' });
+    for (const ep of episodeMatches) {
+      const s = ep.seriesId;
+      if (!s || !s._id) continue;
+      const key = String(s._id);
+      const item = map.get(key) || { ...s, matchType: 'episode', matchedEpisodes: [] };
+      item.matchedEpisodes = item.matchedEpisodes || [];
+      item.matchedEpisodes.push({ _id: ep._id, title: ep.title, episodeNumber: ep.episodeNumber, duration: ep.duration });
+      item.matchType = item.matchType === 'series' ? 'series+episode' : 'episode';
+      map.set(key, item);
+    }
+    res.json([...map.values()].slice(0, 60));
+  } catch (err) {
+    res.status(500).json({ error: 'Arama yapılamadı.' });
   }
 });
 
@@ -903,6 +945,91 @@ app.post('/api/favorites/:seriesId', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════
+
+
+// ═══════════════════════════════════════════════════════════
+// API ENDPOINTS — KULLANICI İÇERİK İSTEKLERİ
+// ═══════════════════════════════════════════════════════════
+app.post('/api/content-requests', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req) || req.body.userId || '';
+    const { title, releaseYear, note, userName, userEmail } = req.body;
+    const cleanTitle = String(title || '').trim();
+    if (!cleanTitle) return res.status(400).json({ error: 'Film/dizi adı zorunlu.' });
+    const doc = await ContentRequest.create({
+      title: cleanTitle.slice(0, 180),
+      releaseYear: Number(releaseYear) || undefined,
+      note: String(note || '').trim().slice(0, 1200),
+      userId: String(userId || ''),
+      userName: String(userName || '').slice(0, 120),
+      userEmail: String(userEmail || '').slice(0, 180)
+    });
+    res.status(201).json({ success: true, request: doc, message: 'İstek gönderildi' });
+  } catch (err) {
+    res.status(500).json({ error: 'İstek gönderilemedi.' });
+  }
+});
+
+app.get('/api/content-requests', async (req, res) => {
+  try {
+    const status = req.query.status;
+    const filter = status ? { status } : {};
+    const docs = await ContentRequest.find(filter).sort({ createdAt: -1 }).limit(200).lean();
+    res.json(docs);
+  } catch (err) {
+    res.status(500).json({ error: 'İstekler yüklenemedi.' });
+  }
+});
+
+app.patch('/api/content-requests/:id', async (req, res) => {
+  try {
+    if (!isValidObjectId(req.params.id)) return res.status(400).json({ error: 'Geçersiz istek.' });
+    const status = req.body.status === 'done' ? 'done' : 'open';
+    const update = { status };
+    if (status === 'done') update.completedAt = new Date();
+    const doc = await ContentRequest.findByIdAndUpdate(req.params.id, update, { new: true });
+    res.json(doc);
+  } catch (err) {
+    res.status(500).json({ error: 'İstek güncellenemedi.' });
+  }
+});
+
+app.delete('/api/content-requests/:id', async (req, res) => {
+  try {
+    if (!isValidObjectId(req.params.id)) return res.status(400).json({ error: 'Geçersiz istek.' });
+    await ContentRequest.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: 'İstek silindi' });
+  } catch (err) {
+    res.status(500).json({ error: 'İstek silinemedi.' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// API ENDPOINTS — GELİŞMİŞ İZLEME LİSTESİ
+// ═══════════════════════════════════════════════════════════
+app.post('/api/user/list-action', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req) || req.body.userId;
+    const { seriesId, action } = req.body;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    if (!isValidObjectId(seriesId)) return res.status(400).json({ error: 'Geçersiz içerik bilgisi.' });
+    const allowed = ['watchLater','liked','disliked','watched','remove'];
+    if (!allowed.includes(action)) return res.status(400).json({ error: 'Geçersiz liste işlemi.' });
+    const update = { userId: String(userId), seriesId, lastWatchedAt: new Date() };
+    if (action === 'remove') { update.listStatus = 'none'; update.isWatched = false; update.isFavorite = false; }
+    if (action === 'watchLater') update.listStatus = 'watchLater';
+    if (action === 'liked') { update.listStatus = 'liked'; update.isFavorite = true; }
+    if (action === 'disliked') update.listStatus = 'disliked';
+    if (action === 'watched') { update.listStatus = 'watched'; update.isWatched = true; }
+    await WatchProgress.findOneAndUpdate({ userId: String(userId), seriesId }, update, { upsert: true, new: true, setDefaultsOnInsert: true });
+    if (action === 'liked') await User.findByIdAndUpdate(userId, { $addToSet: { favorites: seriesId } });
+    if (action === 'remove' || action === 'disliked') await User.findByIdAndUpdate(userId, { $pull: { favorites: seriesId, watchlist: seriesId } });
+    if (action === 'watchLater') await User.findByIdAndUpdate(userId, { $addToSet: { watchlist: seriesId } });
+    res.json({ success: true, message: 'Liste güncellendi', action });
+  } catch (err) {
+    res.status(500).json({ error: 'Liste işlemi başarısız.' });
+  }
+});
 
 // ═══════════════════════════════════════════════════════════
 // API ENDPOINTS — PUAN & YORUMLAR

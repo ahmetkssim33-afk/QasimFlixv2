@@ -44,7 +44,7 @@ const upload = multer({
 app.use('/uploads', express.static(uploadsDir));
 // Use shared DB connector and centralized models
 const { connectDB } = require('./lib/db');
-const { Series, Season, Episode, WatchProgress, Category, Film, User, Rating, Analytics, EmailLog } = require('./lib/models');
+const { Series, Season, Episode, WatchProgress, Category, Film, User, Rating, Analytics, EmailLog, ContentRequest } = require('./lib/models');
 
 // Helper: try to extract user id from Authorization header (Bearer token)
 function getUserIdFromReq(req) {
@@ -172,13 +172,42 @@ app.get('/api/series/search/:query', async (req, res) => {
       $or: [
         { title: { $regex: query, $options: 'i' } },
         { description: { $regex: query, $options: 'i' } },
-        { categories: { $regex: query, $options: 'i' } }
+        { description_tr: { $regex: query, $options: 'i' } },
+        { description_ar: { $regex: query, $options: 'i' } },
+        { categories: { $regex: query, $options: 'i' } },
+        { type: { $regex: query, $options: 'i' } },
+        ...(Number.isFinite(Number(query)) ? [{ releaseYear: Number(query) }] : [])
       ]
     }).limit(30);
     res.json(results);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+
+// Full search — title, episode title, category, year, descriptions
+app.get('/api/search/full', async (req, res) => {
+  try {
+    const q = String(req.query.q || '').trim();
+    if (!q) return res.json([]);
+    const rx = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    const year = Number(q);
+    const seriesMatches = await Series.find({ $or: [
+      { title: rx }, { description: rx }, { description_tr: rx }, { description_ar: rx }, { categories: rx }, { type: rx },
+      ...(Number.isFinite(year) ? [{ releaseYear: year }] : [])
+    ] }).limit(40).lean();
+    const episodeMatches = await Episode.find({ $or: [{ title: rx }, { description: rx }] }).limit(40).populate('seriesId').lean();
+    const map = new Map();
+    for (const s of seriesMatches) map.set(String(s._id), { ...s, matchType: 'series' });
+    for (const ep of episodeMatches) {
+      const s = ep.seriesId; if (!s || !s._id) continue;
+      const key = String(s._id); const item = map.get(key) || { ...s, matchType: 'episode', matchedEpisodes: [] };
+      item.matchedEpisodes = item.matchedEpisodes || []; item.matchedEpisodes.push({ _id: ep._id, title: ep.title, episodeNumber: ep.episodeNumber, duration: ep.duration });
+      item.matchType = item.matchType === 'series' ? 'series+episode' : 'episode'; map.set(key, item);
+    }
+    res.json([...map.values()].slice(0, 60));
+  } catch (err) { res.status(500).json({ error: 'Arama yapılamadı.' }); }
 });
 
 // Get series by category
@@ -489,6 +518,23 @@ app.get('/api/progress/me/:episodeId', async (req, res) => {
   }
 });
 
+
+// Continue routes must stay before /api/progress/:userId/:episodeId
+app.get('/api/progress/continue/me', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const recentWatches = await WatchProgress.find({ userId: String(userId) }).sort({ lastWatchedAt: -1 }).limit(10).populate('seriesId').populate('episodeId');
+    res.json(recentWatches);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.get('/api/progress/continue/:userId', async (req, res) => {
+  try {
+    const recentWatches = await WatchProgress.find({ userId: String(req.params.userId) }).sort({ lastWatchedAt: -1 }).limit(10).populate('seriesId').populate('episodeId');
+    res.json(recentWatches);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // Get watch progress for episode (by explicit userId)
 app.get('/api/progress/:userId/:episodeId', async (req, res) => {
   try {
@@ -532,6 +578,48 @@ app.get('/api/progress/continue/:userId', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+
+// ═══════════════════════════════════════════════════════════
+// API ENDPOINTS — KULLANICI İÇERİK İSTEKLERİ + LİSTE AKSİYONLARI
+// ═══════════════════════════════════════════════════════════
+app.post('/api/content-requests', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req) || req.body.userId || '';
+    const { title, releaseYear, note, userName, userEmail } = req.body;
+    const cleanTitle = String(title || '').trim();
+    if (!cleanTitle) return res.status(400).json({ error: 'Film/dizi adı zorunlu.' });
+    const doc = await ContentRequest.create({ title: cleanTitle.slice(0,180), releaseYear: Number(releaseYear)||undefined, note: String(note||'').trim().slice(0,1200), userId:String(userId||''), userName:String(userName||'').slice(0,120), userEmail:String(userEmail||'').slice(0,180) });
+    res.status(201).json({ success:true, request:doc, message:'İstek gönderildi' });
+  } catch (err) { res.status(500).json({ error:'İstek gönderilemedi.' }); }
+});
+app.get('/api/content-requests', async (req, res) => {
+  try { const filter = req.query.status ? { status:req.query.status } : {}; res.json(await ContentRequest.find(filter).sort({ createdAt:-1 }).limit(200).lean()); }
+  catch (err) { res.status(500).json({ error:'İstekler yüklenemedi.' }); }
+});
+app.patch('/api/content-requests/:id', async (req, res) => {
+  try { const status=req.body.status==='done'?'done':'open'; const update={status}; if(status==='done') update.completedAt=new Date(); res.json(await ContentRequest.findByIdAndUpdate(req.params.id, update, {new:true})); }
+  catch (err) { res.status(500).json({ error:'İstek güncellenemedi.' }); }
+});
+app.delete('/api/content-requests/:id', async (req, res) => {
+  try { await ContentRequest.findByIdAndDelete(req.params.id); res.json({success:true,message:'İstek silindi'}); }
+  catch (err) { res.status(500).json({ error:'İstek silinemedi.' }); }
+});
+app.post('/api/user/list-action', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req) || req.body.userId;
+    const { seriesId, action } = req.body;
+    if (!userId || !seriesId) return res.status(400).json({ error:'Eksik bilgi.' });
+    const update = { userId:String(userId), seriesId, lastWatchedAt:new Date() };
+    if(action==='remove'){ update.listStatus='none'; update.isWatched=false; update.isFavorite=false; }
+    if(action==='watchLater') update.listStatus='watchLater';
+    if(action==='liked'){ update.listStatus='liked'; update.isFavorite=true; }
+    if(action==='disliked') update.listStatus='disliked';
+    if(action==='watched'){ update.listStatus='watched'; update.isWatched=true; }
+    await WatchProgress.findOneAndUpdate({ userId:String(userId), seriesId }, update, { upsert:true, new:true });
+    res.json({ success:true, message:'Liste güncellendi', action });
+  } catch (err) { res.status(500).json({ error:'Liste işlemi başarısız.' }); }
 });
 
 // ═══════════════════════════════════════════════════════════

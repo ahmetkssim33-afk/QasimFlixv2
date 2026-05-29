@@ -619,7 +619,9 @@ async function openDetail(seriesId, autoPlay = false) {
         const res = await fetch(API + '/series/' + seriesId + '?_=' + Date.now());
         const series = await res.json();
         currentSeries = series;
+        window.currentSeries = currentSeries;
         currentSeason = null;
+        window.currentSeason = currentSeason;
 
         console.log('[openDetail] series:', series.title, 'seasons:', series.seasons?.length, series.seasons?.map(s => ({seasonNumber: s.seasonNumber, episodes: s.episodes?.length})));
 
@@ -709,6 +711,7 @@ function switchSeason(idx, btn) {
 
 function showSeasonEpisodes(season) {
     currentSeason = season;
+    window.currentSeason = currentSeason;
     const list = document.getElementById('episodes-list');
     if (!list) return;
     list.innerHTML = '';
@@ -1326,6 +1329,9 @@ async function playEpisode(episodeId, isMovie = false) {
         }
 
         currentEpisode = episode;
+        window.currentEpisode = currentEpisode;
+        window.currentSeries = currentSeries;
+        window.currentSeason = currentSeason;
 
         let src = episode.videoUrl || '';
         const rawIframeSrc = /^\s*</.test(src) && src.includes('iframe') ? extractIframeSrc(src) : '';

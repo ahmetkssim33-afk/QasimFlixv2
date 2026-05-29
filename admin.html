@@ -734,6 +734,7 @@ select{
 }
 
 </style>
+<link rel="stylesheet" href="qf-enhancements.css">
 </head>
 <body>
 
@@ -1311,6 +1312,12 @@ ADMIN_I18N.ar['type.series'] = 'مسلسل';
 ADMIN_I18N.ar['type.movie'] = 'فيلم';
 ADMIN_I18N.ar['type.documentary'] = 'وثائقي';
 ADMIN_I18N.ar['type.local'] = 'مسلسل محلي';
+ADMIN_I18N.tr['nav.requests'] = 'İstekler';
+ADMIN_I18N.tr['requests.title'] = 'Kullanıcı İçerik İstekleri';
+ADMIN_I18N.tr['requests.sub'] = 'Sitede olmayan film/dizi istekleri';
+ADMIN_I18N.ar['nav.requests'] = 'الطلبات';
+ADMIN_I18N.ar['requests.title'] = 'طلبات المحتوى';
+ADMIN_I18N.ar['requests.sub'] = 'طلبات الأفلام والمسلسلات غير الموجودة';
 
 function adminT(key) {
   const lang = localStorage.getItem('qfLang') || 'tr';
@@ -1332,7 +1339,7 @@ function applyAdminLang(l) {
   const langSel = document.getElementById('admin-lang-select'); if (langSel) langSel.value = l;
 }
 
-window.adminHandleLanguageChange = function(l){ applyAdminLang(l); };
+window.adminHandleLanguageChange = function(l){ applyAdminLang(l); document.dispatchEvent(new CustomEvent('qf-lang-changed', {detail:{lang:l}})); };
 // apply immediately on load
 applyAdminLang(localStorage.getItem('qfLang') || 'tr');
 const API = window.location.origin + '/api';
@@ -2292,5 +2299,6 @@ function setLoading(btn, loading, label) {
 }
 </script>
 <button class="admin-mobile-menu-btn" type="button" onclick="document.body.classList.toggle('admin-menu-open')">☰</button>
+<script src="qf-admin-enhancements.js"></script>
 </body>
 </html>
