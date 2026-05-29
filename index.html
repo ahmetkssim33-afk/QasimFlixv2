@@ -1462,6 +1462,87 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
   setTimeout(hideSplash, 2600);
 })();
 </script>
+</script>
+
+<script type="module">
+  import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAtHW7UW3-ftQq9loSHPJkkbSeDSONI2KE",
+    authDomain: "qasimflix-8ba04.firebaseapp.com",
+    projectId: "qasimflix-8ba04",
+    storageBucket: "qasimflix-8ba04.firebasestorage.app",
+    messagingSenderId: "958468258867",
+    appId: "1:958468258867:web:08395af3f9a39f9fcf3746"
+  };
+
+  const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+  const messaging = getMessaging(app);
+
+  async function enableQasimFlixPush() {
+    try {
+      if (!('Notification' in window)) {
+        alert('Bu cihaz bildirim desteklemiyor');
+        return;
+      }
+
+      if (!('serviceWorker' in navigator)) {
+        alert('Bu cihaz service worker desteklemiyor');
+        return;
+      }
+
+      const permission = await Notification.requestPermission();
+
+      if (permission !== 'granted') {
+        alert('Bildirim izni verilmedi');
+        return;
+      }
+
+      const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+
+      const token = await getToken(messaging, {
+        vapidKey: 'BAcG-bZC4Z-zKq-vrn7lu-xsArVBTXfoM45l1eeDOopTTUuNwXNeqxtmUSJGraIviud8utrGm8iRpf5JBGKKr4A',
+        serviceWorkerRegistration: registration
+      });
+
+      if (!token) {
+        alert('FCM token alınamadı');
+        return;
+      }
+
+      await fetch('/api/push/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          token,
+          platform: 'web'
+        })
+      });
+
+      console.log('Bildirim token:', token);
+      alert('Bildirimler açıldı ✅');
+
+    } catch (err) {
+      console.error('Push init error:', err);
+      alert('Bildirim açılırken hata oldu: ' + err.message);
+    }
+  }
+
+  window.enableQasimFlixPush = enableQasimFlixPush;
+
+  onMessage(messaging, (payload) => {
+    console.log('Ön planda bildirim geldi:', payload);
+
+    new Notification(payload.notification?.title || 'QasimFlix', {
+      body: payload.notification?.body || 'Yeni içerik eklendi',
+      icon: '/icons/icon-192.png'
+    });
+  });
+</script>
+
+</body>
+</html>
 
 </body>
 </html>
