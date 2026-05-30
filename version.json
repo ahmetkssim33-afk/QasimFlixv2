@@ -1,8 +1,8 @@
 {
-  "version": "1.0.1",
-  "build": 2026052901,
+  "version": "1.0.2",
+  "build": 2026053001,
   "apkRequired": false,
-  "message": "Yeni QasimFlix güncellemesi geldi. Önbellek otomatik temizlenip uygulama yenilenecek.",
+  "message": "APK oynatıcı tam ekran düzeltmesi geldi. Video artık alt siyah şerit olmadan açılır.",
   "apkUrl": "",
   "notifyUpdates": true,
   "notifyNewContent": true,
