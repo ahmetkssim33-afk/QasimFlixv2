@@ -19,6 +19,11 @@ function qfText(key) {
 function qfCurrentLang() {
     return localStorage.getItem('qasimflix_lang') || localStorage.getItem('qfLang') || 'tr';
 }
+function qfExposeAuthGlobals() {
+    window.TOKEN = TOKEN;
+    window.USER_ID = USER_ID;
+    window.AUTH_USER = AUTH_USER;
+}
 
 // ═══════════════════════════════════════════
 // LOADING SPINNER
@@ -104,6 +109,7 @@ async function initAuth() {
 }
 
 function updateAuthUI() {
+    qfExposeAuthGlobals();
     const localBtn = document.getElementById('local-auth-btn');
     const userInfo = document.getElementById('user-info');
     if (AUTH_USER) {
@@ -778,11 +784,63 @@ let qasimPlayOpenBusy = false;
 let qasimActiveLoadToken = 0;
 let qasimAutoNextTimer = null;
 let qasimAutoNextBusy = false;
+let qasimAutoNextCountdownTimer = null;
+let qasimPendingNextEpisode = null;
 
 function clearEpisodeAutoNextTimer() {
     if (qasimAutoNextTimer) clearTimeout(qasimAutoNextTimer);
+    if (qasimAutoNextCountdownTimer) clearInterval(qasimAutoNextCountdownTimer);
     qasimAutoNextTimer = null;
+    qasimAutoNextCountdownTimer = null;
 }
+
+function hideAutoNextOverlay() {
+    const el = document.getElementById('qf-auto-next');
+    if (el) el.hidden = true;
+    qasimPendingNextEpisode = null;
+}
+
+function showAutoNextOverlay(next, seconds = 5) {
+    const el = document.getElementById('qf-auto-next');
+    const titleEl = document.getElementById('qf-auto-next-title');
+    const countEl = document.getElementById('qf-auto-next-count');
+    qasimPendingNextEpisode = next;
+    if (!el || !next?.episode?._id) return playPendingAutoNext();
+    const title = `S${pad(next.season?.seasonNumber || 1)}E${pad(next.episode.episodeNumber)}: ${next.episode.title || 'Sonraki bölüm'}`;
+    if (titleEl) titleEl.textContent = title;
+    let left = seconds;
+    if (countEl) countEl.textContent = String(left);
+    el.hidden = false;
+    if (qasimAutoNextCountdownTimer) clearInterval(qasimAutoNextCountdownTimer);
+    qasimAutoNextCountdownTimer = setInterval(() => {
+        left -= 1;
+        if (countEl) countEl.textContent = String(Math.max(0, left));
+        if (left <= 0) playPendingAutoNext();
+    }, 1000);
+}
+
+function playPendingAutoNext() {
+    const next = qasimPendingNextEpisode;
+    clearEpisodeAutoNextTimer();
+    hideAutoNextOverlay();
+    if (!next?.episode?._id) { qasimAutoNextBusy = false; return; }
+    qasimAutoNextBusy = false;
+    syncSeasonUIForAutoNext(next.seasonIndex, next.season);
+    playEpisode(next.episode._id);
+}
+
+function qfCancelAutoNext() {
+    clearEpisodeAutoNextTimer();
+    hideAutoNextOverlay();
+    qasimAutoNextBusy = false;
+    if (window.qfToast) window.qfToast('Otomatik geçiş iptal edildi');
+}
+
+function qfPlayAutoNextNow() {
+    playPendingAutoNext();
+}
+window.qfCancelAutoNext = qfCancelAutoNext;
+window.qfPlayAutoNextNow = qfPlayAutoNextNow;
 
 function getEpisodeLocation(episodeId) {
     const seasons = currentSeries?.seasons || [];
@@ -834,6 +892,7 @@ async function markEpisodeCompletedForAutoNext() {
 
 async function handleEpisodeEndedAutoNext(reason = 'ended') {
     if (qasimAutoNextBusy || !currentEpisode) return;
+    if (window.qfGetSetting && window.qfGetSetting('autoNext', true) === false) return;
     qasimAutoNextBusy = true;
     clearEpisodeAutoNextTimer();
     await markEpisodeCompletedForAutoNext();
@@ -841,13 +900,9 @@ async function handleEpisodeEndedAutoNext(reason = 'ended') {
     const next = getNextEpisodeLocation();
     const infoEl = document.getElementById('player-ep-info');
     if (next?.episode?._id) {
-        if (infoEl) infoEl.textContent = 'Sonraki bölüm açılıyor...';
-        if (window.qfToast) window.qfToast('Sonraki bölüme geçiliyor');
-        syncSeasonUIForAutoNext(next.seasonIndex, next.season);
-        setTimeout(() => {
-            qasimAutoNextBusy = false;
-            playEpisode(next.episode._id);
-        }, reason === 'iframe-timer' ? 1200 : 800);
+        if (infoEl) infoEl.textContent = 'Sonraki bölüm hazırlanıyor...';
+        if (window.qfToast) window.qfToast('Sonraki bölüm 5 saniye içinde başlıyor');
+        showAutoNextOverlay(next, 5);
         return;
     }
 
@@ -1232,6 +1287,7 @@ function showIframe(iframeSrc, options = {}) {
     }, { once: true });
     embedContainer.appendChild(iframe);
     embedContainer.style.display = 'block';
+    if (window.qfEnablePlayerCinema) setTimeout(window.qfEnablePlayerCinema, 60);
 
     const sub = document.getElementById('sub-wrap');
     const quality = document.getElementById('quality-wrap');
@@ -1375,6 +1431,7 @@ function prepareMobilePlayerStart() {
         if (autoTry) requestPlayerLandscape(false).then(ok => {
             if (ok) start?.classList.remove('show');
         });
+        if (window.qfEnablePlayerCinema) setTimeout(window.qfEnablePlayerCinema, 60);
     }
 }
 
@@ -1423,6 +1480,7 @@ async function playEpisode(episodeId, isMovie = false) {
         window.currentEpisode = currentEpisode;
         window.currentSeries = currentSeries;
         window.currentSeason = currentSeason;
+        saveProgressSeconds(episodeId, 1, true).catch(() => {});
 
         let src = episode.videoUrl || '';
         const rawIframeSrc = /^\s*</.test(src) && src.includes('iframe') ? extractIframeSrc(src) : '';
@@ -1493,6 +1551,12 @@ async function playEpisode(episodeId, isMovie = false) {
 }
 
 function closePlayer() {
+    try {
+        const v = document.getElementById('video-player');
+        if (currentEpisode?._id && v && Number(v.currentTime) > 0) saveProgressSeconds(currentEpisode._id, v.currentTime, true).catch(() => {});
+    } catch (_) {}
+    hideAutoNextOverlay();
+    if (window.qfDisablePlayerCinema) window.qfDisablePlayerCinema();
     qasimPlayOpenBusy = false;
     qasimAutoNextBusy = false;
     clearEpisodeAutoNextTimer();
@@ -1561,26 +1625,27 @@ function changeSubtitle() {
 // PROGRESS
 // ═══════════════════════════════════════════
 let lastProgressSaveTime = 0;
-async function saveProgress(episodeId) {
-    const video = document.getElementById('video-player');
-    const progress = Math.floor(video.currentTime);
-    if (!progress) return;
-    
+async function saveProgressSeconds(episodeId, progress, force = false) {
+    progress = Math.max(1, Math.floor(Number(progress) || 1));
+    if (!episodeId || !currentSeries?._id) return;
     const now = Date.now();
-    if (now - lastProgressSaveTime < 10000) return; // Throttle: 10 seconds
+    if (!force && now - lastProgressSaveTime < 10000) return; // Throttle: 10 seconds
     lastProgressSaveTime = now;
-    
     try {
         const headers = { 'Content-Type': 'application/json' };
         if (TOKEN) headers['Authorization'] = 'Bearer ' + TOKEN;
-        const body = { seriesId: currentSeries?._id, episodeId, progress };
+        const body = { seriesId: currentSeries._id, episodeId, progress };
         if (!TOKEN) body.userId = USER_ID;
-        await fetch(API + '/progress', {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(body)
-        });
+        await fetch(API + '/progress', { method: 'POST', headers, body: JSON.stringify(body) });
+        if (typeof loadContinueWatching === 'function') setTimeout(() => loadContinueWatching().catch?.(() => {}), 400);
     } catch (err) { /* silent */ }
+}
+
+async function saveProgress(episodeId) {
+    const video = document.getElementById('video-player');
+    const progress = Math.floor(video?.currentTime || 0);
+    if (!progress) return;
+    await saveProgressSeconds(episodeId, progress, false);
 }
 
 async function loadProgress(episodeId) {

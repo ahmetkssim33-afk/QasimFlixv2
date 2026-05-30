@@ -25,7 +25,7 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 // Use shared DB connector & centralized models
 const { connectDB } = require('../lib/db');
-const { Series, Season, Episode, WatchProgress, Category, Film, User, Rating, ContentRequest, IssueReport } = require('../lib/models');
+const { Series, Season, Episode, WatchProgress, Category, Film, User, Rating, ContentRequest, IssueReport, PushSubscription } = require('../lib/models');
 
 // Local schema definitions removed — models are imported from ../lib/models
 // (keeps serverless redeploys and hot reloads from re-defining models)
@@ -47,6 +47,35 @@ app.get('/api/health', async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ api: 'ok', dbReady: false, error: err.message });
+  }
+});
+
+
+// ───────────────────────────────────────────────────────────
+// PUSH TOKEN KAYDI — bildirim izni açılınca FCM token saklar
+// ───────────────────────────────────────────────────────────
+app.post('/api/push/subscribe', async (req, res) => {
+  try {
+    await connectDB();
+    const token = String(req.body.token || '').trim();
+    if (!token) return res.status(400).json({ error: 'Token gerekli.' });
+    const userId = getUserIdFromReq(req) || req.body.userId || '';
+    const doc = await PushSubscription.findOneAndUpdate(
+      { token },
+      {
+        token,
+        platform: String(req.body.platform || 'web').slice(0, 40),
+        userId: String(userId || '').slice(0, 120),
+        userName: String(req.body.userName || '').slice(0, 120),
+        userEmail: String(req.body.userEmail || '').slice(0, 180),
+        userAgent: String(req.headers['user-agent'] || '').slice(0, 500),
+        lastSeenAt: new Date()
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+    res.json({ success: true, id: doc._id });
+  } catch (err) {
+    res.status(500).json({ error: 'Bildirim token kaydedilemedi.' });
   }
 });
 
@@ -200,6 +229,54 @@ app.get("/api/series", async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+
+// En son eklenen içerik: APK/PWA yeni içerik bildirimi için kullanılır.
+app.get('/api/content/latest', async (req, res) => {
+  try {
+    const [latestSeries, latestEpisode] = await Promise.all([
+      Series.findOne({}).sort({ createdAt: -1 }).lean(),
+      Episode.findOne({}).sort({ createdAt: -1 }).populate('seriesId', 'title type poster').lean()
+    ]);
+
+    if (!latestSeries && !latestEpisode) return res.json({ content: null });
+
+    const seriesTime = latestSeries?.createdAt ? new Date(latestSeries.createdAt).getTime() : 0;
+    const episodeTime = latestEpisode?.createdAt ? new Date(latestEpisode.createdAt).getTime() : 0;
+
+    const latestEpisodeSeriesId = latestEpisode?.seriesId?._id ? String(latestEpisode.seriesId._id) : String(latestEpisode?.seriesId || '');
+    const sameFreshSeries = latestSeries && latestEpisode && latestEpisodeSeriesId === String(latestSeries._id) && Math.abs(episodeTime - seriesTime) < 120000;
+
+    if (latestEpisode && episodeTime >= seriesTime && !sameFreshSeries) {
+      return res.json({
+        content: {
+          kind: 'episode',
+          _id: String(latestEpisode._id),
+          title: latestEpisode.title,
+          episodeNumber: latestEpisode.episodeNumber,
+          seriesId: latestEpisodeSeriesId,
+          seriesTitle: latestEpisode.seriesId?.title || '',
+          type: latestEpisode.seriesId?.type || 'series',
+          poster: latestEpisode.seriesId?.poster || latestEpisode.thumbnail || '',
+          createdAt: latestEpisode.createdAt
+        }
+      });
+    }
+
+    res.json({
+      content: {
+        kind: 'series',
+        _id: String(latestSeries._id),
+        title: latestSeries.title,
+        type: latestSeries.type,
+        poster: latestSeries.poster || '',
+        createdAt: latestSeries.createdAt
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Son içerik bilgisi alınamadı.' });
   }
 });
 

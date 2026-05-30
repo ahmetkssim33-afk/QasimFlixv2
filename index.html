@@ -1147,6 +1147,17 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
       <div class="qf-landscape-start" id="qf-landscape-start">
         <button type="button" onclick="requestPlayerLandscape(true)">⛶ Tam ekran yatay aç</button>
       </div>
+      <div class="qf-auto-next" id="qf-auto-next" hidden>
+        <div class="qf-auto-next-card">
+          <div class="qf-auto-next-label">Sonraki bölüm</div>
+          <div class="qf-auto-next-title" id="qf-auto-next-title">Hazırlanıyor...</div>
+          <div class="qf-auto-next-count" id="qf-auto-next-count">5</div>
+          <div class="qf-auto-next-actions">
+            <button type="button" onclick="qfCancelAutoNext()">İptal</button>
+            <button type="button" class="primary" onclick="qfPlayAutoNextNow()">Şimdi geç</button>
+          </div>
+        </div>
+      </div>
 
       <div class="qasim-video-controls" id="qasim-video-controls">
         <div class="qp-progress-row">

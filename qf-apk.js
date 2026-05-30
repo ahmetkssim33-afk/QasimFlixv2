@@ -5,7 +5,7 @@
   const LS_SETTINGS = 'qasimflix_settings';
   const LANG_KEY = 'qasimflix_lang';
   const OLD_LANG_KEY = 'qfLang';
-  const DEFAULT_SETTINGS = { autoplay:true, tryFullscreen:true, tryLandscape:true, notifications:false };
+  const DEFAULT_SETTINGS = { autoplay:true, autoNext:true, tryFullscreen:true, tryLandscape:true, notifications:false };
   const APK_UA = /; wv\)|Android.*Version\/\d+|QasimFlixAPK/i.test(navigator.userAgent);
   const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
   const mobile = window.matchMedia('(max-width: 768px)').matches || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -13,9 +13,9 @@
 
   function ready(fn){ document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', fn) : fn(); }
   const REPORT_I18N = {
-    tr:{'settings.report':'Sorun bildir','report.title':'Sorun bildir','report.type':'Sorun türü','report.type.bug':'Genel hata','report.type.player':'Video / oynatma','report.type.account':'Hesap / giriş','report.type.other':'Diğer','report.message':'Yaşadığın sorunu kısaca yaz...','report.contact':'İletişim (opsiyonel e-posta)','report.send':'Raporu gönder','report.sent':'Rapor gönderildi. Admin paneline düştü.','report.error':'Rapor gönderilemedi.','report.required':'Lütfen sorunu yaz.'},
-    ar:{'settings.report':'الإبلاغ عن مشكلة','report.title':'الإبلاغ عن مشكلة','report.type':'نوع المشكلة','report.type.bug':'خطأ عام','report.type.player':'الفيديو / التشغيل','report.type.account':'الحساب / الدخول','report.type.other':'أخرى','report.message':'اكتب المشكلة باختصار...','report.contact':'وسيلة تواصل (اختياري)','report.send':'إرسال البلاغ','report.sent':'تم إرسال البلاغ إلى لوحة الإدارة.','report.error':'تعذر إرسال البلاغ.','report.required':'يرجى كتابة المشكلة.'},
-    en:{'settings.report':'Report a problem','report.title':'Report a problem','report.type':'Problem type','report.type.bug':'General bug','report.type.player':'Video / playback','report.type.account':'Account / login','report.type.other':'Other','report.message':'Briefly describe the problem...','report.contact':'Contact (optional email)','report.send':'Send report','report.sent':'Report sent to the admin panel.','report.error':'Report could not be sent.','report.required':'Please describe the problem.'}
+    tr:{'settings.autoNext':'Sonraki bölüme otomatik geç','settings.report':'Sorun bildir','report.title':'Sorun bildir','report.type':'Sorun türü','report.type.bug':'Genel hata','report.type.player':'Video / oynatma','report.type.account':'Hesap / giriş','report.type.other':'Diğer','report.message':'Yaşadığın sorunu kısaca yaz...','report.contact':'İletişim (opsiyonel e-posta)','report.send':'Raporu gönder','report.sent':'Rapor gönderildi. Admin paneline düştü.','report.error':'Rapor gönderilemedi.','report.required':'Lütfen sorunu yaz.'},
+    ar:{'settings.autoNext':'تشغيل الحلقة التالية تلقائياً','settings.report':'الإبلاغ عن مشكلة','report.title':'الإبلاغ عن مشكلة','report.type':'نوع المشكلة','report.type.bug':'خطأ عام','report.type.player':'الفيديو / التشغيل','report.type.account':'الحساب / الدخول','report.type.other':'أخرى','report.message':'اكتب المشكلة باختصار...','report.contact':'وسيلة تواصل (اختياري)','report.send':'إرسال البلاغ','report.sent':'تم إرسال البلاغ إلى لوحة الإدارة.','report.error':'تعذر إرسال البلاغ.','report.required':'يرجى كتابة المشكلة.'},
+    en:{'settings.autoNext':'Auto-play next episode','settings.report':'Report a problem','report.title':'Report a problem','report.type':'Problem type','report.type.bug':'General bug','report.type.player':'Video / playback','report.type.account':'Account / login','report.type.other':'Other','report.message':'Briefly describe the problem...','report.contact':'Contact (optional email)','report.send':'Send report','report.sent':'Report sent to the admin panel.','report.error':'Report could not be sent.','report.required':'Please describe the problem.'}
   };
   function t(key){
     const fromApp = window.qfT ? window.qfT(key) : key;
@@ -106,7 +106,14 @@
   async function enableNotifications(on){
     const s=getSettings();
     if(on && 'Notification' in window){
-      try{ const perm=await Notification.requestPermission(); s.notifications = perm === 'granted'; }catch(e){ s.notifications=false; }
+      try{
+        const perm=await Notification.requestPermission();
+        s.notifications = perm === 'granted';
+        // Web/PWA tarafında Firebase hazırsa gerçek push token kaydı da denenir.
+        if (s.notifications && typeof window.enableQasimFlixPush === 'function') {
+          try { await window.enableQasimFlixPush(); } catch(_) {}
+        }
+      }catch(e){ s.notifications=false; }
     } else if(on) { s.notifications=false; toast(t('settings.notSupported')); }
     else s.notifications=false;
     saveSettings(s); renderSettingsState(); if(s.notifications) toast(t('settings.saved'));
@@ -194,6 +201,7 @@
         <option value="tr">Türkçe</option><option value="ar">العربية</option><option value="en">English</option><option value="en-GB">English UK</option><option value="es">Español</option><option value="it">Italiano</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="ru">Русский</option><option value="zh">中文</option>
       </select></label>
       <div class="qf-setting-row"><span data-i18n="settings.autoplay">${t('settings.autoplay')}</span>${switchMarkup('autoplay',getSetting('autoplay',true))}</div>
+      <div class="qf-setting-row"><span data-i18n="settings.autoNext">${t('settings.autoNext')}</span>${switchMarkup('autoNext',getSetting('autoNext',true))}</div>
       <div class="qf-setting-row"><span data-i18n="settings.fullscreen">${t('settings.fullscreen')}</span>${switchMarkup('tryFullscreen',getSetting('tryFullscreen',true))}</div>
       <div class="qf-setting-row"><span data-i18n="settings.landscape">${t('settings.landscape')}</span>${switchMarkup('tryLandscape',getSetting('tryLandscape',true))}</div>
       <div class="qf-setting-row"><span data-i18n="settings.notifications">${t('settings.notifications')}</span>${switchMarkup('notifications',getSetting('notifications',false))}</div>
@@ -235,7 +243,7 @@
   'use strict';
 
   const VERSION_URL = '/version.json';
-  const SERIES_URL = '/api/series?limit=1&page=1';
+  const LATEST_CONTENT_URL = '/api/content/latest';
   const LS_BUILD = 'qf_last_seen_build';
   const LS_UPDATE_RELOADED = 'qf_update_reloaded_build';
   const LS_LATEST_CONTENT = 'qf_latest_content_id';
@@ -359,13 +367,14 @@
   }
 
   function normalizeSeriesPayload(payload){
+    if (payload && payload.content) return payload.content;
     const list = Array.isArray(payload) ? payload : (payload && Array.isArray(payload.series) ? payload.series : []);
     return list[0] || null;
   }
 
   async function checkNewContent(){
     try {
-      const latest = normalizeSeriesPayload(await fetchJson(SERIES_URL));
+      const latest = normalizeSeriesPayload(await fetchJson(LATEST_CONTENT_URL));
       if (!latest) return;
 
       const id = String(latest._id || latest.id || latest.slug || latest.title || '').trim();
@@ -379,9 +388,10 @@
 
       if (old !== id) {
         localStorage.setItem(LS_LATEST_CONTENT, id);
-        const type = latest.type === 'movie' ? 'film' : 'dizi';
+        const type = latest.kind === 'episode' ? 'bölüm' : (latest.type === 'movie' ? 'film' : 'içerik');
         const title = latest.title || latest.name || 'Yeni içerik';
-        await sendLocalNotification('Yeni ' + type + ' eklendi', title + ' artık QasimFlix’te.', '/');
+        const seriesTitle = latest.seriesTitle ? latest.seriesTitle + ' • ' : '';
+        await sendLocalNotification('Yeni ' + type + ' eklendi', seriesTitle + title + ' artık QasimFlix’te.', '/');
       }
     } catch (_) {}
   }

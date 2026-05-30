@@ -1,4 +1,4 @@
-const CACHE_NAME = 'qasimflix-v1.0.2-apk-player-fix';
+const CACHE_NAME = 'qasimflix-v1.0.3-pro-features';
 const STATIC = [
   '/', '/index.html', '/auth.html', '/offline.html', '/style.css', '/qf-apk.css', '/qf-apk.js', '/qf-player-apk.js',
   '/app.js', '/admin.js', '/player.html', '/manifest.json', '/version.json', '/favicon.svg',

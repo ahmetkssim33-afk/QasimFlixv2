@@ -733,6 +733,10 @@ select{
   table{display:block;overflow-x:auto;white-space:nowrap}.btn,.button,button[type="submit"]{border-radius:14px!important}
 }
 
+
+.report-card{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start;padding:14px;border-radius:18px;background:var(--bg2);border:1px solid var(--border)}
+.report-card.unread{border-color:rgba(229,9,20,.55);box-shadow:0 0 0 1px rgba(229,9,20,.18) inset}.report-title{display:flex;align-items:center;gap:8px;font-weight:900;color:var(--text)}.report-message{margin:8px 0;color:var(--muted);line-height:1.45;white-space:pre-wrap}.report-meta{display:flex;flex-wrap:wrap;gap:8px;color:var(--muted);font-size:.78rem}.report-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.nav-badge.danger{background:#e50914;color:#fff}.stat-card.alert{border-color:rgba(229,9,20,.35);background:linear-gradient(135deg,rgba(229,9,20,.11),rgba(255,255,255,.03))}
+
 </style>
 <link rel="stylesheet" href="qf-enhancements.css">
 </head>
@@ -779,6 +783,10 @@ select{
       <div class="nav-item" data-view="documentaries" onclick="navigate(this,'documentaries')">
         <span class="icon">🎞</span> <span data-i18n="nav.documentaries">Belgeseller</span>
         <span class="nav-badge" id="nb-documentaries">0</span>
+      </div>
+      <div class="nav-item" data-view="reports" onclick="navigate(this,'reports')">
+        <span class="icon">⚠</span> <span data-i18n="nav.reports">Raporlar</span>
+        <span class="nav-badge danger" id="nb-reports">0</span>
       </div>
     </nav>
     <div class="sidebar-footer">
@@ -834,6 +842,11 @@ select{
             <div class="stat-value" id="stat-movies">—</div>
             <div class="stat-sub" data-i18n="stat.sub_movies">film kataloğu</div>
           </div>
+          <div class="stat-card alert" onclick="navigate(document.querySelector('[data-view=reports]'),'reports')" style="cursor:pointer">
+            <div class="stat-label" data-i18n="stat.reports">Açık Rapor</div>
+            <div class="stat-value" id="stat-reports">0</div>
+            <div class="stat-sub" data-i18n="stat.sub_reports">kullanıcı bildirimi</div>
+          </div>
         </div>
         <div class="section-header">
           <div>
@@ -843,6 +856,26 @@ select{
           <button class="btn btn-ghost sm" onclick="navigate(document.querySelector('[data-view=series]'),'series')" data-i18n="btn.view_all">Tümünü Gör →</button>
         </div>
         <div id="dashboard-recent"></div>
+      </div>
+
+      <!-- REPORTS VIEW -->
+      <div class="view" id="view-reports">
+        <div class="section-header">
+          <div>
+            <h2 data-i18n="reports.title">Kullanıcı Raporları</h2>
+            <div class="sub" data-i18n="reports.sub">Kullanıcıların ayarlardan gönderdiği sorun bildirimleri</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <select id="reports-filter" onchange="loadReports()" style="max-width:180px">
+              <option value="open">Açık</option>
+              <option value="read">Okundu</option>
+              <option value="resolved">Çözüldü</option>
+              <option value="">Tümü</option>
+            </select>
+            <button class="btn btn-ghost sm" onclick="loadReports()">↺ Yenile</button>
+          </div>
+        </div>
+        <div id="reports-list-wrap"><div class="empty-state"><div class="empty-icon">⚠</div><p>Raporlar yükleniyor...</p></div></div>
       </div>
 
       <!-- SERIES VIEW -->
@@ -1318,6 +1351,16 @@ ADMIN_I18N.tr['requests.sub'] = 'Sitede olmayan film/dizi istekleri';
 ADMIN_I18N.ar['nav.requests'] = 'الطلبات';
 ADMIN_I18N.ar['requests.title'] = 'طلبات المحتوى';
 ADMIN_I18N.ar['requests.sub'] = 'طلبات الأفلام والمسلسلات غير الموجودة';
+ADMIN_I18N.tr['nav.reports'] = 'Raporlar';
+ADMIN_I18N.tr['stat.reports'] = 'Açık Rapor';
+ADMIN_I18N.tr['stat.sub_reports'] = 'kullanıcı bildirimi';
+ADMIN_I18N.tr['reports.title'] = 'Kullanıcı Raporları';
+ADMIN_I18N.tr['reports.sub'] = 'Kullanıcıların ayarlardan gönderdiği sorun bildirimleri';
+ADMIN_I18N.ar['nav.reports'] = 'البلاغات';
+ADMIN_I18N.ar['stat.reports'] = 'بلاغات مفتوحة';
+ADMIN_I18N.ar['stat.sub_reports'] = 'إشعارات المستخدمين';
+ADMIN_I18N.ar['reports.title'] = 'بلاغات المستخدمين';
+ADMIN_I18N.ar['reports.sub'] = 'المشاكل التي يرسلها المستخدمون من الإعدادات';
 
 function adminT(key) {
   const lang = localStorage.getItem('qfLang') || 'tr';
@@ -1465,6 +1508,7 @@ function navigate(el, view) {
   document.getElementById('page-title').textContent = title;
   document.getElementById('page-breadcrumb').textContent = `CineAdmin / ${crumb}`;
   if (view === 'dashboard') loadDashboard();
+  if (view === 'reports') loadReports();
   if (view === 'series')    loadSeriesList();
   if (view === 'documentaries') loadDocumentariesList();
   if (view === 'seasons')   populateSeriesSelects();
@@ -1483,8 +1527,10 @@ let searchTerm = '';
 // ═══════════════════════════════════════════════════════════════
 async function initApp() {
   await loadAllSeries();
+  await refreshReportBadge();
   loadDashboard();
   checkApiHealth();
+  setInterval(refreshReportBadge, 30000);
 }
 
 async function checkApiHealth() {
@@ -1512,7 +1558,8 @@ async function loadAllSeries() {
 }
 
 function refreshAll() {
-  loadAllSeries().then(() => {
+  loadAllSeries().then(async () => {
+    await refreshReportBadge();
     const active = document.querySelector('.nav-item.active');
     if (active) active.click();
   });
@@ -1526,6 +1573,7 @@ async function loadDashboard() {
   const movies = allSeries.filter(s => s.type === 'movie').length;
   document.getElementById('stat-series').textContent  = allSeries.length;
   document.getElementById('stat-movies').textContent  = movies;
+  if (document.getElementById('stat-reports')) refreshReportBadge();
   document.getElementById('stat-seasons').textContent = '—';
   document.getElementById('stat-episodes').textContent= '—';
 
@@ -1537,6 +1585,96 @@ async function loadDashboard() {
     return;
   }
   wrap.innerHTML = `<div class="list-container">${recent.map(s => seriesItemHTML(s)).join('')}</div>`;
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// REPORTS / ADMIN NOTIFICATIONS
+// ═══════════════════════════════════════════════════════════════
+let allReports = [];
+
+async function refreshReportBadge() {
+  try {
+    const reports = await api('GET', '/reports?status=open&_=' + Date.now());
+    const count = Array.isArray(reports) ? reports.length : 0;
+    const nb = document.getElementById('nb-reports');
+    const stat = document.getElementById('stat-reports');
+    if (nb) {
+      nb.textContent = count;
+      nb.style.display = count ? '' : 'none';
+    }
+    if (stat) stat.textContent = count;
+    if (count > 0 && !refreshReportBadge._notified) {
+      refreshReportBadge._notified = true;
+      toast('⚠ ' + count + ' yeni/açık rapor var', 'info');
+    }
+    return count;
+  } catch (e) { return 0; }
+}
+
+async function loadReports() {
+  const wrap = document.getElementById('reports-list-wrap');
+  if (!wrap) return;
+  const status = document.getElementById('reports-filter')?.value || '';
+  wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠</div><p>Raporlar yükleniyor...</p></div>';
+  try {
+    allReports = await api('GET', '/reports' + (status ? '?status=' + encodeURIComponent(status) : '?') + '&_=' + Date.now());
+    renderReports();
+    await refreshReportBadge();
+  } catch (e) {
+    wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠</div><p>Raporlar yüklenemedi</p></div>';
+    toastError(e);
+  }
+}
+
+function reportTypeLabel(type) {
+  const map = { bug:'Genel hata', player:'Video / oynatma', account:'Hesap / giriş', other:'Diğer' };
+  return map[type] || type || 'Rapor';
+}
+
+function renderReports() {
+  const wrap = document.getElementById('reports-list-wrap');
+  if (!wrap) return;
+  if (!allReports.length) {
+    wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">✓</div><p>Bu filtrede rapor yok.</p></div>';
+    return;
+  }
+  wrap.innerHTML = '<div class="list-container">' + allReports.map(r => `
+    <div class="report-card ${r.status === 'open' ? 'unread' : ''}">
+      <div>
+        <div class="report-title"><span>⚠</span><span>${esc(reportTypeLabel(r.type))}</span><span class="badge ${r.status === 'open' ? 'badge-red' : 'badge-green'}">${esc(r.status || 'open')}</span></div>
+        <div class="report-message">${esc(r.message || '')}</div>
+        <div class="report-meta">
+          <span>👤 ${esc(r.userName || r.userEmail || r.userId || 'Misafir')}</span>
+          ${r.contact ? `<span>✉ ${esc(r.contact)}</span>` : ''}
+          <span>🕐 ${new Date(r.createdAt).toLocaleString('tr-TR')}</span>
+          ${r.pageUrl ? `<span title="${esc(r.pageUrl)}">🔗 ${esc(String(r.pageUrl).slice(0, 70))}</span>` : ''}
+        </div>
+      </div>
+      <div class="report-actions">
+        ${r.status !== 'read' ? `<button class="btn btn-info sm" onclick="updateReportStatus('${r._id}','read')">Okundu</button>` : ''}
+        ${r.status !== 'resolved' ? `<button class="btn btn-success sm" onclick="updateReportStatus('${r._id}','resolved')">Çözüldü</button>` : ''}
+        <button class="btn btn-danger sm" onclick="deleteReport('${r._id}')">Sil</button>
+      </div>
+    </div>`).join('') + '</div>';
+}
+
+async function updateReportStatus(id, status) {
+  try {
+    await api('PATCH', '/reports/' + id, { status });
+    toast('Rapor güncellendi', 'success');
+    await loadReports();
+  } catch (e) { toastError(e); }
+}
+
+async function deleteReport(id) {
+  const ok = await confirm2('Rapor silinsin mi?', 'Bu rapor kalıcı olarak silinecek.');
+  if (!ok) return;
+  try {
+    await api('DELETE', '/reports/' + id);
+    toast('Rapor silindi', 'info');
+    await loadReports();
+  } catch (e) { toastError(e); }
 }
 
 // ═══════════════════════════════════════════════════════════════
