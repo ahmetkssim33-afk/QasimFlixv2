@@ -9,6 +9,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_jwt_secret_change_me';
+const { isConfigured: isTMDBConfigured, searchTMDB, getTMDBDetails } = require('../lib/tmdb');
 
 const app = express();
 
@@ -25,7 +26,7 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 // Use shared DB connector & centralized models
 const { connectDB } = require('../lib/db');
-const { Series, Season, Episode, WatchProgress, Category, Film, User, Rating, ContentRequest, IssueReport, PushSubscription } = require('../lib/models');
+const { Series, Season, Episode, WatchProgress, Category, Film, User, Rating, ContentRequest, IssueReport, PushSubscription, Announcement } = require('../lib/models');
 
 // Local schema definitions removed — models are imported from ../lib/models
 // (keeps serverless redeploys and hot reloads from re-defining models)
@@ -50,6 +51,127 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
+
+
+
+// ───────────────────────────────────────────────────────────
+// TMDB METADATA + LINK CHECK + ANNOUNCEMENTS
+// ───────────────────────────────────────────────────────────
+function tmdbError(res, err) {
+  const status = err.statusCode || err.status || 500;
+  res.status(status).json({ error: err.message || 'TMDB isteği başarısız.', configured: isTMDBConfigured() });
+}
+
+app.get('/api/tmdb/status', (req, res) => {
+  res.json({ configured: isTMDBConfigured(), envName: process.env.TMDB_TOKEN ? 'TMDB_TOKEN' : (process.env.TMDB_API_KEY ? 'TMDB_API_KEY' : '') });
+});
+
+app.get('/api/tmdb/search', async (req, res) => {
+  try {
+    const items = await searchTMDB({
+      q: req.query.q,
+      type: req.query.type || 'multi',
+      language: req.query.language || 'tr-TR',
+      page: req.query.page || 1
+    });
+    res.json({ configured: true, results: items });
+  } catch (err) { tmdbError(res, err); }
+});
+
+app.get('/api/tmdb/details/:mediaType/:id', async (req, res) => {
+  try {
+    const details = await getTMDBDetails(req.params.mediaType, req.params.id, req.query.language || 'tr-TR');
+    res.json(details);
+  } catch (err) { tmdbError(res, err); }
+});
+
+function normalizeCheckUrl(rawUrl = '') {
+  const raw = String(rawUrl || '').trim();
+  if (!raw) return '';
+  const driveId = (raw.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || raw.match(/[?&]id=([a-zA-Z0-9_-]+)/) || [])[1];
+  if (driveId) return `https://drive.google.com/file/d/${driveId}/preview`;
+  return raw;
+}
+
+async function checkOneVideoLink(rawUrl = '') {
+  const url = normalizeCheckUrl(rawUrl);
+  if (!url) return { status: 'empty', ok: false, message: 'Link boş.' };
+  if (!/^https?:\/\//i.test(url)) return { status: 'broken', ok: false, message: 'Geçersiz link.' };
+  try {
+    const signal = AbortSignal.timeout ? AbortSignal.timeout(8500) : undefined;
+    let response = await fetch(url, { method: 'HEAD', redirect: 'follow', signal, headers: { 'User-Agent': 'QasimFlixLinkCheck/1.0' } }).catch(async () => null);
+    if (!response || response.status === 405 || response.status === 403) {
+      response = await fetch(url, { method: 'GET', redirect: 'follow', signal, headers: { 'Range': 'bytes=0-0', 'User-Agent': 'QasimFlixLinkCheck/1.0' } });
+    }
+    if (response.status === 401 || response.status === 403) return { status: 'access_denied', ok: false, httpStatus: response.status, message: 'Erişim yok / izin kapalı.' };
+    if (response.status === 404) return { status: 'broken', ok: false, httpStatus: response.status, message: 'Link bulunamadı.' };
+    if (response.ok || response.status === 206) return { status: 'ok', ok: true, httpStatus: response.status, contentType: response.headers.get('content-type') || '', finalUrl: response.url, message: 'Çalışıyor.' };
+    return { status: 'broken', ok: false, httpStatus: response.status, message: `HTTP ${response.status}` };
+  } catch (err) {
+    return { status: 'broken', ok: false, message: err.name === 'TimeoutError' ? 'Zaman aşımı.' : (err.message || 'Kontrol edilemedi.') };
+  }
+}
+
+app.post('/api/link-check', async (req, res) => {
+  const result = await checkOneVideoLink(req.body.url || req.query.url || '');
+  res.json(result);
+});
+
+app.get('/api/admin/summary', async (req, res) => {
+  try {
+    await connectDB();
+    const [totalSeries, totalMovies, totalSeasons, totalEpisodes, totalUsers, openReports, openRequests, lastContent, topReported] = await Promise.all([
+      Series.countDocuments({ type: { $ne: 'movie' } }),
+      Series.countDocuments({ type: 'movie' }),
+      Season.countDocuments(),
+      Episode.countDocuments(),
+      User.countDocuments().catch(() => 0),
+      IssueReport.countDocuments({ status: 'open' }),
+      ContentRequest.countDocuments({ status: 'open' }),
+      Series.find().sort({ createdAt: -1 }).limit(6).select('title type poster releaseYear rating createdAt').lean(),
+      IssueReport.aggregate([{ $match: { contentTitle: { $ne: null } } }, { $group: { _id: '$contentTitle', count: { $sum: 1 } } }, { $sort: { count: -1 } }, { $limit: 5 }]).catch(() => [])
+    ]);
+    res.json({ totalSeries, totalMovies, totalSeasons, totalEpisodes, totalUsers, openReports, openRequests, lastContent, topReported });
+  } catch (err) { res.status(500).json({ error: 'Özet yüklenemedi.' }); }
+});
+
+app.get('/api/announcements/public', async (req, res) => {
+  try {
+    await connectDB();
+    const now = new Date();
+    const items = await Announcement.find({
+      isActive: true,
+      $and: [
+        { $or: [{ startsAt: null }, { startsAt: { $exists: false } }, { startsAt: { $lte: now } }] },
+        { $or: [{ endsAt: null }, { endsAt: { $exists: false } }, { endsAt: { $gte: now } }] }
+      ]
+    }).sort({ createdAt: -1 }).limit(3).lean();
+    res.json(items);
+  } catch (err) { res.json([]); }
+});
+
+app.get('/api/announcements', async (req, res) => {
+  try { await connectDB(); res.json(await Announcement.find().sort({ createdAt: -1 }).limit(100).lean()); }
+  catch (err) { res.status(500).json({ error: 'Duyurular yüklenemedi.' }); }
+});
+app.post('/api/announcements', async (req, res) => {
+  try {
+    await connectDB();
+    const title = String(req.body.title || '').trim();
+    const message = String(req.body.message || '').trim();
+    if (!title || !message) return res.status(400).json({ error: 'Başlık ve mesaj zorunlu.' });
+    const doc = await Announcement.create({ title: title.slice(0,120), message: message.slice(0,800), level: req.body.level || 'info', isActive: req.body.isActive !== false, startsAt: req.body.startsAt || undefined, endsAt: req.body.endsAt || undefined });
+    res.status(201).json(doc);
+  } catch (err) { res.status(500).json({ error: 'Duyuru eklenemedi.' }); }
+});
+app.patch('/api/announcements/:id', async (req, res) => {
+  try { await connectDB(); const update = { ...req.body, updatedAt: new Date() }; res.json(await Announcement.findByIdAndUpdate(req.params.id, update, { new: true })); }
+  catch (err) { res.status(500).json({ error: 'Duyuru güncellenemedi.' }); }
+});
+app.delete('/api/announcements/:id', async (req, res) => {
+  try { await connectDB(); await Announcement.findByIdAndDelete(req.params.id); res.json({ success: true }); }
+  catch (err) { res.status(500).json({ error: 'Duyuru silinemedi.' }); }
+});
 
 // ───────────────────────────────────────────────────────────
 // PUSH TOKEN KAYDI — bildirim izni açılınca FCM token saklar
@@ -336,7 +458,7 @@ app.get("/api/series/:id", async (req, res) => {
 // Seri ekle
 app.post("/api/series", async (req, res) => {
   try {
-    const { title, description, description_tr, description_ar, poster, banner, categories = [], releaseYear, rating, type, videoUrl, duration } = req.body;
+    const { title, description, description_tr, description_ar, poster, banner, categories = [], releaseYear, rating, type, videoUrl, duration, tmdbId, tmdbType, originalTitle, trailerUrl, cast, tmdbPoster, tmdbBackdrop } = req.body;
 
     // If content is marked as 'yerli' (local), ensure it belongs to the "Yerli Diziler" category
     const cats = Array.isArray(categories) ? categories.slice() : (typeof categories === 'string' ? categories.split(',').map(c=>c.trim()).filter(Boolean) : []);
@@ -344,7 +466,7 @@ app.post("/api/series", async (req, res) => {
       cats.push('Yerli Diziler');
     }
 
-    const newSeries = new Series({ title, description, description_tr, description_ar, poster, banner, categories: cats, releaseYear, rating, type });
+    const newSeries = new Series({ title, description, description_tr, description_ar, poster, banner, categories: cats, releaseYear, rating, type, tmdbId, tmdbType, originalTitle, trailerUrl, cast: Array.isArray(cast) ? cast : [], tmdbPoster, tmdbBackdrop });
     const saved = await newSeries.save();
 
     // Film veya Belgesel ise otomatik Sezon 1 ve Bölüm 1 oluştur
@@ -1030,16 +1152,26 @@ app.post('/api/favorites/:seriesId', async (req, res) => {
 app.post('/api/content-requests', async (req, res) => {
   try {
     const userId = getUserIdFromReq(req) || req.body.userId || '';
-    const { title, releaseYear, note, userName, userEmail } = req.body;
+    const { title, releaseYear, note, userName, userEmail, requestType } = req.body;
     const cleanTitle = String(title || '').trim();
     if (!cleanTitle) return res.status(400).json({ error: 'Film/dizi adı zorunlu.' });
+    const safeTitle = cleanTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const existing = await ContentRequest.findOne({ title: { $regex: '^' + safeTitle + '$', $options: 'i' }, status: 'open' });
+    if (existing) {
+      existing.voteCount = Number(existing.voteCount || 1) + 1;
+      if (note) existing.note = String(note).trim().slice(0, 1200);
+      await existing.save();
+      return res.status(200).json({ success: true, request: existing, message: 'İstek sayacı artırıldı' });
+    }
     const doc = await ContentRequest.create({
       title: cleanTitle.slice(0, 180),
+      requestType: ['movie','series','documentary'].includes(requestType) ? requestType : 'unknown',
       releaseYear: Number(releaseYear) || undefined,
       note: String(note || '').trim().slice(0, 1200),
       userId: String(userId || ''),
       userName: String(userName || '').slice(0, 120),
-      userEmail: String(userEmail || '').slice(0, 180)
+      userEmail: String(userEmail || '').slice(0, 180),
+      voteCount: 1
     });
     res.status(201).json({ success: true, request: doc, message: 'İstek gönderildi' });
   } catch (err) {
@@ -1101,6 +1233,13 @@ app.post('/api/reports', async (req, res) => {
       userName: String(req.body.userName || '').slice(0, 120),
       userEmail: String(req.body.userEmail || '').slice(0, 180),
       contact: String(req.body.contact || '').slice(0, 180),
+      contentTitle: String(req.body.contentTitle || '').slice(0, 180),
+      seriesId: String(req.body.seriesId || '').slice(0, 120),
+      seasonNumber: Number(req.body.seasonNumber) || undefined,
+      episodeNumber: Number(req.body.episodeNumber) || undefined,
+      episodeId: String(req.body.episodeId || '').slice(0, 120),
+      videoUrl: String(req.body.videoUrl || '').slice(0, 1200),
+      errorType: String(req.body.errorType || '').slice(0, 80),
       status: 'open'
     });
     res.status(201).json({ success: true, report: doc, message: 'Rapor gönderildi' });

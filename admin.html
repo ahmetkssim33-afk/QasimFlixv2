@@ -1791,8 +1791,15 @@ async function addSeries() {
       releaseYear: parseInt(v('s-year')) || null,
       rating: parseFloat(v('s-rating')) || 0,
       categories: v('s-cats').split(',').map(c=>c.trim()).filter(Boolean),
-      poster: posterPath,
-      banner: bannerPath
+      poster: posterPath || v('s-poster-url'),
+      banner: bannerPath || v('s-banner-url'),
+      trailerUrl: v('s-trailer'),
+      tmdbId: parseInt(v('s-tmdb-id')) || undefined,
+      tmdbType: v('s-tmdb-type'),
+      originalTitle: v('s-original-title'),
+      tmdbPoster: v('s-poster-url'),
+      tmdbBackdrop: v('s-banner-url'),
+      cast: v('s-cast').split(',').map(c=>c.trim()).filter(Boolean)
     };
     if (type === 'yerli') {
       if (!payload.categories.includes('Yerli Diziler')) payload.categories.push('Yerli Diziler');
@@ -1804,7 +1811,7 @@ async function addSeries() {
     await api('POST', '/series', payload);
     const typeLabel = type === 'movie' ? 'Film' : type === 'documentary' ? 'Belgesel' : 'Dizi';
     toast(adminT('msg.added') + ' ' + title, 'success');
-    ['s-title','s-desc','s-desc-tr','s-desc-ar','s-year','s-cats','s-rating','s-video','s-duration'].forEach(id => {
+    ['s-title','s-desc','s-desc-tr','s-desc-ar','s-year','s-cats','s-rating','s-video','s-duration','s-poster-url','s-banner-url','s-trailer','s-tmdb-id','s-tmdb-type','s-original-title','s-cast'].forEach(id => {
       const el = document.getElementById(id); if (el) el.value = '';
     });
     document.getElementById('s-rating').value = '0';
@@ -2438,5 +2445,6 @@ function setLoading(btn, loading, label) {
 </script>
 <button class="admin-mobile-menu-btn" type="button" onclick="document.body.classList.toggle('admin-menu-open')">☰</button>
 <script src="qf-admin-enhancements.js"></script>
+<script src="qf-admin-pro-tools.js"></script>
 </body>
 </html>
