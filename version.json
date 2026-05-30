@@ -1,8 +1,8 @@
 {
-  "version": "1.0.3",
-  "build": 2026053001,
+  "version": "1.0.4",
+  "build": 2026053002,
   "apkRequired": false,
-  "message": "Yeni QasimFlix güncellemesi geldi. Önbellek otomatik temizlenip uygulama yenilenecek.",
+  "message": "Akıllı özellikler eklendi: öneriler, puan/yorum, istek oylama, admin istatistikleri, toplu bölüm ekleme, link tarama ve güvenlik logları.",
   "apkUrl": "",
   "notifyUpdates": true,
   "notifyNewContent": true,

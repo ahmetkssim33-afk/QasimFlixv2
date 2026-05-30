@@ -1485,6 +1485,9 @@ async function playEpisode(episodeId, isMovie = false) {
         let src = episode.videoUrl || '';
         const rawIframeSrc = /^\s*</.test(src) && src.includes('iframe') ? extractIframeSrc(src) : '';
         if (rawIframeSrc) src = rawIframeSrc;
+        // Kalite kaynakları admin panelinden girildiyse ilk kalite ana kaynak olarak kullanılır.
+        const initialQualitySources = parseQualitySources(episode, src);
+        if (initialQualitySources.length && initialQualitySources[0]?.url) src = initialQualitySources[0].url;
 
         // Episode info label, kaynak yüklenmeden önce yazı görünsün.
         let infoText = '';
@@ -1509,7 +1512,7 @@ async function playEpisode(episodeId, isMovie = false) {
             showIframe(getGoogleDrivePreviewUrl(src), { type: 'drive' });
             scheduleIframeAutoNextFallback(episode);
         } else if (canUseHtmlPlayer) {
-            qasimQualitySources = parseQualitySources(episode, src);
+            qasimQualitySources = initialQualitySources && initialQualitySources.length ? initialQualitySources : parseQualitySources(episode, src);
             fillQualitySelect(qasimQualitySources);
             const subWrap = document.getElementById('sub-wrap');
             if (subWrap) subWrap.style.display = '';

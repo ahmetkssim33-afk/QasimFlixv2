@@ -26,7 +26,7 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 // Use shared DB connector & centralized models
 const { connectDB } = require('../lib/db');
-const { Series, Season, Episode, WatchProgress, Category, Film, User, Rating, ContentRequest, IssueReport, PushSubscription, Announcement } = require('../lib/models');
+const { Series, Season, Episode, WatchProgress, Category, Film, User, Rating, ContentRequest, IssueReport, PushSubscription, Announcement, AdminLog } = require('../lib/models');
 
 // Local schema definitions removed — models are imported from ../lib/models
 // (keeps serverless redeploys and hot reloads from re-defining models)
@@ -116,6 +116,110 @@ app.post('/api/link-check', async (req, res) => {
   const result = await checkOneVideoLink(req.body.url || req.query.url || '');
   res.json(result);
 });
+
+function cleanQualitySources(input) {
+  if (!input) return [];
+  const rows = Array.isArray(input) ? input : Object.entries(input).map(([label, url]) => ({ label, url }));
+  return rows.map(q => ({
+    label: String(q.label || q.quality || q.name || '').trim().slice(0, 24),
+    url: String(q.url || q.src || q.videoUrl || '').trim().slice(0, 1500)
+  })).filter(q => q.url && /^https?:\/\//i.test(q.url)).slice(0, 8);
+}
+
+app.post('/api/episodes/bulk', async (req, res) => {
+  try {
+    await connectDB();
+    const { seasonId, seriesId } = req.body;
+    const episodes = Array.isArray(req.body.episodes) ? req.body.episodes : [];
+    if (!mongoose.Types.ObjectId.isValid(seasonId) || !mongoose.Types.ObjectId.isValid(seriesId)) return res.status(400).json({ error: 'Seri ve sezon zorunlu.' });
+    if (!episodes.length) return res.status(400).json({ error: 'Eklenecek bölüm bulunamadı.' });
+    const docs = episodes.map((ep, idx) => {
+      const num = Number(ep.episodeNumber || ep.no || idx + 1);
+      const title = String(ep.title || `Bölüm ${num}`).trim().slice(0, 180);
+      const videoUrl = String(ep.videoUrl || ep.url || '').trim();
+      if (!videoUrl) throw new Error(`${title} için video linki eksik.`);
+      return {
+        seasonId,
+        seriesId,
+        episodeNumber: num,
+        title,
+        description: String(ep.description || '').trim().slice(0, 2000),
+        videoUrl: videoUrl.slice(0, 1500),
+        duration: Number(ep.duration) || 0,
+        thumbnail: String(ep.thumbnail || '').trim().slice(0, 1500),
+        qualitySources: cleanQualitySources(ep.qualitySources || ep.qualities),
+        subtitles: []
+      };
+    });
+    const created = await Episode.insertMany(docs, { ordered: true });
+    res.status(201).json({ success: true, count: created.length, episodes: created });
+  } catch (err) { res.status(500).json({ error: err.message || 'Toplu bölüm eklenemedi.' }); }
+});
+
+app.get('/api/admin/link-scan', async (req, res) => {
+  try {
+    await connectDB();
+    const status = String(req.query.status || '').trim();
+    const filter = status ? { linkStatus: status } : {};
+    const [counts, items] = await Promise.all([
+      Episode.aggregate([{ $group: { _id: '$linkStatus', count: { $sum: 1 } } }]).catch(() => []),
+      Episode.find(filter).sort({ lastLinkCheckAt: 1, createdAt: -1 }).limit(Number(req.query.limit) || 150).select('title episodeNumber videoUrl linkStatus lastLinkCheckAt seriesId seasonId').lean()
+    ]);
+    res.json({ counts, items });
+  } catch (err) { res.status(500).json({ error: 'Link raporu yüklenemedi.' }); }
+});
+
+app.post('/api/admin/link-scan', async (req, res) => {
+  try {
+    await connectDB();
+    const limit = Math.max(1, Math.min(Number(req.body.limit || req.query.limit || 30), 80));
+    const onlyUnknown = req.body.onlyUnknown === true || req.query.onlyUnknown === '1';
+    const filter = onlyUnknown ? { $or: [{ linkStatus: 'unknown' }, { linkStatus: { $exists: false } }, { lastLinkCheckAt: { $exists: false } }] } : {};
+    const episodes = await Episode.find(filter).sort({ lastLinkCheckAt: 1, createdAt: -1 }).limit(limit).lean();
+    const results = [];
+    for (const ep of episodes) {
+      const check = await checkOneVideoLink(ep.videoUrl);
+      await Episode.findByIdAndUpdate(ep._id, { linkStatus: check.status, lastLinkCheckAt: new Date() });
+      results.push({ _id: ep._id, title: ep.title, episodeNumber: ep.episodeNumber, videoUrl: ep.videoUrl, ...check });
+    }
+    res.json({ success: true, scanned: results.length, results });
+  } catch (err) { res.status(500).json({ error: err.message || 'Link taraması başarısız.' }); }
+});
+
+app.get('/api/admin/stats', async (req, res) => {
+  try {
+    await connectDB();
+    const [summary, topWatched, topRated, badLinks, latestReports, latestRequests] = await Promise.all([
+      Promise.all([Series.countDocuments(), Series.countDocuments({type:'movie'}), Season.countDocuments(), Episode.countDocuments(), User.countDocuments().catch(()=>0), IssueReport.countDocuments({status:'open'}), ContentRequest.countDocuments({status:'open'})]),
+      WatchProgress.aggregate([{ $group: { _id: '$seriesId', watches: { $sum: 1 }, lastWatchedAt: { $max: '$lastWatchedAt' } } }, { $sort: { watches: -1 } }, { $limit: 8 }, { $lookup: { from: 'series', localField: '_id', foreignField: '_id', as: 'series' } }, { $unwind: '$series' }, { $project: { watches: 1, lastWatchedAt: 1, title: '$series.title', poster: '$series.poster', type: '$series.type' } }]).catch(()=>[]),
+      Series.find().sort({ rating: -1, createdAt: -1 }).limit(8).select('title rating type poster releaseYear').lean(),
+      Episode.countDocuments({ linkStatus: { $in: ['broken','access_denied','empty'] } }).catch(()=>0),
+      IssueReport.find({ status: 'open' }).sort({ createdAt: -1 }).limit(5).lean(),
+      ContentRequest.find({ status: 'open' }).sort({ voteCount: -1, createdAt: -1 }).limit(5).lean()
+    ]);
+    const [totalSeries, totalMovies, totalSeasons, totalEpisodes, totalUsers, openReports, openRequests] = summary;
+    res.json({ totalSeries, totalMovies, totalSeasons, totalEpisodes, totalUsers, openReports, openRequests, badLinks, topWatched, topRated, latestReports, latestRequests });
+  } catch (err) { res.status(500).json({ error: 'İstatistikler yüklenemedi.' }); }
+});
+
+app.post('/api/admin/security-log', async (req, res) => {
+  try {
+    await connectDB();
+    const doc = await AdminLog.create({
+      action: String(req.body.action || 'admin_event').slice(0, 80),
+      detail: String(req.body.detail || '').slice(0, 800),
+      ip: String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '').slice(0, 120),
+      userAgent: String(req.headers['user-agent'] || '').slice(0, 400)
+    });
+    res.status(201).json({ success: true, log: doc });
+  } catch (err) { res.json({ success: false }); }
+});
+
+app.get('/api/admin/security-log', async (req, res) => {
+  try { await connectDB(); res.json(await AdminLog.find().sort({ createdAt: -1 }).limit(100).lean()); }
+  catch (err) { res.status(500).json({ error: 'Güvenlik kayıtları yüklenemedi.' }); }
+});
+
 
 app.get('/api/admin/summary', async (req, res) => {
   try {
@@ -458,7 +562,7 @@ app.get("/api/series/:id", async (req, res) => {
 // Seri ekle
 app.post("/api/series", async (req, res) => {
   try {
-    const { title, description, description_tr, description_ar, poster, banner, categories = [], releaseYear, rating, type, videoUrl, duration, tmdbId, tmdbType, originalTitle, trailerUrl, cast, tmdbPoster, tmdbBackdrop } = req.body;
+    const { title, description, description_tr, description_ar, poster, banner, categories = [], releaseYear, rating, type, videoUrl, duration, tmdbId, tmdbType, originalTitle, trailerUrl, cast, tmdbPoster, tmdbBackdrop, qualitySources } = req.body;
 
     // If content is marked as 'yerli' (local), ensure it belongs to the "Yerli Diziler" category
     const cats = Array.isArray(categories) ? categories.slice() : (typeof categories === 'string' ? categories.split(',').map(c=>c.trim()).filter(Boolean) : []);
@@ -487,6 +591,7 @@ app.post("/api/series", async (req, res) => {
         description: description || description_tr || description_ar || '',
         videoUrl: videoUrl,
         duration: duration || 0,
+        qualitySources: cleanQualitySources(qualitySources),
         subtitles: []
       });
       await episode.save();
@@ -614,8 +719,8 @@ app.get("/api/episode/:id", async (req, res) => {
 
 app.post("/api/episodes", async (req, res) => {
   try {
-    const { seasonId, seriesId, episodeNumber, title, description, videoUrl, duration, thumbnail } = req.body;
-    const newEpisode = new Episode({ seasonId, seriesId, episodeNumber, title, description, videoUrl, duration, thumbnail, subtitles: [] });
+    const { seasonId, seriesId, episodeNumber, title, description, videoUrl, duration, thumbnail, qualitySources } = req.body;
+    const newEpisode = new Episode({ seasonId, seriesId, episodeNumber, title, description, videoUrl, duration, thumbnail, qualitySources: cleanQualitySources(qualitySources), subtitles: [] });
     const saved = await newEpisode.save();
     res.status(201).json(saved);
   } catch (err) {
@@ -639,7 +744,9 @@ app.post("/api/episodes/:id/subtitle", async (req, res) => {
 
 app.put("/api/episodes/:id", async (req, res) => {
   try {
-    const updated = await Episode.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const body = { ...req.body };
+    if (body.qualitySources !== undefined) body.qualitySources = cleanQualitySources(body.qualitySources);
+    const updated = await Episode.findByIdAndUpdate(req.params.id, body, { new: true });
     res.json(updated);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -730,6 +837,29 @@ app.get("/api/progress/:userId/:episodeId", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: 'İzleme geçmişi yüklenemedi.' });
   }
+});
+
+
+
+// ═══════════════════════════════════════════════════════════
+// API ENDPOINTS — KİŞİSEL ÖNERİLER
+// ═══════════════════════════════════════════════════════════
+app.get('/api/recommendations/:userId', async (req, res) => {
+  try {
+    await connectDB();
+    const userId = String(req.params.userId || req.query.userId || 'guest');
+    const progress = await WatchProgress.find({ userId, seriesId: { $ne: null } }).sort({ lastWatchedAt: -1 }).limit(40).populate('seriesId').lean().catch(() => []);
+    const watchedIds = new Set(progress.map(p => String(p.seriesId?._id || p.seriesId)).filter(Boolean));
+    const categories = [];
+    progress.forEach(p => (p.seriesId?.categories || []).forEach(c => categories.push(c)));
+    const categoryFilter = categories.length ? { categories: { $in: categories } } : {};
+    let items = await Series.find({ _id: { $nin: Array.from(watchedIds) }, ...categoryFilter }).sort({ rating: -1, createdAt: -1 }).limit(12).lean();
+    if (items.length < 8) {
+      const more = await Series.find({ _id: { $nin: [...Array.from(watchedIds), ...items.map(x => String(x._id))] } }).sort({ rating: -1, createdAt: -1 }).limit(12 - items.length).lean();
+      items = items.concat(more);
+    }
+    res.json(items);
+  } catch (err) { res.json([]); }
 });
 
 // ═══════════════════════════════════════════════════════════
@@ -1171,12 +1301,40 @@ app.post('/api/content-requests', async (req, res) => {
       userId: String(userId || ''),
       userName: String(userName || '').slice(0, 120),
       userEmail: String(userEmail || '').slice(0, 180),
-      voteCount: 1
+      voteCount: 1,
+      voterIds: [String(userId || userEmail || cleanTitle).slice(0, 120)]
     });
     res.status(201).json({ success: true, request: doc, message: 'İstek gönderildi' });
   } catch (err) {
     res.status(500).json({ error: 'İstek gönderilemedi.' });
   }
+});
+
+
+
+app.get('/api/content-requests/public', async (req, res) => {
+  try {
+    await connectDB();
+    const docs = await ContentRequest.find({ status: 'open' }).sort({ voteCount: -1, createdAt: -1 }).limit(20).select('title requestType releaseYear note voteCount status createdAt').lean();
+    res.json(docs);
+  } catch (err) { res.json([]); }
+});
+
+app.post('/api/content-requests/:id/vote', async (req, res) => {
+  try {
+    await connectDB();
+    if (!isValidObjectId(req.params.id)) return res.status(400).json({ error: 'Geçersiz istek.' });
+    const voter = String(getUserIdFromReq(req) || req.body.userId || req.headers['x-forwarded-for'] || 'guest').slice(0, 120);
+    const doc = await ContentRequest.findById(req.params.id);
+    if (!doc) return res.status(404).json({ error: 'İstek bulunamadı.' });
+    doc.voterIds = Array.isArray(doc.voterIds) ? doc.voterIds : [];
+    if (!doc.voterIds.includes(voter)) {
+      doc.voterIds.push(voter);
+      doc.voteCount = Number(doc.voteCount || 0) + 1;
+      await doc.save();
+    }
+    res.json({ success: true, voteCount: doc.voteCount, request: doc });
+  } catch (err) { res.status(500).json({ error: 'Oy verilemedi.' }); }
 });
 
 app.get('/api/content-requests', async (req, res) => {
@@ -1193,10 +1351,13 @@ app.get('/api/content-requests', async (req, res) => {
 app.patch('/api/content-requests/:id', async (req, res) => {
   try {
     if (!isValidObjectId(req.params.id)) return res.status(400).json({ error: 'Geçersiz istek.' });
-    const status = req.body.status === 'done' ? 'done' : 'open';
+    const status = ['open','done','rejected'].includes(req.body.status) ? req.body.status : 'open';
     const update = { status };
     if (status === 'done') update.completedAt = new Date();
     const doc = await ContentRequest.findByIdAndUpdate(req.params.id, update, { new: true });
+    if (doc && status === 'done') {
+      await Announcement.create({ title: 'İstek eklendi', message: `${doc.title} artık QasimFlix'te.`, level: 'success', isActive: true }).catch(() => {});
+    }
     res.json(doc);
   } catch (err) {
     res.status(500).json({ error: 'İstek güncellenemedi.' });

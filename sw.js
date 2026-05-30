@@ -1,7 +1,7 @@
-const CACHE_NAME = 'qasimflix-v1.0.3-pro-features';
+const CACHE_NAME = 'qasimflix-v1.0.4-smart-features';
 const STATIC = [
-  '/', '/index.html', '/auth.html', '/offline.html', '/style.css', '/qf-apk.css', '/qf-apk.js', '/qf-player-apk.js',
-  '/app.js', '/admin.js', '/player.html', '/manifest.json', '/version.json', '/favicon.svg',
+  '/', '/index.html', '/auth.html', '/offline.html', '/style.css', '/qf-enhancements.css', '/qf-smart-features.css', '/qf-apk.css', '/qf-apk.js', '/qf-player-apk.js',
+  '/app.js', '/qf-enhancements.js', '/qf-public-pro-tools.js', '/qf-smart-public.js', '/admin.js', '/qf-admin-enhancements.js', '/qf-admin-pro-tools.js', '/qf-smart-admin.js', '/player.html', '/manifest.json', '/version.json', '/favicon.svg',
   '/assets/icons/icon-48.png', '/assets/icons/icon-72.png', '/assets/icons/icon-96.png', '/assets/icons/icon-144.png',
   '/assets/icons/icon-192.png', '/assets/icons/icon-512.png', '/assets/icons/maskable-512.png'
 ];
