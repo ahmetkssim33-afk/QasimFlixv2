@@ -1578,7 +1578,7 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
     if (Notification.permission === 'granted') {
       new Notification(payload.notification?.title || 'QasimFlix', {
         body: payload.notification?.body || 'Yeni içerik eklendi',
-        icon: '/icons/icon-192.png',
+        icon: '/assets/icons/icon-192.png',
         data: { url: payload.data?.url || '/' }
       });
     }

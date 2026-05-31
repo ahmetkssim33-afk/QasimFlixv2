@@ -67,7 +67,7 @@ const upload = multer({
 app.use('/uploads', express.static(uploadsDir));
 // Use shared DB connector and centralized models
 const { connectDB } = require('./lib/db');
-const { Series, Season, Episode, WatchProgress, Category, Film, User, Rating, Analytics, EmailLog, ContentRequest, IssueReport, Announcement, AdminLog } = require('./lib/models');
+const { Series, Season, Episode, WatchProgress, Category, Film, User, Rating, Analytics, EmailLog, ContentRequest, IssueReport, PushSubscription, Announcement, AdminLog } = require('./lib/models');
 
 // ───────────────────────────────────────────────────────────
 // ADMIN SECURITY — local server için de Vercel API ile aynı koruma
@@ -328,18 +328,26 @@ app.post('/api/link-check', async (req, res) => {
 app.get('/api/admin/summary', async (req, res) => {
   try {
     await connectDB();
-    const [totalSeries, totalMovies, totalSeasons, totalEpisodes, totalUsers, openReports, openRequests, lastContent, topReported] = await Promise.all([
+    const activeCutoff = new Date(Date.now() - 15 * 60 * 1000);
+    const dailyCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const [totalSeries, totalMovies, totalSeasons, totalEpisodes, totalUsers, activeUsers, newUsersToday, activeUsersToday, totalWatches, totalPushSubscribers, activePushSubscribers, openReports, openRequests, lastContent, topReported] = await Promise.all([
       Series.countDocuments({ type: { $ne: 'movie' } }),
       Series.countDocuments({ type: 'movie' }),
       Season.countDocuments(),
       Episode.countDocuments(),
       User.countDocuments().catch(() => 0),
+      User.countDocuments({ $or: [{ lastActiveAt: { $gte: activeCutoff } }, { lastLoginAt: { $gte: activeCutoff } }] }).catch(() => 0),
+      User.countDocuments({ createdAt: { $gte: dailyCutoff } }).catch(() => 0),
+      User.countDocuments({ $or: [{ lastActiveAt: { $gte: dailyCutoff } }, { lastLoginAt: { $gte: dailyCutoff } }] }).catch(() => 0),
+      WatchProgress.countDocuments().catch(() => 0),
+      PushSubscription.countDocuments().catch(() => 0),
+      PushSubscription.countDocuments({ lastSeenAt: { $gte: dailyCutoff } }).catch(() => 0),
       IssueReport.countDocuments({ status: 'open' }),
       ContentRequest.countDocuments({ status: 'open' }),
       Series.find().sort({ createdAt: -1 }).limit(6).select('title type poster releaseYear rating createdAt').lean(),
       IssueReport.aggregate([{ $match: { contentTitle: { $ne: null } } }, { $group: { _id: '$contentTitle', count: { $sum: 1 } } }, { $sort: { count: -1 } }, { $limit: 5 }]).catch(() => [])
     ]);
-    res.json({ totalSeries, totalMovies, totalSeasons, totalEpisodes, totalUsers, openReports, openRequests, lastContent, topReported });
+    res.json({ totalSeries, totalMovies, totalSeasons, totalEpisodes, totalUsers, activeUsers, newUsersToday, activeUsersToday, totalWatches, totalPushSubscribers, activePushSubscribers, openReports, openRequests, lastContent, topReported, generatedAt: new Date().toISOString() });
   } catch (err) { res.status(500).json({ error: 'Özet yüklenemedi.' }); }
 });
 
@@ -929,7 +937,7 @@ app.post('/api/auth/register', async (req, res) => {
     const exists = await User.findOne({ email });
     if (exists) return res.status(400).json({ error: 'Email already registered', message: 'Bu e-posta zaten kayıtlı' });
     const hash = await bcrypt.hash(password, 10);
-    const user = new User({ email, passwordHash: hash, name: displayName });
+    const user = new User({ email, passwordHash: hash, name: displayName, lastLoginAt: new Date(), lastActiveAt: new Date() });
     await user.save();
     const secret = ensureJwtConfigured(res);
     if (!secret) return;
@@ -949,6 +957,9 @@ app.post('/api/auth/login', async (req, res) => {
     if (!user) return res.status(401).json({ error: 'Invalid credentials', message: 'Invalid credentials' });
     const ok = await bcrypt.compare(password, user.passwordHash);
     if (!ok) return res.status(401).json({ error: 'Invalid credentials', message: 'Invalid credentials' });
+    user.lastLoginAt = new Date();
+    user.lastActiveAt = new Date();
+    await user.save();
     const secret = ensureJwtConfigured(res);
     if (!secret) return;
     const token = signUserToken(user);
@@ -1005,7 +1016,7 @@ app.get('/api/auth/me', async (req, res) => {
   try {
     const userId = getUserIdFromReq(req);
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-    const user = await User.findById(userId).select('-passwordHash');
+    const user = await User.findByIdAndUpdate(userId, { lastActiveAt: new Date() }, { new: true }).select('-passwordHash');
     res.json(user);
   } catch (err) {
     res.status(500).json({ error: err.message });

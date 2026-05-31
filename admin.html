@@ -843,6 +843,26 @@ select{
             <div class="stat-value" id="stat-movies">—</div>
             <div class="stat-sub" data-i18n="stat.sub_movies">film kataloğu</div>
           </div>
+          <div class="stat-card">
+            <div class="stat-label" data-i18n="stat.users">Kayıtlı Hesap</div>
+            <div class="stat-value" id="stat-users">—</div>
+            <div class="stat-sub" data-i18n="stat.sub_users">toplam kayıtlı kullanıcı</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label" data-i18n="stat.active_users">Aktif Kullanıcı</div>
+            <div class="stat-value" id="stat-active-users">—</div>
+            <div class="stat-sub" data-i18n="stat.sub_active_users">son 15 dakika</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label" data-i18n="stat.new_today">Bugün Kayıt</div>
+            <div class="stat-value" id="stat-new-users-today">—</div>
+            <div class="stat-sub" data-i18n="stat.sub_new_today">son 24 saat</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label" data-i18n="stat.watches">İzleme Kaydı</div>
+            <div class="stat-value" id="stat-watches">—</div>
+            <div class="stat-sub" data-i18n="stat.sub_watches">devam/favori hareketleri</div>
+          </div>
           <div class="stat-card alert" onclick="navigate(document.querySelector('[data-view=reports]'),'reports')" style="cursor:pointer">
             <div class="stat-label" data-i18n="stat.reports">Açık Rapor</div>
             <div class="stat-value" id="stat-reports">0</div>
@@ -1175,6 +1195,20 @@ const ADMIN_I18N = {
     'stat.seasons':'Toplam Sezon',
     'stat.episodes':'Toplam Bölüm',
     'stat.movies':'Film',
+    'stat.users':'Kayıtlı Hesap',
+    'stat.active_users':'Aktif Kullanıcı',
+    'stat.new_today':'Bugün Kayıt',
+    'stat.watches':'İzleme Kaydı',
+    'stat.sub_series':'içerik tanımlandı',
+    'stat.sub_seasons':'sezon eklendi',
+    'stat.sub_episodes':'izlenebilir içerik',
+    'stat.sub_movies':'film kataloğu',
+    'stat.sub_users':'toplam kayıtlı kullanıcı',
+    'stat.sub_active_users':'son 15 dakika',
+    'stat.sub_new_today':'son 24 saat',
+    'stat.sub_watches':'devam/favori hareketleri',
+    'stat.reports':'Açık Rapor',
+    'stat.sub_reports':'kullanıcı bildirimi',
     'form.new_series':'Yeni Seri Ekle',
     'form.new_season':'Yeni Sezon Ekle',
     'form.new_episode':'Yeni Bölüm Ekle',
@@ -1242,6 +1276,20 @@ const ADMIN_I18N = {
     'stat.seasons':'إجمالي المواسم',
     'stat.episodes':'إجمالي الحلقات',
     'stat.movies':'أفلام',
+    'stat.users':'الحسابات المسجلة',
+    'stat.active_users':'المستخدمون النشطون',
+    'stat.new_today':'تسجيلات اليوم',
+    'stat.watches':'سجلات المشاهدة',
+    'stat.sub_series':'تم تعريف المحتوى',
+    'stat.sub_seasons':'تمت إضافة المواسم',
+    'stat.sub_episodes':'محتوى قابل للمشاهدة',
+    'stat.sub_movies':'كتالوج الأفلام',
+    'stat.sub_users':'إجمالي الحسابات المسجلة',
+    'stat.sub_active_users':'آخر 15 دقيقة',
+    'stat.sub_new_today':'آخر 24 ساعة',
+    'stat.sub_watches':'متابعة/مفضلة',
+    'stat.reports':'بلاغات مفتوحة',
+    'stat.sub_reports':'بلاغات المستخدمين',
     'form.new_series':'إضافة مسلسل جديد',
     'form.new_season':'إضافة موسم',
     'form.new_episode':'إضافة حلقة',
@@ -1631,11 +1679,40 @@ function refreshAll() {
 // ═══════════════════════════════════════════════════════════════
 async function loadDashboard() {
   const movies = allSeries.filter(s => s.type === 'movie').length;
-  document.getElementById('stat-series').textContent  = allSeries.length;
-  document.getElementById('stat-movies').textContent  = movies;
-  if (document.getElementById('stat-reports')) refreshReportBadge();
-  document.getElementById('stat-seasons').textContent = '—';
-  document.getElementById('stat-episodes').textContent= '—';
+  const setStat = (id, value) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = Number.isFinite(Number(value)) ? Number(value).toLocaleString('tr-TR') : (value ?? '—');
+  };
+
+  setStat('stat-series', allSeries.length);
+  setStat('stat-movies', movies);
+  setStat('stat-seasons', '—');
+  setStat('stat-episodes', '—');
+  setStat('stat-users', '—');
+  setStat('stat-active-users', '—');
+  setStat('stat-new-users-today', '—');
+  setStat('stat-watches', '—');
+
+  try {
+    const d = await api('GET', '/admin/summary?_=' + Date.now());
+    setStat('stat-series', (Number(d.totalSeries || 0) + Number(d.totalMovies || 0)));
+    setStat('stat-movies', d.totalMovies || 0);
+    setStat('stat-seasons', d.totalSeasons || 0);
+    setStat('stat-episodes', d.totalEpisodes || 0);
+    setStat('stat-users', d.totalUsers || 0);
+    setStat('stat-active-users', d.activeUsers || 0);
+    setStat('stat-new-users-today', d.newUsersToday || 0);
+    setStat('stat-watches', d.totalWatches || 0);
+    setStat('stat-reports', d.openReports || 0);
+    const nb = document.getElementById('nb-reports');
+    if (nb) {
+      nb.textContent = d.openReports || 0;
+      nb.style.display = d.openReports ? '' : 'none';
+    }
+  } catch (e) {
+    console.warn('Dashboard özet alınamadı:', e.message);
+    if (document.getElementById('stat-reports')) refreshReportBadge();
+  }
 
   // Recent 5
   const recent = [...allSeries].reverse().slice(0,5);
