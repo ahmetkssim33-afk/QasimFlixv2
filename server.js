@@ -9,14 +9,36 @@ require('dotenv').config();
 
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const JWT_SECRET = process.env.JWT_SECRET || 'dev_jwt_secret_change_me';
+const {
+  createCorsOptions,
+  securityHeaders,
+  createRateLimiter,
+  getJwtSecret,
+  getAdminJwtSecret,
+  hasAdminPasswordConfigured,
+  verifyConfiguredAdminPassword,
+  isSafeExternalUrl
+} = require('./lib/security');
 const { isConfigured: isTMDBConfigured, searchTMDB, getTMDBDetails } = require('./lib/tmdb');
 const nodemailer = require('nodemailer');
 
 const app = express();
-app.use(cors());
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(securityHeaders);
+app.use(cors(createCorsOptions()));
+app.use(express.json({ limit: '20mb' }));
+app.use(express.urlencoded({ extended: true, limit: '20mb' }));
+
+const authLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 12, message: 'Çok fazla giriş denemesi. Biraz sonra tekrar deneyin.' });
+const reportLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 10 });
+const strictLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 40 });
+app.use('/api/admin/login', authLimiter);
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/forgot-password', authLimiter);
+app.use('/api/auth/reset-password', authLimiter);
+app.use('/api/reports', reportLimiter);
+app.use('/api/content-requests', reportLimiter);
+app.use('/api/link-check', strictLimiter);
 
 // ═══════════════════════════════════════════════════════════
 // UPLOADS — Multer config
@@ -45,7 +67,119 @@ const upload = multer({
 app.use('/uploads', express.static(uploadsDir));
 // Use shared DB connector and centralized models
 const { connectDB } = require('./lib/db');
-const { Series, Season, Episode, WatchProgress, Category, Film, User, Rating, Analytics, EmailLog, ContentRequest, IssueReport, Announcement } = require('./lib/models');
+const { Series, Season, Episode, WatchProgress, Category, Film, User, Rating, Analytics, EmailLog, ContentRequest, IssueReport, Announcement, AdminLog } = require('./lib/models');
+
+// ───────────────────────────────────────────────────────────
+// ADMIN SECURITY — local server için de Vercel API ile aynı koruma
+// ───────────────────────────────────────────────────────────
+const ADMIN_API_KEY = String(process.env.ADMIN_API_KEY || '');
+const ADMIN_SESSION_TTL = process.env.ADMIN_SESSION_TTL || '12h';
+
+function getRequestIp(req) {
+  return String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown').split(',')[0].trim();
+}
+
+function getBearerToken(req) {
+  const auth = String(req.headers.authorization || '');
+  const match = auth.match(/^Bearer\s+(.+)$/i);
+  return match ? match[1].trim() : '';
+}
+
+function getAdminFromRequest(req) {
+  const token = getBearerToken(req);
+  if (token) {
+    try {
+      const secret = getAdminJwtSecret();
+      if (!secret) return null;
+      const payload = jwt.verify(token, secret);
+      if (payload && payload.role === 'admin') return payload;
+    } catch (_) {}
+  }
+
+  const key = String(req.headers['x-admin-key'] || '').trim();
+  if (ADMIN_API_KEY && key && key === ADMIN_API_KEY) return { role: 'admin', mode: 'api-key' };
+  return null;
+}
+
+function requireAdmin(req, res, next) {
+  const admin = getAdminFromRequest(req);
+  if (!admin) return res.status(401).json({ error: 'Admin yetkisi gerekli. Lütfen admin paneline tekrar giriş yapın.' });
+  req.admin = admin;
+  next();
+}
+
+function pathStarts(path, value) { return String(path || '').startsWith(value); }
+function pathMatches(path, rx) { return rx.test(String(path || '')); }
+
+function shouldRequireAdmin(req) {
+  const method = req.method.toUpperCase();
+  const path = req.path;
+  if (method === 'OPTIONS') return false;
+  if (path === '/api/admin/login') return false;
+  if (pathStarts(path, '/api/admin/')) return true;
+  if (pathStarts(path, '/api/tmdb/')) return true;
+  if (pathStarts(path, '/api/email/')) return true;
+  if (path === '/api/link-check') return true;
+  if (['POST','PUT','PATCH','DELETE'].includes(method) && pathMatches(path, /^\/api\/series(?:\/[^/]+)?$/)) return true;
+  if (['POST','PUT','PATCH','DELETE'].includes(method) && pathMatches(path, /^\/api\/seasons(?:\/[^/]+)?$/)) return true;
+  if (['POST','PUT','PATCH','DELETE'].includes(method) && pathMatches(path, /^\/api\/episodes(?:\/[^/]+)?(?:\/subtitle)?$/)) return true;
+  if (['POST','PUT','PATCH','DELETE'].includes(method) && pathMatches(path, /^\/api\/categories(?:\/[^/]+)?$/)) return true;
+  if (['POST','PUT','PATCH','DELETE'].includes(method) && pathStarts(path, '/api/announcements')) return true;
+  if (method === 'GET' && path === '/api/announcements') return true;
+  if (['GET','PATCH','DELETE'].includes(method) && pathMatches(path, /^\/api\/reports(?:\/[^/]+)?$/)) return true;
+  if (['GET','PATCH','DELETE'].includes(method) && pathMatches(path, /^\/api\/content-requests(?:\/[^/]+)?$/)) return true;
+  return false;
+}
+
+async function writeAdminLog(action, req, detail = '') {
+  try {
+    await AdminLog.create({
+      action: String(action || 'admin_event').slice(0, 80),
+      detail: String(detail || '').slice(0, 800),
+      ip: getRequestIp(req).slice(0, 120),
+      userAgent: String(req.headers['user-agent'] || '').slice(0, 400)
+    });
+  } catch (_) {}
+}
+
+app.post('/api/admin/login', async (req, res) => {
+  try {
+    await connectDB();
+    if (!hasAdminPasswordConfigured() || !getAdminJwtSecret()) {
+      await writeAdminLog('admin_login_config_error', req, 'ADMIN_PASSWORD/ADMIN_JWT_SECRET eksik');
+      return res.status(500).json({ error: 'Admin güvenlik ayarları eksik. Environment Variables içinde ADMIN_PASSWORD ve ADMIN_JWT_SECRET tanımlayın.' });
+    }
+    const ok = await verifyConfiguredAdminPassword(req.body?.password);
+    if (!ok) {
+      await writeAdminLog('admin_login_failed', req, 'Hatalı admin şifresi');
+      return res.status(401).json({ error: 'Hatalı admin şifresi.' });
+    }
+    const token = jwt.sign({ role: 'admin', mode: 'panel' }, getAdminJwtSecret(), { expiresIn: ADMIN_SESSION_TTL });
+    await writeAdminLog('admin_login_success', req, 'Admin panel girişi');
+    res.json({ success: true, token, expiresIn: ADMIN_SESSION_TTL });
+  } catch (err) {
+    res.status(500).json({ error: 'Admin girişi yapılamadı.' });
+  }
+});
+
+app.use((req, res, next) => {
+  if (!shouldRequireAdmin(req)) return next();
+  return requireAdmin(req, res, next);
+});
+
+function ensureJwtConfigured(res) {
+  const secret = getJwtSecret();
+  if (!secret) {
+    res.status(500).json({ error: 'JWT_SECRET eksik. Environment Variables içinde tanımlayın.' });
+    return '';
+  }
+  return secret;
+}
+
+function signUserToken(user) {
+  return jwt.sign({ id: user._id, email: user.email }, getJwtSecret(), { expiresIn: '30d' });
+}
+
 
 // Helper: try to extract user id from Authorization header (Bearer token)
 function getUserIdFromReq(req) {
@@ -54,7 +188,9 @@ function getUserIdFromReq(req) {
     if (!auth) return null;
     const parts = auth.split(' ');
     if (parts.length !== 2) return null;
-    const payload = jwt.verify(parts[1], JWT_SECRET);
+    const secret = getJwtSecret();
+    if (!secret) return null;
+    const payload = jwt.verify(parts[1], secret);
     return payload && (payload.id || payload._id || payload.userId) ? String(payload.id || payload._id || payload.userId) : null;
   } catch (e) {
     return null;
@@ -167,7 +303,8 @@ function normalizeCheckUrl(rawUrl = '') {
 async function checkOneVideoLink(rawUrl = '') {
   const url = normalizeCheckUrl(rawUrl);
   if (!url) return { status: 'empty', ok: false, message: 'Link boş.' };
-  if (!/^https?:\/\//i.test(url)) return { status: 'broken', ok: false, message: 'Geçersiz link.' };
+  const safe = isSafeExternalUrl(url, { allowHttp: false });
+  if (!safe.ok) return { status: 'broken', ok: false, message: safe.reason || 'Geçersiz link.' };
   try {
     const signal = AbortSignal.timeout ? AbortSignal.timeout(8500) : undefined;
     let response = await fetch(url, { method: 'HEAD', redirect: 'follow', signal, headers: { 'User-Agent': 'QasimFlixLinkCheck/1.0' } }).catch(async () => null);
@@ -794,7 +931,9 @@ app.post('/api/auth/register', async (req, res) => {
     const hash = await bcrypt.hash(password, 10);
     const user = new User({ email, passwordHash: hash, name: displayName });
     await user.save();
-    const token = jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
+    const secret = ensureJwtConfigured(res);
+    if (!secret) return;
+    const token = signUserToken(user);
     res.json({ token, user: { _id: user._id, email: user.email, name: user.name } });
   } catch (err) {
     res.status(500).json({ error: err.message, message: err.message });
@@ -810,7 +949,9 @@ app.post('/api/auth/login', async (req, res) => {
     if (!user) return res.status(401).json({ error: 'Invalid credentials', message: 'Invalid credentials' });
     const ok = await bcrypt.compare(password, user.passwordHash);
     if (!ok) return res.status(401).json({ error: 'Invalid credentials', message: 'Invalid credentials' });
-    const token = jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
+    const secret = ensureJwtConfigured(res);
+    if (!secret) return;
+    const token = signUserToken(user);
     res.json({ token, user: { _id: user._id, email: user.email, name: user.name } });
   } catch (err) {
     res.status(500).json({ error: err.message, message: err.message });
@@ -824,7 +965,9 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     if (!email) return res.status(400).json({ error: 'Email required', message: 'E-posta gerekli' });
     const user = await User.findOne({ email });
     if (user) {
-      const token = jwt.sign({ id: user._id, action: 'reset' }, JWT_SECRET, { expiresIn: '1h' });
+      const secret = ensureJwtConfigured(res);
+      if (!secret) return;
+      const token = jwt.sign({ id: user._id, action: 'reset' }, secret, { expiresIn: '1h' });
       // Send reset email if possible (falls back to console.log)
       await sendResetEmail(email, token);
     }
@@ -842,7 +985,11 @@ app.post('/api/auth/reset-password', async (req, res) => {
     if (passwordConfirm && password !== passwordConfirm) return res.status(400).json({ error: 'Passwords do not match', message: 'Şifreler eşleşmiyor' });
     if (password.length < 6) return res.status(400).json({ error: 'Password too short', message: 'Şifre en az 6 karakter olmalıdır' });
     let payload;
-    try { payload = jwt.verify(token, JWT_SECRET); } catch (e) { return res.status(400).json({ error: 'Invalid or expired token', message: 'Geçersiz veya süresi dolmuş token' }); }
+    try {
+      const secret = ensureJwtConfigured(res);
+      if (!secret) return;
+      payload = jwt.verify(token, secret);
+    } catch (e) { return res.status(400).json({ error: 'Invalid or expired token', message: 'Geçersiz veya süresi dolmuş token' }); }
     const user = await User.findById(payload.id);
     if (!user) return res.status(404).json({ error: 'User not found', message: 'Kullanıcı bulunamadı' });
     user.passwordHash = await bcrypt.hash(password, 10);

@@ -1,13 +1,15 @@
 {
-  "name": "streaming-platform",
+  "name": "qasimflix",
   "version": "1.0.0",
-  "description": "Netflix-like streaming platform",
+  "description": "QasimFlix film ve dizi izleme platformu",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
     "check": "node --check api/index.js && node --check server.js && node --check app.js && node --check admin.js",
-    "vercel-check": "node -e \"require('./api/index.js'); console.log('API require OK')\""
+    "vercel-check": "node -e \"require('./api/index.js'); console.log('API require OK')\"",
+    "production-check": "node scripts/production-check.js",
+    "full-check": "npm run check && npm run vercel-check && npm run production-check"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

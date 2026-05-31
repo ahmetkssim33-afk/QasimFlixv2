@@ -87,7 +87,7 @@ public class MainActivity extends android.app.Activity {
         s.setAllowContentAccess(true);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
-        WebView.setWebContentsDebuggingEnabled(true);
+        WebView.setWebContentsDebuggingEnabled(false);
         webView.getSettings().setUserAgentString(webView.getSettings().getUserAgentString() + " QasimFlixAPK/1.0.6");
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);

@@ -26,7 +26,7 @@ Korunan işlemler:
 - Link tarama paneli
 - Admin güvenlik kayıtları
 
-> Önemli: `ADMIN_PASSWORD` ayarlanmazsa eski kullanım bozulmasın diye varsayılan `admin123` çalışır. Canlı sitede mutlaka değiştir.
+> Önemli: Canlı sürümde varsayılan admin şifresi yoktur. `ADMIN_PASSWORD` veya `ADMIN_PASSWORD_HASH` eksikse admin girişi güvenli şekilde durur.
 
 Vercel > Settings > Environment Variables içine ekle:
 
@@ -44,7 +44,7 @@ ADMIN_PASSWORD_HASH=bcrypt_hash_değeri
 
 ### 2. Admin frontend güncellendi
 
-`admin.html` artık sadece frontend içinde `admin123` kontrolü yapmıyor. Şifre backend'e gider, backend token döndürür, sonraki admin API istekleri `Authorization: Bearer ...` ile yapılır.
+`admin.html` artık frontend içinde sabit şifre kontrolü yapmıyor. Şifre backend'e gider, backend token döndürür, sonraki admin API istekleri `Authorization: Bearer ...` ile yapılır.
 
 ### 3. APK/WebView bridge eklendi
 

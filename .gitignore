@@ -8,3 +8,11 @@ build/
 uploads/
 *.zip
 .DS_Store
+*.local
+.env.*
+!.env.example
+coverage/
+.vercel/
+Thumbs.db
+db
+db.js/db

@@ -8,7 +8,16 @@ const cors = require("cors");
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
-const JWT_SECRET = process.env.JWT_SECRET || 'dev_jwt_secret_change_me';
+const {
+  createCorsOptions,
+  securityHeaders,
+  createRateLimiter,
+  getJwtSecret,
+  getAdminJwtSecret,
+  hasAdminPasswordConfigured,
+  verifyConfiguredAdminPassword,
+  isSafeExternalUrl
+} = require('../lib/security');
 const { isConfigured: isTMDBConfigured, searchTMDB, getTMDBDetails } = require('../lib/tmdb');
 
 const app = express();
@@ -16,13 +25,24 @@ const app = express();
 // ───────────────────────────────────────────────────────────
 // MIDDLEWARE
 // ───────────────────────────────────────────────────────────
-app.use(cors({
-  origin: "*",
-  methods: ["GET","POST","PUT","PATCH","DELETE"],
-  allowedHeaders: ["Content-Type", "Authorization", "x-admin-key"]
-}));
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+app.use(securityHeaders);
+app.use(cors(createCorsOptions()));
+app.use(express.json({ limit: "20mb" }));
+app.use(express.urlencoded({ extended: true, limit: "20mb" }));
+
+const strictLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 40 });
+const authLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 12, message: 'Çok fazla giriş denemesi. Biraz sonra tekrar deneyin.' });
+const reportLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 10 });
+
+app.use('/api/admin/login', authLimiter);
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/forgot-password', authLimiter);
+app.use('/api/auth/reset-password', authLimiter);
+app.use('/api/reports', reportLimiter);
+app.use('/api/content-requests', reportLimiter);
+app.use('/api/link-check', strictLimiter);
+app.use('/api/video-proxy', createRateLimiter({ windowMs: 60 * 1000, max: 120 }));
 
 // Use shared DB connector & centralized models
 const { connectDB } = require('../lib/db');
@@ -31,12 +51,9 @@ const { Series, Season, Episode, WatchProgress, Category, Film, User, Rating, An
 
 // ───────────────────────────────────────────────────────────
 // ADMIN SECURITY — panel ve kritik API işlemleri artık token ister
-// Vercel Environment Variables içine mutlaka ADMIN_PASSWORD ve güçlü JWT_SECRET ekleyin.
-// Geriye uyumluluk için ADMIN_PASSWORD yoksa admin123 çalışır, ancak production için güvenli değildir.
+// Vercel Environment Variables içine ADMIN_PASSWORD, JWT_SECRET ve ADMIN_JWT_SECRET eklenmelidir.
+// Canlı ortamda varsayılan admin/JWT fallback yoktur; eksik ayar varsa işlem güvenli şekilde durur.
 // ───────────────────────────────────────────────────────────
-const ADMIN_JWT_SECRET = process.env.ADMIN_JWT_SECRET || JWT_SECRET;
-const ADMIN_PASSWORD_PLAIN = String(process.env.ADMIN_PASSWORD || process.env.ADMIN_PASS || 'admin123');
-const ADMIN_PASSWORD_HASH = String(process.env.ADMIN_PASSWORD_HASH || '');
 const ADMIN_API_KEY = String(process.env.ADMIN_API_KEY || '');
 const ADMIN_SESSION_TTL = process.env.ADMIN_SESSION_TTL || '12h';
 const adminLoginAttempts = new Map();
@@ -52,17 +69,16 @@ function getBearerToken(req) {
 }
 
 async function verifyAdminPassword(password) {
-  const value = String(password || '');
-  if (!value) return false;
-  if (ADMIN_PASSWORD_HASH) return bcrypt.compare(value, ADMIN_PASSWORD_HASH);
-  return value === ADMIN_PASSWORD_PLAIN;
+  return verifyConfiguredAdminPassword(password);
 }
 
 function getAdminFromRequest(req) {
   const token = getBearerToken(req);
   if (token) {
     try {
-      const payload = jwt.verify(token, ADMIN_JWT_SECRET);
+      const adminSecret = getAdminJwtSecret();
+      if (!adminSecret) return null;
+      const payload = jwt.verify(token, adminSecret);
       if (payload && payload.role === 'admin') return payload;
     } catch (_) {}
   }
@@ -91,6 +107,7 @@ function shouldRequireAdmin(req) {
   if (pathStarts(path, '/api/admin/')) return true;
   if (pathStarts(path, '/api/tmdb/')) return true;
   if (pathStarts(path, '/api/email/')) return true;
+  if (path === '/api/link-check') return true;
 
   // Yönetim içerik işlemleri
   if (['POST','PUT','PATCH','DELETE'].includes(method) && pathMatches(path, /^\/api\/series(?:\/[^/]+)?$/)) return true;
@@ -124,6 +141,11 @@ app.post('/api/admin/login', async (req, res) => {
     if (current.resetAt < now) { current.count = 0; current.resetAt = now + 15 * 60 * 1000; }
     if (current.count >= 8) return res.status(429).json({ error: 'Çok fazla hatalı deneme. Biraz sonra tekrar deneyin.' });
 
+    if (!hasAdminPasswordConfigured() || !getAdminJwtSecret()) {
+      await writeAdminLog('admin_login_config_error', req, 'ADMIN_PASSWORD/ADMIN_JWT_SECRET eksik');
+      return res.status(500).json({ error: 'Admin güvenlik ayarları eksik. Vercel Environment Variables içinde ADMIN_PASSWORD ve ADMIN_JWT_SECRET tanımlayın.' });
+    }
+
     const ok = await verifyAdminPassword(req.body?.password);
     if (!ok) {
       current.count += 1;
@@ -133,13 +155,12 @@ app.post('/api/admin/login', async (req, res) => {
     }
 
     adminLoginAttempts.delete(ip);
-    const token = jwt.sign({ role: 'admin', mode: 'panel' }, ADMIN_JWT_SECRET, { expiresIn: ADMIN_SESSION_TTL });
+    const token = jwt.sign({ role: 'admin', mode: 'panel' }, getAdminJwtSecret(), { expiresIn: ADMIN_SESSION_TTL });
     await writeAdminLog('admin_login_success', req, 'Admin panel girişi');
     res.json({
       success: true,
       token,
-      expiresIn: ADMIN_SESSION_TTL,
-      warning: (!process.env.ADMIN_PASSWORD && !process.env.ADMIN_PASSWORD_HASH) ? 'Varsayılan admin123 kullanılıyor. Vercel Environment Variables içinde ADMIN_PASSWORD ayarlayın.' : ''
+      expiresIn: ADMIN_SESSION_TTL
     });
   } catch (err) {
     res.status(500).json({ error: 'Admin girişi yapılamadı.' });
@@ -223,7 +244,8 @@ function normalizeCheckUrl(rawUrl = '') {
 async function checkOneVideoLink(rawUrl = '') {
   const url = normalizeCheckUrl(rawUrl);
   if (!url) return { status: 'empty', ok: false, message: 'Link boş.' };
-  if (!/^https?:\/\//i.test(url)) return { status: 'broken', ok: false, message: 'Geçersiz link.' };
+  const safe = isSafeExternalUrl(url, { allowHttp: false });
+  if (!safe.ok) return { status: 'broken', ok: false, message: safe.reason || 'Geçersiz link.' };
   try {
     const signal = AbortSignal.timeout ? AbortSignal.timeout(8500) : undefined;
     let response = await fetch(url, { method: 'HEAD', redirect: 'follow', signal, headers: { 'User-Agent': 'QasimFlixLinkCheck/1.0' } }).catch(async () => null);
@@ -498,8 +520,9 @@ app.get('/api/video-proxy', async (req, res) => {
     if (!rawUrl) return res.status(400).send('Video URL gerekli');
 
     const targetUrl = toDriveDownloadUrl(rawUrl);
-    if (!/^https:\/\//i.test(targetUrl)) {
-      return res.status(400).send('Sadece güvenli HTTPS video linkleri desteklenir');
+    const safe = isSafeExternalUrl(targetUrl, { allowHttp: false });
+    if (!safe.ok) {
+      return res.status(400).send(safe.reason || 'Sadece güvenli HTTPS video linkleri desteklenir');
     }
 
     const headers = {
@@ -1251,7 +1274,9 @@ function getUserIdFromReq(req) {
     if (!auth) return null;
     const parts = auth.split(' ');
     if (parts.length !== 2) return null;
-    const payload = jwt.verify(parts[1], JWT_SECRET);
+    const secret = getJwtSecret();
+    if (!secret) return null;
+    const payload = jwt.verify(parts[1], secret);
     return payload && (payload.id || payload._id || payload.userId) ? String(payload.id || payload._id || payload.userId) : null;
   } catch (e) {
     return null;
@@ -1322,6 +1347,20 @@ app.post('/api/email/notify', async (req, res) => {
   }
 });
 
+
+function ensureJwtConfigured(res) {
+  const secret = getJwtSecret();
+  if (!secret) {
+    res.status(500).json({ error: 'JWT_SECRET eksik. Vercel Environment Variables içinde tanımlayın.' });
+    return '';
+  }
+  return secret;
+}
+
+function signUserToken(user) {
+  return jwt.sign({ id: user._id, email: user.email }, getJwtSecret(), { expiresIn: '30d' });
+}
+
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { email, password, name, username, passwordConfirm } = req.body;
@@ -1334,7 +1373,9 @@ app.post('/api/auth/register', async (req, res) => {
     const hash = await bcrypt.hash(password, 10);
     const user = new User({ email, passwordHash: hash, name: displayName });
     await user.save();
-    const token = jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
+    const secret = ensureJwtConfigured(res);
+    if (!secret) return;
+    const token = signUserToken(user);
     res.json({ token, user: { _id: user._id, email: user.email, name: user.name } });
   } catch (err) {
     res.status(500).json({ error: err.message, message: err.message });
@@ -1349,7 +1390,9 @@ app.post('/api/auth/login', async (req, res) => {
     if (!user) return res.status(401).json({ error: 'Invalid credentials', message: 'Invalid credentials' });
     const ok = await bcrypt.compare(password, user.passwordHash);
     if (!ok) return res.status(401).json({ error: 'Invalid credentials', message: 'Invalid credentials' });
-    const token = jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
+    const secret = ensureJwtConfigured(res);
+    if (!secret) return;
+    const token = signUserToken(user);
     res.json({ token, user: { _id: user._id, email: user.email, name: user.name } });
   } catch (err) {
     res.status(500).json({ error: err.message, message: err.message });
@@ -1366,7 +1409,9 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 
     // Güvenlik için e-posta kayıtlı değilse bile aynı mesajı döndür.
     if (user) {
-      const token = jwt.sign({ id: user._id, action: 'reset-password' }, JWT_SECRET, { expiresIn: '1h' });
+      const secret = ensureJwtConfigured(res);
+      if (!secret) return;
+      const token = jwt.sign({ id: user._id, action: 'reset-password' }, secret, { expiresIn: '1h' });
       user.resetToken = token;
       user.resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000);
       await user.save();
@@ -1392,7 +1437,9 @@ app.post('/api/auth/reset-password', async (req, res) => {
 
     let payload;
     try {
-      payload = jwt.verify(token, JWT_SECRET);
+      const secret = ensureJwtConfigured(res);
+      if (!secret) return;
+      payload = jwt.verify(token, secret);
     } catch (e) {
       return res.status(400).json({ error: 'Invalid or expired token', message: 'Bağlantı geçersiz veya süresi dolmuş.' });
     }

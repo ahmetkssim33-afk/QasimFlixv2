@@ -1,8 +1,8 @@
 {
-  "version": "1.0.4",
-  "build": 2026053002,
+  "version": "1.0.6",
+  "build": 2026053106,
   "apkRequired": false,
-  "message": "Akıllı özellikler eklendi: öneriler, puan/yorum, istek oylama, admin istatistikleri, toplu bölüm ekleme, link tarama ve güvenlik logları.",
+  "message": "Güvenlik sertleştirme, APK sürüm eşitleme, CORS/rate limit ve üretim temizliği güncellendi.",
   "apkUrl": "",
   "notifyUpdates": true,
   "notifyNewContent": true,
