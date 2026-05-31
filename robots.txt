@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://qasim-flixv2-swnm.vercel.app/sitemap.xml

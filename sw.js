@@ -28,12 +28,12 @@ try {
   console.warn('[QasimFlix SW] Firebase Messaging başlatılamadı:', err && err.message ? err.message : err);
 }
 
-const CACHE_NAME = 'qasimflix-v1.0.6-security-apk';
+const CACHE_NAME = 'qasimflix-v1.0.7-production-ready';
 const STATIC = [
   '/', '/index.html', '/auth.html', '/offline.html', '/style.css', '/qf-enhancements.css', '/qf-smart-features.css', '/qf-apk.css', '/qf-apk.js', '/qf-player-apk.js', '/qf-apk-bridge.js', '/qf-player-failsafe.js',
   '/app.js', '/qf-enhancements.js', '/qf-public-pro-tools.js', '/qf-smart-public.js', '/admin.js', '/qf-admin-enhancements.js', '/qf-admin-pro-tools.js', '/qf-smart-admin.js', '/player.html', '/manifest.json', '/version.json', '/favicon.svg',
   '/assets/icons/icon-48.png', '/assets/icons/icon-72.png', '/assets/icons/icon-96.png', '/assets/icons/icon-144.png',
-  '/assets/icons/icon-192.png', '/assets/icons/icon-512.png', '/assets/icons/maskable-512.png'
+  '/assets/icons/icon-192.png', '/assets/icons/icon-512.png', '/assets/icons/maskable-512.png', '/privacy.html', '/terms.html', '/contact.html', '/dmca.html', '/robots.txt'
 ];
 
 self.addEventListener('install', event => {

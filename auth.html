@@ -783,15 +783,32 @@ const firebaseConfig = {
   const auth = getAuth(app);
   const provider = new GoogleAuthProvider();
 
-  function saveGoogleUser(user) {
-    localStorage.setItem("firebaseUid", user.uid);
-    localStorage.setItem("userId", user.uid);
-    localStorage.setItem("userEmail", user.email || "");
-    localStorage.setItem("userName", user.displayName || "Google Kullanıcısı");
-    localStorage.setItem("userPhoto", user.photoURL || "");
-    localStorage.setItem("isLoggedIn", "true");
+  async function saveGoogleUser(user) {
+    const AUTH_API = '/api';
+    const idToken = await user.getIdToken(true);
+    const res = await fetch(`${AUTH_API}/auth/google`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        idToken,
+        name: user.displayName || 'Google Kullanıcısı',
+        profilePicture: user.photoURL || ''
+      })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.token) {
+      throw new Error(data.message || data.error || 'Google giriş sunucuda doğrulanamadı.');
+    }
 
-    window.location.href = "index.html?showProfiles=1";
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('userId', data.user?._id || '');
+    localStorage.setItem('firebaseUid', user.uid);
+    localStorage.setItem('userEmail', data.user?.email || user.email || '');
+    localStorage.setItem('userName', data.user?.name || user.displayName || 'Google Kullanıcısı');
+    localStorage.setItem('userPhoto', data.user?.profilePicture || user.photoURL || '');
+    localStorage.setItem('isLoggedIn', 'true');
+
+    window.location.href = 'index.html?showProfiles=1';
   }
 
   window.loginWithGoogle = async function () {
@@ -806,7 +823,7 @@ const firebaseConfig = {
 
     try {
       const result = await signInWithPopup(auth, provider);
-      saveGoogleUser(result.user);
+      await saveGoogleUser(result.user);
     } catch (error) {
       console.error("Google giriş hatası:", error);
 
@@ -825,7 +842,10 @@ const firebaseConfig = {
   getRedirectResult(auth)
     .then((result) => {
       if (result && result.user) {
-        saveGoogleUser(result.user);
+        saveGoogleUser(result.user).catch((error) => {
+          console.error("Google redirect backend hatası:", error);
+          alert("Google giriş hatası: " + error.message);
+        });
       }
     })
     .catch((error) => {

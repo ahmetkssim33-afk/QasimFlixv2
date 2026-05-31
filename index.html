@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Qasimflix — Dizi & Film İzle</title>
+<meta name="description" content="QasimFlix ile dizi, film ve bölümleri modern arayüzle keşfet. Kaldığın yerden devam et, favorilerine ekle ve yeni içerikleri takip et.">
+<meta name="robots" content="index,follow">
+<meta property="og:title" content="QasimFlix — Dizi & Film İzle">
+<meta property="og:description" content="Dizi ve film izleme platformu QasimFlix.">
+<meta property="og:type" content="website">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#050508">
@@ -1114,6 +1119,19 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
   </div>
 </main>
 
+<footer class="qf-footer" style="padding:28px 4%;border-top:1px solid rgba(255,255,255,.08);color:#aaa;font-size:.85rem;background:rgba(0,0,0,.28)">
+  <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;justify-content:space-between">
+    <span>© 2026 QasimFlix</span>
+    <nav style="display:flex;gap:12px;flex-wrap:wrap">
+      <a href="/privacy.html" style="color:#ddd;text-decoration:none">Gizlilik Politikası</a>
+      <a href="/terms.html" style="color:#ddd;text-decoration:none">Kullanım Şartları</a>
+      <a href="/contact.html" style="color:#ddd;text-decoration:none">İletişim</a>
+      <a href="/dmca.html" style="color:#ddd;text-decoration:none">İçerik Kaldırma</a>
+    </nav>
+  </div>
+</footer>
+
+
 <!-- DETAIL MODAL -->
 <div class="modal" id="detail-modal" onclick="if(event.target===this)closeDetailModal()">
   <div class="modal-box">
@@ -1527,12 +1545,19 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
         return;
       }
 
+      const authToken = localStorage.getItem('token') || window.TOKEN || '';
       await fetch('/api/push/subscribe', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken ? { 'Authorization': 'Bearer ' + authToken } : {})
+        },
+        body: JSON.stringify({
           token,
-          platform: 'web'
+          platform: window.QasimFlixAndroid ? 'apk-webview' : 'web',
+          userId: localStorage.getItem('userId') || window.USER_ID || '',
+          userName: localStorage.getItem('userName') || '',
+          userEmail: localStorage.getItem('userEmail') || ''
         })
       });
 

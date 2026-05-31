@@ -108,6 +108,7 @@ function shouldRequireAdmin(req) {
   if (pathStarts(path, '/api/tmdb/')) return true;
   if (pathStarts(path, '/api/email/')) return true;
   if (path === '/api/link-check') return true;
+  if (path === '/api/push/send') return true;
 
   // Yönetim içerik işlemleri
   if (['POST','PUT','PATCH','DELETE'].includes(method) && pathMatches(path, /^\/api\/series(?:\/[^/]+)?$/)) return true;
@@ -301,6 +302,15 @@ app.post('/api/episodes/bulk', async (req, res) => {
       };
     });
     const created = await Episode.insertMany(docs, { ordered: true });
+    if (process.env.PUSH_ON_NEW_CONTENT !== 'false') {
+      const series = await Series.findById(seriesId).select('title poster tmdbPoster').lean().catch(() => null);
+      await safePush({
+        title: 'Yeni bölüm eklendi',
+        body: `${series?.title || 'QasimFlix'} için ${created.length} yeni bölüm yayında.`,
+        url: `/?content=${seriesId}`,
+        icon: series?.poster || series?.tmdbPoster || '/assets/icons/icon-192.png'
+      });
+    }
     res.status(201).json({ success: true, count: created.length, episodes: created });
   } catch (err) { res.status(500).json({ error: err.message || 'Toplu bölüm eklenemedi.' }); }
 });
@@ -414,6 +424,9 @@ app.post('/api/announcements', async (req, res) => {
     const message = String(req.body.message || '').trim();
     if (!title || !message) return res.status(400).json({ error: 'Başlık ve mesaj zorunlu.' });
     const doc = await Announcement.create({ title: title.slice(0,120), message: message.slice(0,800), level: req.body.level || 'info', isActive: req.body.isActive !== false, startsAt: req.body.startsAt || undefined, endsAt: req.body.endsAt || undefined });
+    if (doc.isActive && process.env.PUSH_ON_ANNOUNCEMENT !== 'false') {
+      doc._pushResult = await safePush({ title: doc.title, body: doc.message, url: '/' });
+    }
     res.status(201).json(doc);
   } catch (err) { res.status(500).json({ error: 'Duyuru eklenemedi.' }); }
 });
@@ -425,6 +438,60 @@ app.delete('/api/announcements/:id', async (req, res) => {
   try { await connectDB(); await Announcement.findByIdAndDelete(req.params.id); res.json({ success: true }); }
   catch (err) { res.status(500).json({ error: 'Duyuru silinemedi.' }); }
 });
+
+
+// ───────────────────────────────────────────────────────────
+// GERÇEK PUSH BİLDİRİM GÖNDERİMİ — opsiyonel FCM server key ile çalışır
+// Vercel Environment Variables içine FIREBASE_SERVER_KEY eklenirse
+// admin panelinden/otomatik içerik eklemeden kayıtlı cihazlara bildirim gider.
+// ───────────────────────────────────────────────────────────
+async function sendQasimPush(payload = {}) {
+  const serverKey = String(process.env.FIREBASE_SERVER_KEY || process.env.FCM_SERVER_KEY || '').trim();
+  if (!serverKey) return { sent: false, configured: false, message: 'FIREBASE_SERVER_KEY ayarlı değil.' };
+
+  const title = String(payload.title || 'QasimFlix').slice(0, 120);
+  const body = String(payload.body || 'Yeni bir güncelleme var.').slice(0, 240);
+  const url = String(payload.url || '/').slice(0, 500);
+  const icon = String(payload.icon || '/assets/icons/icon-192.png').slice(0, 500);
+  const tokens = await PushSubscription.find({ token: { $exists: true, $ne: '' } }).sort({ lastSeenAt: -1 }).limit(1000).select('token').lean();
+  const allTokens = [...new Set(tokens.map(x => String(x.token || '').trim()).filter(Boolean))];
+  if (!allTokens.length) return { sent: false, configured: true, total: 0, message: 'Kayıtlı bildirim cihazı yok.' };
+
+  let success = 0;
+  let failure = 0;
+  const invalidTokens = [];
+  for (let i = 0; i < allTokens.length; i += 500) {
+    const registration_ids = allTokens.slice(i, i + 500);
+    const resp = await fetch('https://fcm.googleapis.com/fcm/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'key=' + serverKey
+      },
+      body: JSON.stringify({
+        registration_ids,
+        priority: 'high',
+        notification: { title, body, icon, click_action: url },
+        data: { title, body, url, icon }
+      })
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(data.error || data.message || 'FCM gönderimi başarısız.');
+    success += Number(data.success || 0);
+    failure += Number(data.failure || 0);
+    (data.results || []).forEach((item, idx) => {
+      const err = item && item.error;
+      if (err === 'NotRegistered' || err === 'InvalidRegistration') invalidTokens.push(registration_ids[idx]);
+    });
+  }
+  if (invalidTokens.length) await PushSubscription.deleteMany({ token: { $in: invalidTokens } }).catch(() => null);
+  return { sent: true, configured: true, total: allTokens.length, success, failure, invalidRemoved: invalidTokens.length };
+}
+
+async function safePush(payload) {
+  try { return await sendQasimPush(payload); }
+  catch (err) { console.warn('Push gönderimi başarısız:', err.message); return { sent: false, error: err.message }; }
+}
 
 // ───────────────────────────────────────────────────────────
 // PUSH TOKEN KAYDI — bildirim izni açılınca FCM token saklar
@@ -451,6 +518,20 @@ app.post('/api/push/subscribe', async (req, res) => {
     res.json({ success: true, id: doc._id });
   } catch (err) {
     res.status(500).json({ error: 'Bildirim token kaydedilemedi.' });
+  }
+});
+
+app.post('/api/push/send', requireAdmin, async (req, res) => {
+  try {
+    await connectDB();
+    const title = String(req.body?.title || 'QasimFlix').trim();
+    const body = String(req.body?.body || req.body?.message || '').trim();
+    if (!body) return res.status(400).json({ error: 'Bildirim mesajı gerekli.' });
+    const result = await sendQasimPush({ title, body, url: req.body?.url || '/', icon: req.body?.icon || '/assets/icons/icon-192.png' });
+    await writeAdminLog('push_send', req, `${title}: ${body}`);
+    res.json({ success: true, result });
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Bildirim gönderilemedi.' });
   }
 });
 
@@ -784,6 +865,15 @@ app.post("/api/series", async (req, res) => {
         subtitles: []
       });
       await episode.save();
+    }
+
+    if (process.env.PUSH_ON_NEW_CONTENT !== 'false') {
+      saved._pushResult = await safePush({
+        title: 'QasimFlix’e yeni içerik eklendi',
+        body: `${saved.title} şimdi yayında.`,
+        url: `/?content=${saved._id}`,
+        icon: saved.poster || saved.tmdbPoster || '/assets/icons/icon-192.png'
+      });
     }
 
     res.status(201).json(saved);
@@ -1357,9 +1447,81 @@ function ensureJwtConfigured(res) {
   return secret;
 }
 
+
+function decodeJwtPart(token, partIndex) {
+  const part = String(token || '').split('.')[partIndex];
+  if (!part) return {};
+  const normalized = part.replace(/-/g, '+').replace(/_/g, '/');
+  return JSON.parse(Buffer.from(normalized, 'base64').toString('utf8'));
+}
+
+let firebaseCertCache = { expiresAt: 0, certs: null };
+async function getFirebaseCert(kid) {
+  const now = Date.now();
+  if (!firebaseCertCache.certs || firebaseCertCache.expiresAt < now) {
+    const resp = await fetch('https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com');
+    if (!resp.ok) throw new Error('Firebase sertifikaları alınamadı.');
+    const cacheControl = resp.headers.get('cache-control') || '';
+    const maxAge = Number((cacheControl.match(/max-age=(\d+)/) || [])[1] || 3600);
+    firebaseCertCache = { certs: await resp.json(), expiresAt: now + Math.max(300, maxAge - 60) * 1000 };
+  }
+  const cert = firebaseCertCache.certs && firebaseCertCache.certs[kid];
+  if (!cert) throw new Error('Firebase token sertifikası bulunamadı.');
+  return cert;
+}
+
+async function verifyFirebaseIdToken(idToken) {
+  const projectId = String(process.env.FIREBASE_PROJECT_ID || 'qasimflix-8ba04').trim();
+  if (!projectId) throw new Error('FIREBASE_PROJECT_ID eksik.');
+  const header = decodeJwtPart(idToken, 0);
+  const cert = await getFirebaseCert(header.kid);
+  return jwt.verify(idToken, cert, {
+    algorithms: ['RS256'],
+    audience: projectId,
+    issuer: `https://securetoken.google.com/${projectId}`
+  });
+}
+
 function signUserToken(user) {
   return jwt.sign({ id: user._id, email: user.email }, getJwtSecret(), { expiresIn: '30d' });
 }
+
+
+app.post('/api/auth/google', async (req, res) => {
+  try {
+    await connectDB();
+    const idToken = String(req.body?.idToken || '').trim();
+    if (!idToken) return res.status(400).json({ error: 'Firebase ID token gerekli.', message: 'Google giriş tokenı alınamadı.' });
+
+    const payload = await verifyFirebaseIdToken(idToken);
+    const firebaseUid = String(payload.user_id || payload.sub || '').trim();
+    const email = String(payload.email || '').trim().toLowerCase();
+    const name = String(payload.name || req.body?.name || 'Google Kullanıcısı').trim().slice(0, 120);
+    const profilePicture = String(payload.picture || req.body?.profilePicture || '').trim().slice(0, 1000);
+    if (!firebaseUid || !email) return res.status(400).json({ error: 'Firebase kullanıcı bilgisi eksik.', message: 'Google hesabından e-posta alınamadı.' });
+
+    let user = await User.findOne({ $or: [{ firebaseUid }, { email }] });
+    if (!user) {
+      user = new User({ email, name, profilePicture, firebaseUid, authProvider: 'google', emailVerified: !!payload.email_verified, lastLoginAt: new Date() });
+    } else {
+      user.firebaseUid = firebaseUid;
+      user.authProvider = user.authProvider || 'google';
+      user.emailVerified = user.emailVerified || !!payload.email_verified;
+      user.lastLoginAt = new Date();
+      if (name && (!user.name || user.name === user.email)) user.name = name;
+      if (profilePicture && !user.profilePicture) user.profilePicture = profilePicture;
+    }
+    await user.save();
+
+    const secret = ensureJwtConfigured(res);
+    if (!secret) return;
+    const token = signUserToken(user);
+    res.json({ token, user: { _id: user._id, email: user.email, name: user.name, profilePicture: user.profilePicture, authProvider: user.authProvider } });
+  } catch (err) {
+    console.error('google auth error:', err);
+    res.status(401).json({ error: 'Google giriş doğrulanamadı.', message: err.message || 'Google giriş doğrulanamadı.' });
+  }
+});
 
 app.post('/api/auth/register', async (req, res) => {
   try {
