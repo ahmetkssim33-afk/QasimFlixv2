@@ -1,3 +1,10 @@
 node_modules/
 .env
-*.log.idea/
+*.log
+.idea/
+.git/
+dist/
+build/
+uploads/
+*.zip
+.DS_Store

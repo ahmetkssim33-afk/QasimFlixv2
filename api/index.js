@@ -28,6 +28,132 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 const { connectDB } = require('../lib/db');
 const { Series, Season, Episode, WatchProgress, Category, Film, User, Rating, ContentRequest, IssueReport, PushSubscription, Announcement, AdminLog } = require('../lib/models');
 
+
+// ───────────────────────────────────────────────────────────
+// ADMIN SECURITY — panel ve kritik API işlemleri artık token ister
+// Vercel Environment Variables içine mutlaka ADMIN_PASSWORD ve güçlü JWT_SECRET ekleyin.
+// Geriye uyumluluk için ADMIN_PASSWORD yoksa admin123 çalışır, ancak production için güvenli değildir.
+// ───────────────────────────────────────────────────────────
+const ADMIN_JWT_SECRET = process.env.ADMIN_JWT_SECRET || JWT_SECRET;
+const ADMIN_PASSWORD_PLAIN = String(process.env.ADMIN_PASSWORD || process.env.ADMIN_PASS || 'admin123');
+const ADMIN_PASSWORD_HASH = String(process.env.ADMIN_PASSWORD_HASH || '');
+const ADMIN_API_KEY = String(process.env.ADMIN_API_KEY || '');
+const ADMIN_SESSION_TTL = process.env.ADMIN_SESSION_TTL || '12h';
+const adminLoginAttempts = new Map();
+
+function getRequestIp(req) {
+  return String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown').split(',')[0].trim();
+}
+
+function getBearerToken(req) {
+  const auth = String(req.headers.authorization || '');
+  const match = auth.match(/^Bearer\s+(.+)$/i);
+  return match ? match[1].trim() : '';
+}
+
+async function verifyAdminPassword(password) {
+  const value = String(password || '');
+  if (!value) return false;
+  if (ADMIN_PASSWORD_HASH) return bcrypt.compare(value, ADMIN_PASSWORD_HASH);
+  return value === ADMIN_PASSWORD_PLAIN;
+}
+
+function getAdminFromRequest(req) {
+  const token = getBearerToken(req);
+  if (token) {
+    try {
+      const payload = jwt.verify(token, ADMIN_JWT_SECRET);
+      if (payload && payload.role === 'admin') return payload;
+    } catch (_) {}
+  }
+
+  // Opsiyonel makine/otomasyon anahtarı. Sadece ADMIN_API_KEY ayarlanırsa çalışır.
+  const key = String(req.headers['x-admin-key'] || '').trim();
+  if (ADMIN_API_KEY && key && key === ADMIN_API_KEY) return { role: 'admin', mode: 'api-key' };
+  return null;
+}
+
+function requireAdmin(req, res, next) {
+  const admin = getAdminFromRequest(req);
+  if (!admin) return res.status(401).json({ error: 'Admin yetkisi gerekli. Lütfen admin paneline tekrar giriş yapın.' });
+  req.admin = admin;
+  next();
+}
+
+function pathStarts(path, value) { return String(path || '').startsWith(value); }
+function pathMatches(path, rx) { return rx.test(String(path || '')); }
+
+function shouldRequireAdmin(req) {
+  const method = req.method.toUpperCase();
+  const path = req.path;
+  if (method === 'OPTIONS') return false;
+  if (path === '/api/admin/login') return false;
+  if (pathStarts(path, '/api/admin/')) return true;
+  if (pathStarts(path, '/api/tmdb/')) return true;
+
+  // Yönetim içerik işlemleri
+  if (['POST','PUT','PATCH','DELETE'].includes(method) && pathMatches(path, /^\/api\/series(?:\/[^/]+)?$/)) return true;
+  if (['POST','PUT','PATCH','DELETE'].includes(method) && pathMatches(path, /^\/api\/seasons(?:\/[^/]+)?$/)) return true;
+  if (['POST','PUT','PATCH','DELETE'].includes(method) && pathMatches(path, /^\/api\/episodes(?:\/[^/]+)?(?:\/subtitle)?$/)) return true;
+  if (['POST','PUT','PATCH','DELETE'].includes(method) && pathMatches(path, /^\/api\/categories(?:\/[^/]+)?$/)) return true;
+  if (['POST','PUT','PATCH','DELETE'].includes(method) && pathStarts(path, '/api/announcements')) return true;
+  if (method === 'GET' && path === '/api/announcements') return true;
+  if (['GET','PATCH','DELETE'].includes(method) && pathMatches(path, /^\/api\/reports(?:\/[^/]+)?$/)) return true;
+  if (['GET','PATCH','DELETE'].includes(method) && pathMatches(path, /^\/api\/content-requests(?:\/[^/]+)?$/)) return true;
+  return false;
+}
+
+async function writeAdminLog(action, req, detail = '') {
+  try {
+    await AdminLog.create({
+      action: String(action || 'admin_event').slice(0, 80),
+      detail: String(detail || '').slice(0, 800),
+      ip: getRequestIp(req).slice(0, 120),
+      userAgent: String(req.headers['user-agent'] || '').slice(0, 400)
+    });
+  } catch (_) {}
+}
+
+app.post('/api/admin/login', async (req, res) => {
+  try {
+    await connectDB();
+    const ip = getRequestIp(req);
+    const now = Date.now();
+    const current = adminLoginAttempts.get(ip) || { count: 0, resetAt: now + 15 * 60 * 1000 };
+    if (current.resetAt < now) { current.count = 0; current.resetAt = now + 15 * 60 * 1000; }
+    if (current.count >= 8) return res.status(429).json({ error: 'Çok fazla hatalı deneme. Biraz sonra tekrar deneyin.' });
+
+    const ok = await verifyAdminPassword(req.body?.password);
+    if (!ok) {
+      current.count += 1;
+      adminLoginAttempts.set(ip, current);
+      await writeAdminLog('admin_login_failed', req, 'Hatalı admin şifresi');
+      return res.status(401).json({ error: 'Hatalı admin şifresi.' });
+    }
+
+    adminLoginAttempts.delete(ip);
+    const token = jwt.sign({ role: 'admin', mode: 'panel' }, ADMIN_JWT_SECRET, { expiresIn: ADMIN_SESSION_TTL });
+    await writeAdminLog('admin_login_success', req, 'Admin panel girişi');
+    res.json({
+      success: true,
+      token,
+      expiresIn: ADMIN_SESSION_TTL,
+      warning: (!process.env.ADMIN_PASSWORD && !process.env.ADMIN_PASSWORD_HASH) ? 'Varsayılan admin123 kullanılıyor. Vercel Environment Variables içinde ADMIN_PASSWORD ayarlayın.' : ''
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Admin girişi yapılamadı.' });
+  }
+});
+
+app.get('/api/admin/session', requireAdmin, async (req, res) => {
+  res.json({ success: true, admin: true, mode: req.admin?.mode || 'panel' });
+});
+
+app.use((req, res, next) => {
+  if (!shouldRequireAdmin(req)) return next();
+  return requireAdmin(req, res, next);
+});
+
 // Local schema definitions removed — models are imported from ../lib/models
 // (keeps serverless redeploys and hot reloads from re-defining models)
 

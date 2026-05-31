@@ -16,8 +16,8 @@ messaging.onBackgroundMessage((payload) => {
   const title = payload.notification?.title || 'QasimFlix';
   const options = {
     body: payload.notification?.body || 'Yeni içerik eklendi',
-    icon: '/icons/icon-192.png',
-    badge: '/icons/icon-192.png',
+    icon: '/assets/icons/icon-192.png',
+    badge: '/assets/icons/icon-96.png',
     data: {
       url: payload.data?.url || '/'
     }
