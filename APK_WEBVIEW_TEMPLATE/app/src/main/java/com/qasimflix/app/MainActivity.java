@@ -31,7 +31,7 @@ import android.widget.Toast;
 
 
 public class MainActivity extends android.app.Activity {
-    private static final String HOME_URL = "https://SENIN-SITEN.vercel.app/index.html?source=apk";
+    private static final String HOME_URL = "https://qasim-flixv2-swnm.vercel.app/index.html?source=apk";
     private static final int FILE_CHOOSER_REQUEST = 1001;
     private static final int NOTIFICATION_REQUEST = 2001;
 
@@ -88,7 +88,7 @@ public class MainActivity extends android.app.Activity {
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
         WebView.setWebContentsDebuggingEnabled(true);
-        webView.getSettings().setUserAgentString(webView.getSettings().getUserAgentString() + " QasimFlixAPK/1.0.5");
+        webView.getSettings().setUserAgentString(webView.getSettings().getUserAgentString() + " QasimFlixAPK/1.0.6");
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
         webView.addJavascriptInterface(new QasimFlixBridge(), "QasimFlixAndroid");

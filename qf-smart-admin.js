@@ -5,7 +5,7 @@
   const $ = id => document.getElementById(id);
   const esc = s => String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   function toast2(msg,type){ if(window.toast) window.toast(msg,type||'info'); else console.log(msg); }
-  async function api(method,path,body){ const opts={method,headers:{'Content-Type':'application/json'}}; if(body!==undefined) opts.body=JSON.stringify(body); const r=await fetch(API+path,opts); const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.error||d.message||('HTTP '+r.status)); return d; }
+  async function api(method,path,body){ const headers={'Content-Type':'application/json'}; if(window.qfAdminHeaders) Object.assign(headers, window.qfAdminHeaders()); const opts={method,headers}; if(body!==undefined) opts.body=JSON.stringify(body); const r=await fetch(API+path,opts); const d=await r.json().catch(()=>({})); if(!r.ok){ if(r.status===401&&typeof window.showAdminLogin==='function') window.showAdminLogin(d.error||'Admin oturumu gerekli.'); throw new Error(d.error||d.message||('HTTP '+r.status)); } return d; }
   function navItem(view, icon, label, badge){
     if(document.querySelector(`[data-view="${view}"]`)) return;
     const nav=document.querySelector('.sidebar nav'); if(!nav) return;

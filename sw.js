@@ -1,4 +1,34 @@
-const CACHE_NAME = 'qasimflix-v1.0.5-security-apk';
+// Firebase Cloud Messaging aynı service worker içinde çalışır.
+// Böylece /sw.js ve /firebase-messaging-sw.js aynı scope için birbirini ezmez.
+try {
+  importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js');
+  importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js');
+
+  firebase.initializeApp({
+    apiKey: "AIzaSyAtHW7UW3-ftQq9loSHPJkkbSeDSONI2KE",
+    authDomain: "qasimflix-8ba04.firebaseapp.com",
+    projectId: "qasimflix-8ba04",
+    storageBucket: "qasimflix-8ba04.firebasestorage.app",
+    messagingSenderId: "958468258867",
+    appId: "1:958468258867:web:08395af3f9a39f9fcf3746"
+  });
+
+  const messaging = firebase.messaging();
+  messaging.onBackgroundMessage((payload) => {
+    const title = payload.notification?.title || 'QasimFlix';
+    const options = {
+      body: payload.notification?.body || 'Yeni içerik eklendi',
+      icon: '/assets/icons/icon-192.png',
+      badge: '/assets/icons/icon-96.png',
+      data: { url: payload.data?.url || '/' }
+    };
+    self.registration.showNotification(title, options);
+  });
+} catch (err) {
+  console.warn('[QasimFlix SW] Firebase Messaging başlatılamadı:', err && err.message ? err.message : err);
+}
+
+const CACHE_NAME = 'qasimflix-v1.0.6-security-apk';
 const STATIC = [
   '/', '/index.html', '/auth.html', '/offline.html', '/style.css', '/qf-enhancements.css', '/qf-smart-features.css', '/qf-apk.css', '/qf-apk.js', '/qf-player-apk.js', '/qf-apk-bridge.js', '/qf-player-failsafe.js',
   '/app.js', '/qf-enhancements.js', '/qf-public-pro-tools.js', '/qf-smart-public.js', '/admin.js', '/qf-admin-enhancements.js', '/qf-admin-pro-tools.js', '/qf-smart-admin.js', '/player.html', '/manifest.json', '/version.json', '/favicon.svg',

@@ -19,14 +19,14 @@ const app = express();
 app.use(cors({
   origin: "*",
   methods: ["GET","POST","PUT","PATCH","DELETE"],
-  allowedHeaders: ["Content-Type", "Authorization"]
+  allowedHeaders: ["Content-Type", "Authorization", "x-admin-key"]
 }));
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 // Use shared DB connector & centralized models
 const { connectDB } = require('../lib/db');
-const { Series, Season, Episode, WatchProgress, Category, Film, User, Rating, ContentRequest, IssueReport, PushSubscription, Announcement, AdminLog } = require('../lib/models');
+const { Series, Season, Episode, WatchProgress, Category, Film, User, Rating, Analytics, EmailLog, ContentRequest, IssueReport, PushSubscription, Announcement, AdminLog } = require('../lib/models');
 
 
 // ───────────────────────────────────────────────────────────
@@ -90,6 +90,7 @@ function shouldRequireAdmin(req) {
   if (path === '/api/admin/login') return false;
   if (pathStarts(path, '/api/admin/')) return true;
   if (pathStarts(path, '/api/tmdb/')) return true;
+  if (pathStarts(path, '/api/email/')) return true;
 
   // Yönetim içerik işlemleri
   if (['POST','PUT','PATCH','DELETE'].includes(method) && pathMatches(path, /^\/api\/series(?:\/[^/]+)?$/)) return true;
@@ -970,6 +971,47 @@ app.get("/api/progress/:userId/:episodeId", async (req, res) => {
 // ═══════════════════════════════════════════════════════════
 // API ENDPOINTS — KİŞİSEL ÖNERİLER
 // ═══════════════════════════════════════════════════════════
+// Viewing stats tracker (frontend sends lightweight watch events here)
+app.post('/api/viewing-stats', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const hour = new Date().getHours();
+
+    await Analytics.findOneAndUpdate(
+      { date: today },
+      {
+        $inc: { totalWatches: 1, [`watchHeatmap.${hour}`]: (req.body && req.body.duration) ? Number(req.body.duration) || 1 : 1 },
+        $setOnInsert: { totalUsers: 0, uniqueViewers: 0 }
+      },
+      { upsert: true, new: true }
+    ).catch(() => null);
+
+    const seriesId = req.body?.seriesId;
+    const episodeId = req.body?.episodeId;
+    if (seriesId && episodeId) {
+      await WatchProgress.findOneAndUpdate(
+        { userId, episodeId },
+        {
+          userId,
+          seriesId,
+          episodeId,
+          lastWatchedAt: new Date(),
+          progress: Number(req.body?.duration) || 0
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      ).catch(() => null);
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'İzleme istatistiği kaydedilemedi.' });
+  }
+});
+
 app.get('/api/recommendations/:userId', async (req, res) => {
   try {
     await connectDB();
@@ -1070,6 +1112,36 @@ app.get('/api/search/full', async (req, res) => {
     res.json([...map.values()].slice(0, 60));
   } catch (err) {
     res.status(500).json({ error: 'Arama yapılamadı.' });
+  }
+});
+
+
+// Advanced search with filters (Vercel canlı endpoint)
+app.get('/api/search/advanced', async (req, res) => {
+  try {
+    const { query, category, year, minRating, sortBy, type } = req.query;
+    const filter = {};
+
+    if (query) {
+      const safeQuery = String(query).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const rx = new RegExp(safeQuery, 'i');
+      filter.$or = [{ title: rx }, { description: rx }, { originalTitle: rx }];
+    }
+    if (category) filter.categories = String(category);
+    if (type) filter.type = String(type);
+    if (year) filter.releaseYear = parseInt(year, 10);
+    if (minRating) filter.rating = { $gte: parseFloat(minRating) };
+
+    let q = Series.find(filter);
+    if (sortBy === 'rating') q = q.sort({ rating: -1, createdAt: -1 });
+    else if (sortBy === 'newest') q = q.sort({ createdAt: -1 });
+    else if (sortBy === 'popular') q = q.sort({ rating: -1, createdAt: -1 });
+    else q = q.sort({ createdAt: -1 });
+
+    const results = await q.limit(60).lean();
+    res.json(results);
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Gelişmiş arama başarısız.' });
   }
 });
 
@@ -1178,6 +1250,70 @@ function getUserIdFromReq(req) {
     return null;
   }
 }
+
+// Admin analytics compatibility endpoint
+app.get('/api/admin/analytics', async (req, res) => {
+  try {
+    await connectDB();
+    const [totalUsers, totalWatches, totalSeries, last30Days, topSeries] = await Promise.all([
+      User.countDocuments().catch(() => 0),
+      WatchProgress.countDocuments().catch(() => 0),
+      Series.countDocuments().catch(() => 0),
+      Analytics.find({ date: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } }).sort({ date: -1 }).lean().catch(() => []),
+      Series.find().sort({ rating: -1, createdAt: -1 }).limit(10).lean().catch(() => [])
+    ]);
+    res.json({ totalUsers, totalWatches, totalSeries, analytics: last30Days, topSeries });
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Analytics yüklenemedi.' });
+  }
+});
+
+app.post('/api/admin/analytics/watch', async (req, res) => {
+  try {
+    await connectDB();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const update = { $inc: { totalWatches: 1 } };
+    if (req.body?.seriesId) update.$set = { mostWatchedSeries: req.body.seriesId };
+    await Analytics.findOneAndUpdate({ date: today }, update, { upsert: true, new: true });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Watch analytics kaydedilemedi.' });
+  }
+});
+
+// Admin email notification endpoint (SMTP varsa gönderir, yoksa güvenli şekilde no-op döner)
+app.post('/api/email/notify', async (req, res) => {
+  try {
+    await connectDB();
+    const { userId, subject, message } = req.body || {};
+    if (!userId || !subject || !message) return res.status(400).json({ error: 'userId, subject ve message gerekli.' });
+    const user = await User.findById(userId).lean();
+    if (!user) return res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
+
+    if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+      const transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: parseInt(process.env.SMTP_PORT || '587', 10),
+        secure: process.env.SMTP_SECURE === 'true',
+        auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+      });
+      await transporter.sendMail({
+        from: process.env.EMAIL_FROM || process.env.SMTP_USER,
+        to: user.email,
+        subject: String(subject).slice(0, 180),
+        html: `<p>${String(message).replace(/[<>]/g, '')}</p>`
+      });
+      await EmailLog.create({ to: user.email, subject: String(subject).slice(0, 180), status: 'sent' }).catch(() => null);
+      return res.json({ ok: true, sent: true });
+    }
+
+    await EmailLog.create({ to: user.email, subject: String(subject).slice(0, 180), status: 'failed' }).catch(() => null);
+    res.json({ ok: true, sent: false, message: 'SMTP ayarlı değil; e-posta gönderilmedi ama işlem kaydedildi.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'E-posta gönderilemedi.' });
+  }
+});
 
 app.post('/api/auth/register', async (req, res) => {
   try {
@@ -1649,6 +1785,22 @@ app.get('/api/ratings/:seriesId', async (req, res) => {
 // ═══════════════════════════════════════════════════════════
 
 // Kullanıcının kendi profilini güncelle (isim, profil resmi)
+// Update user preferences (darkMode, preferredQuality)
+app.put('/api/user/preferences', async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const updates = {};
+    if (typeof req.body?.darkMode === 'boolean') updates.darkMode = req.body.darkMode;
+    if (req.body?.preferredQuality) updates.preferredQuality = String(req.body.preferredQuality);
+    if (!Object.keys(updates).length) return res.status(400).json({ error: 'Güncellenecek tercih yok.' });
+    const user = await User.findByIdAndUpdate(userId, updates, { new: true }).select('-passwordHash');
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Tercihler güncellenemedi.' });
+  }
+});
+
 app.put('/api/user/profile', async (req, res) => {
   try {
     const userId = getUserIdFromReq(req);

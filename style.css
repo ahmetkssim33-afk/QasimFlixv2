@@ -908,6 +908,7 @@ body.scrolled .navbar {
     animation: fadeIn 0.3s ease-out;
 }
 
+.search-box input {
     color: #fff;
     font-size: 0.85rem;
     width: 160px;

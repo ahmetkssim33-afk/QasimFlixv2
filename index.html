@@ -1515,7 +1515,7 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
         return;
       }
 
-      const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+      const registration = await navigator.serviceWorker.getRegistration('/') || await navigator.serviceWorker.register('/sw.js');
 
       const token = await getToken(messaging, {
         vapidKey: 'BAcG-bZC4Z-zKq-vrn7lu-xsArVBTXfoM45l1eeDOopTTUuNwXNeqxtmUSJGraIviud8utrGm8iRpf5JBGKKr4A',

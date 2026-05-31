@@ -1,6 +1,6 @@
 # QasimFlix APK WebView Native Template
 
-Bu klasör, mevcut siteni Android Studio WebView APK içine koyarken kullanman için hazır örnektir.
+Bu klasör, mevcut siteni Android Studio WebView APK içine koyarken kullanman için hazır örnektir. Artık settings.gradle, root build.gradle, tema ve launcher ikonları da eklendiği için Android Studio ile direkt içe aktarılabilir.
 
 ## Ne ekler?
 
@@ -18,7 +18,7 @@ Bu klasör, mevcut siteni Android Studio WebView APK içine koyarken kullanman i
 2. `HOME_URL` değerini kendi Vercel site adresinle değiştir:
 
 ```java
-private static final String HOME_URL = "https://SENIN-SITEN.vercel.app/index.html?source=apk";
+private static final String HOME_URL = "https://qasim-flixv2-swnm.vercel.app/index.html?source=apk";
 ```
 
 3. Manifest içindeki izinleri kendi projenin `AndroidManifest.xml` dosyasına ekle.

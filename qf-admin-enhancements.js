@@ -19,11 +19,16 @@
   }
 
   async function apiRaw(method, path, body){
-    const opts = { method, headers:{'Content-Type':'application/json'} };
-    if (body) opts.body = JSON.stringify(body);
+    const headers = {'Content-Type':'application/json'};
+    if (window.qfAdminHeaders) Object.assign(headers, window.qfAdminHeaders());
+    const opts = { method, headers };
+    if (body !== undefined) opts.body = JSON.stringify(body);
     const r = await fetch(API + path, opts);
     const d = await r.json().catch(()=>({}));
-    if(!r.ok) throw new Error(d.error || d.message || 'HTTP ' + r.status);
+    if(!r.ok) {
+      if (r.status === 401 && typeof window.showAdminLogin === 'function') window.showAdminLogin(d.error || 'Admin oturumu gerekli.');
+      throw new Error(d.error || d.message || 'HTTP ' + r.status);
+    }
     return d;
   }
 

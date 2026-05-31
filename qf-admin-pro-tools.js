@@ -16,11 +16,16 @@
   function t(k){ return (lang()==='ar' ? ar[k] : tr[k]) || (window.adminT ? window.adminT(k) : k); }
   function toast(msg, type){ if (window.toast) window.toast(msg, type || 'info'); else console.log(msg); }
   async function api(method, path, body){
-    const opts = { method, headers:{ 'Content-Type':'application/json' } };
+    const headers = { 'Content-Type':'application/json' };
+    if (window.qfAdminHeaders) Object.assign(headers, window.qfAdminHeaders());
+    const opts = { method, headers };
     if (body !== undefined) opts.body = JSON.stringify(body);
     const r = await fetch(API + path, opts);
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(d.error || d.message || ('HTTP ' + r.status));
+    if (!r.ok) {
+      if (r.status === 401 && typeof window.showAdminLogin === 'function') window.showAdminLogin(d.error || 'Admin oturumu gerekli.');
+      throw new Error(d.error || d.message || ('HTTP ' + r.status));
+    }
     return d;
   }
   function injectStyle(){
