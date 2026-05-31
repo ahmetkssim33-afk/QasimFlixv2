@@ -633,6 +633,45 @@ app.get('/api/content/latest', async (req, res) => {
   }
 });
 
+// ───────────────────────────────────────────────────────────
+// ÖNEMLİ: search/category rotaları /api/series/:id rotasından önce durmalı.
+// Aksi halde "search" ve "category" kelimeleri ObjectId sanılıp CastError verir.
+// ───────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+// ARAMA — isim, açıklama, kategori ile arama
+// ═══════════════════════════════════════════════════════════
+app.get("/api/series/search/:query", async (req, res) => {
+  try {
+    const query = req.params.query;
+    const results = await Series.find({
+      $or: [
+        { title: { $regex: query, $options: 'i' } },
+        { description: { $regex: query, $options: 'i' } },
+        { description_tr: { $regex: query, $options: 'i' } },
+        { description_ar: { $regex: query, $options: 'i' } },
+        { categories: { $regex: query, $options: 'i' } },
+        { type: { $regex: query, $options: 'i' } },
+        ...(Number.isFinite(Number(query)) ? [{ releaseYear: Number(query) }] : [])
+      ]
+    }).limit(30);
+    res.json(results);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Kategoriye göre arama
+app.get("/api/series/category/:category", async (req, res) => {
+  try {
+    const series = await Series.find({
+      categories: { $regex: req.params.category, $options: 'i' }
+    }).limit(30);
+    res.json(series);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── TEK SERİ — sezonlar ve bölümler dahil ───────────────
 // app.js'deki openDetail() fonksiyonu series.seasons[].episodes[]
 // yapısını bekliyor. Bu endpoint tüm ağacı birleştirip döndürür.
@@ -1054,28 +1093,6 @@ app.post("/api/categories", async (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════════════════════════
-// ARAMA — isim, açıklama, kategori ile arama
-// ═══════════════════════════════════════════════════════════
-app.get("/api/series/search/:query", async (req, res) => {
-  try {
-    const query = req.params.query;
-    const results = await Series.find({
-      $or: [
-        { title: { $regex: query, $options: 'i' } },
-        { description: { $regex: query, $options: 'i' } },
-        { description_tr: { $regex: query, $options: 'i' } },
-        { description_ar: { $regex: query, $options: 'i' } },
-        { categories: { $regex: query, $options: 'i' } },
-        { type: { $regex: query, $options: 'i' } },
-        ...(Number.isFinite(Number(query)) ? [{ releaseYear: Number(query) }] : [])
-      ]
-    }).limit(30);
-    res.json(results);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
 
 
 // Gelişmiş genel arama — film, dizi, bölüm, tür, yıl, açıklama
@@ -1145,17 +1162,7 @@ app.get('/api/search/advanced', async (req, res) => {
   }
 });
 
-// Kategoriye göre arama
-app.get("/api/series/category/:category", async (req, res) => {
-  try {
-    const series = await Series.find({
-      categories: { $regex: req.params.category, $options: 'i' }
-    }).limit(30);
-    res.json(series);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+
 
 // ═══════════════════════════════════════════════════════════
 // SAĞLIK KONTROLÜ
