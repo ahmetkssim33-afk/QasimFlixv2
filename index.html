@@ -983,7 +983,6 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
 <link rel="stylesheet" href="qf-apk.css">
 <link rel="stylesheet" href="qf-enhancements.css">
 <link rel="stylesheet" href="qf-smart-features.css">
-<link rel="stylesheet" href="qf-performance.css">
 </head>
 <body>
 
@@ -1579,7 +1578,7 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
     if (Notification.permission === 'granted') {
       new Notification(payload.notification?.title || 'QasimFlix', {
         body: payload.notification?.body || 'Yeni içerik eklendi',
-        icon: '/assets/icons/icon-192.png',
+        icon: '/icons/icon-192.png',
         data: { url: payload.data?.url || '/' }
       });
     }
