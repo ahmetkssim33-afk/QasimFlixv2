@@ -382,9 +382,9 @@ function renderRow(rowId, list) {
         return;
     }
 
-    list.forEach(item => {
-        row.innerHTML += createCard(item);
-    });
+    // Performans: innerHTML += her kartta DOM'u tekrar parse eder.
+    // Tek seferde join etmek özellikle mobil/APK WebView'de kaydırma ve ilk yüklemeyi hızlandırır.
+    row.innerHTML = list.map(createCard).join('');
     // ensure carousel UI is attached after rendering
     try { initCarousels(); } catch(e) { /* silent */ }
 }
@@ -400,7 +400,7 @@ function createCard(item) {
     const rating = item.rating ? item.rating : '';
 
     const imgHtml = item.poster
-        ? `<img class="card-img" src="${esc(item.poster)}" alt="${esc(item.title)}" loading="lazy" onerror="this.style.display='none';this.nextSibling.style.display='flex'">`
+        ? `<img class="card-img" src="${esc(item.poster)}" alt="${esc(item.title)}" loading="lazy" decoding="async" fetchpriority="low" draggable="false" referrerpolicy="no-referrer" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
         : '';
     const placeholderStyle = item.poster ? 'display:none' : '';
 
@@ -455,8 +455,7 @@ async function doSearch(query) {
         });
 
         const grid = document.getElementById('search-grid');
-        grid.innerHTML = '';
-        localResults.forEach(item => { grid.innerHTML += createCard(item); });
+        grid.innerHTML = localResults.map(createCard).join('');
         
         document.getElementById('search-count').textContent = localResults.length + ' sonuç (Yerel): "' + query + '"';
         resultsEl.style.display = '';
@@ -477,8 +476,7 @@ async function doSearch(query) {
                 }
             });
             
-            grid.innerHTML = '';
-            mergedResults.forEach(item => { grid.innerHTML += createCard(item); });
+            grid.innerHTML = mergedResults.map(createCard).join('');
             document.getElementById('search-count').textContent = mergedResults.length + ' sonuç: "' + query + '"';
         }
     } catch (err) {

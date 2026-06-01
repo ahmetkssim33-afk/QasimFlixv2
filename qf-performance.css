@@ -1,0 +1,78 @@
+/* QasimFlix performans yaması
+   Amaç: Mobil/APK WebView'de kaydırma, kart render ve ağır efekt maliyetini azaltmak. */
+
+.cards-row {
+  contain: layout paint;
+}
+
+.card,
+.episode-card,
+.qf-smart-card,
+.qf-content-request {
+  content-visibility: auto;
+  contain-intrinsic-size: 260px 170px;
+}
+
+.card-img {
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+@media (hover: none), (pointer: coarse), (max-width: 768px) {
+  .card:hover {
+    transform: none !important;
+    z-index: auto !important;
+  }
+
+  .card {
+    transition: transform .12s ease, opacity .12s ease !important;
+    box-shadow: 0 8px 22px rgba(0,0,0,.34) !important;
+  }
+
+  .card:active {
+    transform: scale(.985) !important;
+  }
+
+  .carousel-btn {
+    display: none !important;
+  }
+
+  .card-overlay,
+  .btn-info,
+  .filter-tabs,
+  .modal-content,
+  .episode-card,
+  .qf-mobile-bottom-nav {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  .hero,
+  .modal-hero {
+    background-attachment: scroll !important;
+  }
+
+  .hero::before,
+  .hero::after,
+  .card::before,
+  .card::after {
+    filter: none !important;
+  }
+
+  html,
+  .cards-row,
+  .modal-content {
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

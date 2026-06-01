@@ -28,9 +28,9 @@ try {
   console.warn('[QasimFlix SW] Firebase Messaging başlatılamadı:', err && err.message ? err.message : err);
 }
 
-const CACHE_NAME = 'qasimflix-v1.0.7-production-ready';
+const CACHE_NAME = 'qasimflix-v1.0.8-performance';
 const STATIC = [
-  '/', '/index.html', '/auth.html', '/offline.html', '/style.css', '/qf-enhancements.css', '/qf-smart-features.css', '/qf-apk.css', '/qf-apk.js', '/qf-player-apk.js', '/qf-apk-bridge.js', '/qf-player-failsafe.js',
+  '/', '/index.html', '/auth.html', '/offline.html', '/style.css', '/qf-enhancements.css', '/qf-smart-features.css', '/qf-performance.css', '/qf-apk.css', '/qf-apk.js', '/qf-player-apk.js', '/qf-apk-bridge.js', '/qf-player-failsafe.js',
   '/app.js', '/qf-enhancements.js', '/qf-public-pro-tools.js', '/qf-smart-public.js', '/admin.js', '/qf-admin-enhancements.js', '/qf-admin-pro-tools.js', '/qf-smart-admin.js', '/player.html', '/manifest.json', '/version.json', '/favicon.svg',
   '/assets/icons/icon-48.png', '/assets/icons/icon-72.png', '/assets/icons/icon-96.png', '/assets/icons/icon-144.png',
   '/assets/icons/icon-192.png', '/assets/icons/icon-512.png', '/assets/icons/maskable-512.png', '/privacy.html', '/terms.html', '/contact.html', '/dmca.html', '/robots.txt'
@@ -99,13 +99,29 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  if (/\.(html|js|css|json)$/i.test(url.pathname)) {
+  // Statik arayüz dosyaları için cache-first + arka planda güncelleme.
+  // APK/WebView'de ikinci açılışı ve geri dönüşleri çok daha akıcı yapar.
+  if (/\.(js|css|json|svg|png|webp|jpg|jpeg|ico)$/i.test(url.pathname)) {
+    event.respondWith(
+      caches.match(req).then(cached => {
+        const fresh = fetch(req).then(res => {
+          const copy = res.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(req, copy)).catch(() => {});
+          return res;
+        }).catch(() => cached);
+        return cached || fresh;
+      })
+    );
+    return;
+  }
+
+  if (/\.(html)$/i.test(url.pathname)) {
     event.respondWith(
       fetch(req, { cache: 'no-store' }).then(res => {
         const copy = res.clone();
         caches.open(CACHE_NAME).then(cache => cache.put(req, copy)).catch(() => {});
         return res;
-      }).catch(() => caches.match(req).then(cached => cached || (url.pathname.endsWith('.html') ? caches.match('/offline.html') : undefined)))
+      }).catch(() => caches.match(req).then(cached => cached || caches.match('/offline.html')))
     );
     return;
   }

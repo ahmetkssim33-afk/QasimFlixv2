@@ -81,12 +81,14 @@ public class MainActivity extends android.app.Activity {
         s.setDomStorageEnabled(true);
         s.setDatabaseEnabled(true);
         s.setMediaPlaybackRequiresUserGesture(false);
+        s.setCacheMode(WebSettings.LOAD_DEFAULT);
         s.setLoadWithOverviewMode(true);
         s.setUseWideViewPort(true);
         s.setAllowFileAccess(true);
         s.setAllowContentAccess(true);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
         WebView.setWebContentsDebuggingEnabled(false);
         webView.getSettings().setUserAgentString(webView.getSettings().getUserAgentString() + " QasimFlixAPK/1.0.6");
         CookieManager.getInstance().setAcceptCookie(true);

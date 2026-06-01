@@ -706,7 +706,7 @@ app.get("/api/series", async (req, res) => {
     if (req.query.search)   query.title = { $regex: req.query.search, $options: "i" };
 
     const [series, total] = await Promise.all([
-      Series.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit),
+      Series.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
       Series.countDocuments(query)
     ]);
 
@@ -787,7 +787,7 @@ app.get("/api/series/search/:query", async (req, res) => {
         { type: { $regex: query, $options: 'i' } },
         ...(Number.isFinite(Number(query)) ? [{ releaseYear: Number(query) }] : [])
       ]
-    }).limit(30);
+    }).limit(30).lean();
     res.json(results);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -799,7 +799,7 @@ app.get("/api/series/category/:category", async (req, res) => {
   try {
     const series = await Series.find({
       categories: { $regex: req.params.category, $options: 'i' }
-    }).limit(30);
+    }).limit(30).lean();
     res.json(series);
   } catch (err) {
     res.status(500).json({ error: err.message });
