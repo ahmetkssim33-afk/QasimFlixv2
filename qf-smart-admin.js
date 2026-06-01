@@ -91,28 +91,91 @@
   function injectBulkTool(){
     const view=$('view-episodes'); if(!view || $('qf-bulk-episodes')) return;
     const card=document.createElement('div'); card.id='qf-bulk-episodes'; card.className='qf-admin-tool-card';
-    card.innerHTML=`<h3>Toplu Bölüm Ekle</h3><p>Format: <b>No | Başlık | Süre(saniye) | Video URL | Açıklama | Thumbnail | 480p=https...,720p=https...</b></p><textarea id="qf-bulk-lines" placeholder="1 | Bölüm 1 | 2400 | https://... | Açıklama\n2 | Bölüm 2 | 2450 | https://... | Açıklama"></textarea><div class="qf-admin-actions"><button class="qf-smart-btn" onclick="qfSubmitBulkEpisodes()">Toplu Ekle</button><button class="qf-smart-btn secondary" onclick="qfFillBulkExample()">Örnek Doldur</button></div><div id="qf-bulk-status" class="qf-security-note"></div>`;
+    card.innerHTML=`<h3>Toplu Bölüm Ekle</h3><p>Format: <b>No | Başlık | Süre(saniye) | Video URL | Açıklama | 480p=https...,720p=https...</b><br><small>Thumbnail linki yazmana gerek yok; aşağıdan bilgisayardan görselleri seç.</small></p><textarea id="qf-bulk-lines" placeholder="1 | Bölüm 1 | 2400 | https://drive.google.com/file/d/VIDEO_ID/preview | Açıklama\n2 | Bölüm 2 | 2450 | https://example.com/video2.mp4 | Açıklama | 720p=https://example.com/720.mp4,1080p=https://example.com/1080.mp4"></textarea><div class="qf-bulk-thumb-picker"><label>Thumbnail görselleri (bilgisayardan seç)</label><input type="file" id="qf-bulk-thumbs" accept="image/*" multiple onchange="qfBulkThumbChanged()"><div class="hint">Birden fazla resim seçebilirsin. 1. resim 1. satıra, 2. resim 2. satıra eklenir. Az seçersen kalan bölümlerin thumbnail alanı boş kalır.</div><div id="qf-bulk-thumb-status" class="qf-bulk-thumb-status">Henüz görsel seçilmedi.</div></div><div class="qf-admin-actions"><button class="qf-smart-btn" id="qf-bulk-submit-btn" onclick="qfSubmitBulkEpisodes()">Toplu Ekle</button><button class="qf-smart-btn secondary" onclick="qfFillBulkExample()">Örnek Doldur</button></div><div id="qf-bulk-status" class="qf-security-note"></div>`;
     const list=$('episodes-list-wrap'); view.insertBefore(card, list || null);
   }
-  function fillBulkExample(){ const el=$('qf-bulk-lines'); if(el) el.value='1 | 1. Bölüm | 2400 | https://drive.google.com/file/d/VIDEO_ID/preview | İlk bölüm açıklaması\n2 | 2. Bölüm | 2450 | https://example.com/video2.mp4 | İkinci bölüm açıklaması | https://example.com/thumb.jpg | 720p=https://example.com/720.mp4,1080p=https://example.com/1080.mp4'; }
+  function fillBulkExample(){
+    const el=$('qf-bulk-lines');
+    if(el) el.value='1 | 1. Bölüm | 2400 | https://drive.google.com/file/d/VIDEO_ID/preview | İlk bölüm açıklaması\n2 | 2. Bölüm | 2450 | https://example.com/video2.mp4 | İkinci bölüm açıklaması | 720p=https://example.com/720.mp4,1080p=https://example.com/1080.mp4';
+  }
+  function parseBulkQuality(raw){
+    return String(raw||'').split(',').map(x=>{
+      const m=x.trim().match(/^([^:=|]+)\s*[:=]\s*(https?:\/\/.+)$/i);
+      return m?{label:m[1].trim(),url:m[2].trim()}:null;
+    }).filter(Boolean).slice(0,8);
+  }
   function parseBulkLines(raw){
     return String(raw||'').split('\n').map(line=>line.trim()).filter(Boolean).map((line,idx)=>{
       const parts=line.split('|').map(x=>x.trim());
-      const qRaw=parts[6]||'';
-      const qualitySources=qRaw.split(',').map(x=>{ const m=x.trim().match(/^([^:=|]+)\s*[:=]\s*(https?:\/\/.+)$/i); return m?{label:m[1].trim(),url:m[2].trim()}:null; }).filter(Boolean);
-      return {episodeNumber:Number(parts[0])||idx+1,title:parts[1]||`Bölüm ${idx+1}`,duration:Number(parts[2])||0,videoUrl:parts[3]||'',description:parts[4]||'',thumbnail:parts[5]||'',qualitySources};
+      // Eski format da bozulmasın: No | Başlık | Süre | Video | Açıklama | ThumbnailURL | Kalite
+      const legacyThumb = /^https?:\/\//i.test(parts[5]||'') || /^data:image\//i.test(parts[5]||'');
+      const qRaw = legacyThumb ? (parts[6]||'') : (parts[5]||'');
+      return {
+        episodeNumber:Number(parts[0])||idx+1,
+        title:parts[1]||`Bölüm ${idx+1}`,
+        duration:Number(parts[2])||0,
+        videoUrl:parts[3]||'',
+        description:parts[4]||'',
+        thumbnail:legacyThumb ? (parts[5]||'') : '',
+        qualitySources:parseBulkQuality(qRaw)
+      };
     });
   }
+  function getBulkThumbFiles(){
+    return Array.from($('qf-bulk-thumbs')?.files || []);
+  }
+  function bulkThumbChanged(){
+    const files=getBulkThumbFiles();
+    const st=$('qf-bulk-thumb-status');
+    if(!st) return;
+    if(!files.length){ st.textContent='Henüz görsel seçilmedi.'; return; }
+    const names=files.slice(0,5).map(f=>f.name).join(', ');
+    st.textContent=`${files.length} thumbnail seçildi: ${names}${files.length>5?'...':''}`;
+  }
+  async function uploadThumbForEpisode(file, index, total){
+    if(!file) return '';
+    if(!window.uploadImage) throw new Error('Görsel yükleme fonksiyonu bulunamadı. Sayfayı yenileyip tekrar dene.');
+    const st=$('qf-bulk-status');
+    if(st) st.textContent=`Thumbnail yükleniyor: ${index+1}/${total}`;
+    return await window.uploadImage(file);
+  }
   async function submitBulkEpisodes(){
-    const st=$('qf-bulk-status'); const seriesId=($('ep-series')?.value||'').trim(); const seasonId=($('ep-season')?.value||'').trim();
+    const st=$('qf-bulk-status'); const btn=$('qf-bulk-submit-btn');
+    const seriesId=($('ep-series')?.value||'').trim(); const seasonId=($('ep-season')?.value||'').trim();
     if(!seriesId||!seasonId){ if(st) st.textContent='Önce seri ve sezon seç.'; return; }
     const episodes=parseBulkLines($('qf-bulk-lines')?.value||'');
     if(!episodes.length){ if(st) st.textContent='Bölüm satırı yok.'; return; }
     if(episodes.some(e=>!e.videoUrl)){ if(st) st.textContent='Bazı satırlarda video URL eksik.'; return; }
-    try{ if(st) st.textContent='Ekleniyor...'; const d=await api('POST','/episodes/bulk',{seriesId,seasonId,episodes}); if(st) st.textContent=`${d.count||episodes.length} bölüm eklendi.`; toast2('Toplu bölüm eklendi','success'); $('qf-bulk-lines').value=''; if(window.loadEpisodesList) await window.loadEpisodesList(seriesId); }
+    const thumbFiles=getBulkThumbFiles();
+    try{
+      if(btn){ btn.disabled=true; btn.textContent='Ekleniyor...'; }
+      // Thumbnail bilgisayardan seçildiyse bölümleri tek tek ekliyoruz.
+      // Böylece base64 görseller /episodes/bulk içindeki uzunluk sınırına takılıp bozulmaz.
+      if(thumbFiles.length){
+        let added=0;
+        for(const [idx, ep] of episodes.entries()){
+          const thumbnail=await uploadThumbForEpisode(thumbFiles[idx], idx, episodes.length);
+          if(thumbnail) ep.thumbnail=thumbnail;
+          if(st) st.textContent=`Bölüm ekleniyor: ${idx+1}/${episodes.length}`;
+          await api('POST','/episodes',{seriesId,seasonId,...ep});
+          added++;
+        }
+        if(st) st.textContent=`${added} bölüm eklendi. Thumbnail görselleri bilgisayardan yüklendi.`;
+      }else{
+        if(st) st.textContent='Ekleniyor...';
+        const d=await api('POST','/episodes/bulk',{seriesId,seasonId,episodes});
+        if(st) st.textContent=`${d.count||episodes.length} bölüm eklendi.`;
+      }
+      toast2('Toplu bölüm eklendi','success');
+      const lines=$('qf-bulk-lines'); if(lines) lines.value='';
+      const thumbs=$('qf-bulk-thumbs'); if(thumbs) thumbs.value='';
+      const ts=$('qf-bulk-thumb-status'); if(ts) ts.textContent='Henüz görsel seçilmedi.';
+      if(window.loadEpisodesList) await window.loadEpisodesList(seriesId);
+    }
     catch(e){ if(st) st.textContent=e.message; toast2(e.message,'error'); }
+    finally{ if(btn){ btn.disabled=false; btn.textContent='Toplu Ekle'; } }
   }
-  window.qfSubmitBulkEpisodes=submitBulkEpisodes; window.qfFillBulkExample=fillBulkExample;
+  window.qfSubmitBulkEpisodes=submitBulkEpisodes; window.qfFillBulkExample=fillBulkExample; window.qfBulkThumbChanged=bulkThumbChanged;
 
   async function loadLinkScan(){
     const list=$('qf-linkscan-list'); if(!list) return;
