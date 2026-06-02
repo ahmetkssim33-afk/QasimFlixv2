@@ -1,8 +1,8 @@
 {
-  "version": "1.0.9",
-  "build": 2026060301,
+  "version": "1.0.10",
+  "build": 2026060302,
   "apkRequired": false,
-  "message": "Public API 401, Firebase/CDN, cache ve APK domain düzeltmeleri eklendi.",
+  "message": "qf-apk.js eski WebView uyumluluk ve syntax hatasi duzeltildi.",
   "apkUrl": "",
   "notifyUpdates": true,
   "notifyNewContent": true,
