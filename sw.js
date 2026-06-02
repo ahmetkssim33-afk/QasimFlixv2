@@ -17,13 +17,13 @@ self.addEventListener('push', event => {
     body: note.body || payload.body || 'Yeni içerik eklendi',
     icon: note.icon || '/assets/icons/icon-192.png',
     badge: '/assets/icons/icon-96.png',
-    data: { url: note.url || payload?.data?.url || '/' }
+    data: { url: note.url || (payload && payload.data && payload.data.url) || '/' }
   };
 
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
-const CACHE_NAME = 'qasimflix-v1.0.8-error-fixes';
+const CACHE_NAME = 'qasimflix-v1.0.9-syntax-fix';
 const STATIC = [
   '/', '/index.html', '/auth.html', '/offline.html', '/style.css', '/qf-enhancements.css', '/qf-smart-features.css', '/qf-apk.css', '/qf-apk.js', '/qf-player-apk.js', '/qf-apk-bridge.js', '/qf-player-failsafe.js',
   '/app.js', '/qf-enhancements.js', '/qf-public-pro-tools.js', '/qf-smart-public.js', '/admin.js', '/qf-admin-enhancements.js', '/qf-admin-pro-tools.js', '/qf-smart-admin.js', '/player.html', '/manifest.json', '/version.json', '/favicon.svg',
@@ -63,7 +63,7 @@ self.addEventListener('message', event => {
 
 self.addEventListener('notificationclick', event => {
   event.notification.close();
-  const targetUrl = event.notification?.data?.url || '/';
+  const targetUrl = (event.notification && event.notification.data && event.notification.data.url) || '/';
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
       for (const client of clientList) {

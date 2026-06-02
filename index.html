@@ -1498,118 +1498,129 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
 })();
 </script>
 
-<script type="module">
-  // Firebase CDN bazen DNS/VPN/AdBlock yüzünden yüklenemeyebilir.
-  // Bu blok hata alınca siteyi kilitlemez; sadece bildirimleri devre dışı bırakır.
-  const firebaseConfig = {
-    apiKey: "AIzaSyAtHW7UW3-ftQq9loSHPJkkbSeDSONI2KE",
-    authDomain: "qasimflix-8ba04.firebaseapp.com",
-    projectId: "qasimflix-8ba04",
-    storageBucket: "qasimflix-8ba04.firebasestorage.app",
-    messagingSenderId: "958468258867",
-    appId: "1:958468258867:web:08395af3f9a39f9fcf3746"
-  };
+<script>
+  // Firebase bildirimleri uyumlu/yavaş bağlantı güvenli şekilde yüklenir.
+  // Gstatic kapanırsa site takılmaz; sadece bildirim özelliği pasif kalır.
+  (function(){
+    var firebaseConfig = {
+      apiKey: "AIzaSyAtHW7UW3-ftQq9loSHPJkkbSeDSONI2KE",
+      authDomain: "qasimflix-8ba04.firebaseapp.com",
+      projectId: "qasimflix-8ba04",
+      storageBucket: "qasimflix-8ba04.firebasestorage.app",
+      messagingSenderId: "958468258867",
+      appId: "1:958468258867:web:08395af3f9a39f9fcf3746"
+    };
 
-  window.qasimFirebaseReady = false;
-  window.qasimMessaging = null;
+    window.qasimFirebaseReady = false;
+    window.qasimMessaging = null;
 
-  async function loadFirebaseMessaging() {
-    if (window.qasimMessaging) return window.qasimMessaging;
-    try {
-      const appMod = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
-      const msgMod = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js");
-      const app = appMod.getApps().length ? appMod.getApp() : appMod.initializeApp(firebaseConfig);
-      const messaging = msgMod.getMessaging(app);
-      window.qasimMessaging = messaging;
-      window.qasimFirebaseReady = true;
-
-      msgMod.onMessage(messaging, (payload) => {
-        console.log('Ön planda bildirim geldi:', payload);
-        if (Notification.permission === 'granted') {
-          new Notification(payload.notification?.title || 'QasimFlix', {
-            body: payload.notification?.body || 'Yeni içerik eklendi',
-            icon: '/assets/icons/icon-192.png',
-            data: { url: payload.data?.url || '/' }
-          });
-        }
+    function loadScript(src){
+      return new Promise(function(resolve, reject){
+        var existing = document.querySelector('script[src="' + src + '"]');
+        if (existing) return resolve();
+        var script = document.createElement('script');
+        script.src = src;
+        script.async = true;
+        script.onload = function(){ resolve(); };
+        script.onerror = function(){ reject(new Error('Firebase dosyası yüklenemedi: ' + src)); };
+        document.head.appendChild(script);
       });
-
-      return messaging;
-    } catch (err) {
-      window.qasimFirebaseReady = false;
-      console.warn('Firebase yüklenemedi; site çalışmaya devam edecek, bildirimler pasif:', err && err.message ? err.message : err);
-      return null;
     }
-  }
 
-  async function enableQasimFlixPush() {
-    try {
+    function loadFirebaseMessaging(){
+      if (window.qasimMessaging) return Promise.resolve(window.qasimMessaging);
+      return loadScript('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js')
+        .then(function(){ return loadScript('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js'); })
+        .then(function(){
+          if (!window.firebase || !window.firebase.initializeApp) throw new Error('Firebase global bulunamadı');
+          var app;
+          try {
+            app = window.firebase.apps && window.firebase.apps.length ? window.firebase.app() : window.firebase.initializeApp(firebaseConfig);
+          } catch (e) {
+            app = window.firebase.app();
+          }
+          var messaging = window.firebase.messaging(app);
+          window.qasimMessaging = messaging;
+          window.qasimFirebaseReady = true;
+          try {
+            messaging.onMessage(function(payload){
+              console.log('Ön planda bildirim geldi:', payload);
+              if (window.Notification && Notification.permission === 'granted') {
+                var n = payload && payload.notification ? payload.notification : {};
+                var d = payload && payload.data ? payload.data : {};
+                new Notification(n.title || 'QasimFlix', {
+                  body: n.body || 'Yeni içerik eklendi',
+                  icon: '/assets/icons/icon-192.png',
+                  data: { url: d.url || '/' }
+                });
+              }
+            });
+          } catch (e) {}
+          return messaging;
+        })
+        .catch(function(err){
+          window.qasimFirebaseReady = false;
+          console.warn('Firebase yüklenemedi; site çalışmaya devam edecek, bildirimler pasif:', err && err.message ? err.message : err);
+          return null;
+        });
+    }
+
+    window.enableQasimFlixPush = function(){
       if (!('Notification' in window)) {
         alert('Bu cihaz bildirim desteklemiyor');
-        return;
+        return Promise.resolve();
       }
-
       if (!('serviceWorker' in navigator)) {
         alert('Bu cihaz service worker desteklemiyor');
-        return;
+        return Promise.resolve();
       }
-
-      const messaging = await loadFirebaseMessaging();
-      if (!messaging) {
-        alert('Firebase bildirim dosyaları yüklenemedi. VPN/DNS/AdBlock kontrol edip tekrar deneyin.');
-        return;
-      }
-
-      const permission = await Notification.requestPermission();
-      if (permission !== 'granted') {
-        alert('Bildirim izni verilmedi');
-        return;
-      }
-
-      const { getToken } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js");
-      const registration = await navigator.serviceWorker.getRegistration('/') || await navigator.serviceWorker.register('/sw.js');
-
-      const token = await getToken(messaging, {
-        vapidKey: 'BAcG-bZC4Z-zKq-vrn7lu-xsArVBTXfoM45l1eeDOopTTUuNwXNeqxtmUSJGraIviud8utrGm8iRpf5JBGKKr4A',
-        serviceWorkerRegistration: registration
+      return loadFirebaseMessaging().then(function(messaging){
+        if (!messaging) {
+          alert('Firebase bildirim dosyaları yüklenemedi. VPN/DNS/AdBlock kontrol edip tekrar deneyin.');
+          return;
+        }
+        return Notification.requestPermission().then(function(permission){
+          if (permission !== 'granted') {
+            alert('Bildirim izni verilmedi');
+            return;
+          }
+          return navigator.serviceWorker.getRegistration('/').then(function(registration){
+            return registration || navigator.serviceWorker.register('/sw.js');
+          }).then(function(registration){
+            return messaging.getToken({
+              vapidKey: 'BAcG-bZC4Z-zKq-vrn7lu-xsArVBTXfoM45l1eeDOopTTUuNwXNeqxtmUSJGraIviud8utrGm8iRpf5JBGKKr4A',
+              serviceWorkerRegistration: registration
+            });
+          }).then(function(token){
+            if (!token) {
+              alert('FCM token alınamadı');
+              return;
+            }
+            var authToken = localStorage.getItem('token') || window.TOKEN || '';
+            var headers = { 'Content-Type': 'application/json' };
+            if (authToken) headers.Authorization = 'Bearer ' + authToken;
+            return fetch('/api/push/subscribe', {
+              method: 'POST',
+              headers: headers,
+              body: JSON.stringify({
+                token: token,
+                platform: window.QasimFlixAndroid ? 'apk-webview' : 'web',
+                userId: localStorage.getItem('userId') || window.USER_ID || '',
+                userName: localStorage.getItem('userName') || '',
+                userEmail: localStorage.getItem('userEmail') || ''
+              })
+            }).then(function(){
+              console.log('Bildirim token:', token);
+              alert('Bildirimler açıldı ✅');
+            });
+          });
+        });
+      }).catch(function(err){
+        console.error('Push init error:', err);
+        alert('Bildirim açılırken hata oldu: ' + (err && err.message ? err.message : err));
       });
-
-      if (!token) {
-        alert('FCM token alınamadı');
-        return;
-      }
-
-      const authToken = localStorage.getItem('token') || window.TOKEN || '';
-      await fetch('/api/push/subscribe', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(authToken ? { 'Authorization': 'Bearer ' + authToken } : {})
-        },
-        body: JSON.stringify({
-          token,
-          platform: window.QasimFlixAndroid ? 'apk-webview' : 'web',
-          userId: localStorage.getItem('userId') || window.USER_ID || '',
-          userName: localStorage.getItem('userName') || '',
-          userEmail: localStorage.getItem('userEmail') || ''
-        })
-      });
-
-      console.log('Bildirim token:', token);
-      alert('Bildirimler açıldı ✅');
-    } catch (err) {
-      console.error('Push init error:', err);
-      alert('Bildirim açılırken hata oldu: ' + (err && err.message ? err.message : err));
-    }
-  }
-
-  window.enableQasimFlixPush = enableQasimFlixPush;
-  // Firebase dosyalarını sadece kullanıcı bildirimleri açtıysa yükle.
-  // Böylece gstatic bağlantısı kesilse bile ana site ve player etkilenmez.
-  try {
-    const qfSettings = JSON.parse(localStorage.getItem('qasimflix_settings') || '{}');
-    if (qfSettings.notifications === true) loadFirebaseMessaging();
-  } catch (_) {}
+    };
+  })();
 </script>
 </body>
 </html>

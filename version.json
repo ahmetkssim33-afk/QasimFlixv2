@@ -1,5 +1,5 @@
 {
-  "version": "1.0.8",
+  "version": "1.0.9",
   "build": 2026060301,
   "apkRequired": false,
   "message": "Public API 401, Firebase/CDN, cache ve APK domain düzeltmeleri eklendi.",
