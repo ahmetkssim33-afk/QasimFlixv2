@@ -1,34 +1,29 @@
-// Firebase Cloud Messaging aynı service worker içinde çalışır.
-// Böylece /sw.js ve /firebase-messaging-sw.js aynı scope için birbirini ezmez.
-try {
-  importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js');
-  importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js');
+// QasimFlix Service Worker
+// Firebase CDN dosyaları artık burada import edilmez.
+// Böylece gstatic erişim hatası olsa bile site/cache/player etkilenmez.
+// FCM/Web Push geldiyse native push event ile bildirim gösterilir.
 
-  firebase.initializeApp({
-    apiKey: "AIzaSyAtHW7UW3-ftQq9loSHPJkkbSeDSONI2KE",
-    authDomain: "qasimflix-8ba04.firebaseapp.com",
-    projectId: "qasimflix-8ba04",
-    storageBucket: "qasimflix-8ba04.firebasestorage.app",
-    messagingSenderId: "958468258867",
-    appId: "1:958468258867:web:08395af3f9a39f9fcf3746"
-  });
+self.addEventListener('push', event => {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch (_) {
+    try { payload = { notification: { body: event.data.text() } }; } catch (__) {}
+  }
 
-  const messaging = firebase.messaging();
-  messaging.onBackgroundMessage((payload) => {
-    const title = payload.notification?.title || 'QasimFlix';
-    const options = {
-      body: payload.notification?.body || 'Yeni içerik eklendi',
-      icon: '/assets/icons/icon-192.png',
-      badge: '/assets/icons/icon-96.png',
-      data: { url: payload.data?.url || '/' }
-    };
-    self.registration.showNotification(title, options);
-  });
-} catch (err) {
-  console.warn('[QasimFlix SW] Firebase Messaging başlatılamadı:', err && err.message ? err.message : err);
-}
+  const note = payload.notification || payload.data || {};
+  const title = note.title || payload.title || 'QasimFlix';
+  const options = {
+    body: note.body || payload.body || 'Yeni içerik eklendi',
+    icon: note.icon || '/assets/icons/icon-192.png',
+    badge: '/assets/icons/icon-96.png',
+    data: { url: note.url || payload?.data?.url || '/' }
+  };
 
-const CACHE_NAME = 'qasimflix-v1.0.7-production-ready';
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+const CACHE_NAME = 'qasimflix-v1.0.8-error-fixes';
 const STATIC = [
   '/', '/index.html', '/auth.html', '/offline.html', '/style.css', '/qf-enhancements.css', '/qf-smart-features.css', '/qf-apk.css', '/qf-apk.js', '/qf-player-apk.js', '/qf-apk-bridge.js', '/qf-player-failsafe.js',
   '/app.js', '/qf-enhancements.js', '/qf-public-pro-tools.js', '/qf-smart-public.js', '/admin.js', '/qf-admin-enhancements.js', '/qf-admin-pro-tools.js', '/qf-smart-admin.js', '/player.html', '/manifest.json', '/version.json', '/favicon.svg',

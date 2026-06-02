@@ -1499,9 +1499,8 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
 </script>
 
 <script type="module">
-  import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
-
+  // Firebase CDN bazen DNS/VPN/AdBlock yüzünden yüklenemeyebilir.
+  // Bu blok hata alınca siteyi kilitlemez; sadece bildirimleri devre dışı bırakır.
   const firebaseConfig = {
     apiKey: "AIzaSyAtHW7UW3-ftQq9loSHPJkkbSeDSONI2KE",
     authDomain: "qasimflix-8ba04.firebaseapp.com",
@@ -1511,8 +1510,37 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
     appId: "1:958468258867:web:08395af3f9a39f9fcf3746"
   };
 
-  const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-  const messaging = getMessaging(app);
+  window.qasimFirebaseReady = false;
+  window.qasimMessaging = null;
+
+  async function loadFirebaseMessaging() {
+    if (window.qasimMessaging) return window.qasimMessaging;
+    try {
+      const appMod = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
+      const msgMod = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js");
+      const app = appMod.getApps().length ? appMod.getApp() : appMod.initializeApp(firebaseConfig);
+      const messaging = msgMod.getMessaging(app);
+      window.qasimMessaging = messaging;
+      window.qasimFirebaseReady = true;
+
+      msgMod.onMessage(messaging, (payload) => {
+        console.log('Ön planda bildirim geldi:', payload);
+        if (Notification.permission === 'granted') {
+          new Notification(payload.notification?.title || 'QasimFlix', {
+            body: payload.notification?.body || 'Yeni içerik eklendi',
+            icon: '/assets/icons/icon-192.png',
+            data: { url: payload.data?.url || '/' }
+          });
+        }
+      });
+
+      return messaging;
+    } catch (err) {
+      window.qasimFirebaseReady = false;
+      console.warn('Firebase yüklenemedi; site çalışmaya devam edecek, bildirimler pasif:', err && err.message ? err.message : err);
+      return null;
+    }
+  }
 
   async function enableQasimFlixPush() {
     try {
@@ -1526,13 +1554,19 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
         return;
       }
 
-      const permission = await Notification.requestPermission();
+      const messaging = await loadFirebaseMessaging();
+      if (!messaging) {
+        alert('Firebase bildirim dosyaları yüklenemedi. VPN/DNS/AdBlock kontrol edip tekrar deneyin.');
+        return;
+      }
 
+      const permission = await Notification.requestPermission();
       if (permission !== 'granted') {
         alert('Bildirim izni verilmedi');
         return;
       }
 
+      const { getToken } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js");
       const registration = await navigator.serviceWorker.getRegistration('/') || await navigator.serviceWorker.register('/sw.js');
 
       const token = await getToken(messaging, {
@@ -1563,26 +1597,19 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
 
       console.log('Bildirim token:', token);
       alert('Bildirimler açıldı ✅');
-
     } catch (err) {
       console.error('Push init error:', err);
-      alert('Bildirim açılırken hata oldu: ' + err.message);
+      alert('Bildirim açılırken hata oldu: ' + (err && err.message ? err.message : err));
     }
   }
 
   window.enableQasimFlixPush = enableQasimFlixPush;
-
-  onMessage(messaging, (payload) => {
-    console.log('Ön planda bildirim geldi:', payload);
-
-    if (Notification.permission === 'granted') {
-      new Notification(payload.notification?.title || 'QasimFlix', {
-        body: payload.notification?.body || 'Yeni içerik eklendi',
-        icon: '/icons/icon-192.png',
-        data: { url: payload.data?.url || '/' }
-      });
-    }
-  });
+  // Firebase dosyalarını sadece kullanıcı bildirimleri açtıysa yükle.
+  // Böylece gstatic bağlantısı kesilse bile ana site ve player etkilenmez.
+  try {
+    const qfSettings = JSON.parse(localStorage.getItem('qasimflix_settings') || '{}');
+    if (qfSettings.notifications === true) loadFirebaseMessaging();
+  } catch (_) {}
 </script>
 </body>
 </html>

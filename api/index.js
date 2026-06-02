@@ -239,34 +239,45 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-function pathStarts(path, value) { return String(path || '').startsWith(value); }
-function pathMatches(path, rx) { return rx.test(String(path || '')); }
+function normalizeApiPath(path) {
+  let p = String(path || '').split('?')[0].replace(/\/+$/, '') || '/';
+  if (!p.startsWith('/')) p = '/' + p;
+  return p;
+}
+function pathStarts(path, value) { return normalizeApiPath(path).startsWith(value); }
+function pathMatches(path, rx) { return rx.test(normalizeApiPath(path)); }
+function pathIs(path, value) {
+  const p = normalizeApiPath(path);
+  const v = normalizeApiPath(value);
+  return p === v || p === v.replace(/^\/api/, '') || ('/api' + p) === v;
+}
 
 function shouldRequireAdmin(req) {
-  const method = req.method.toUpperCase();
-  const path = req.path;
+  const method = String(req.method || '').toUpperCase();
+  const path = normalizeApiPath(req.path || req.originalUrl || req.url);
   if (method === 'OPTIONS') return false;
-  if (path === '/api/admin/login') return false;
-  if (pathStarts(path, '/api/admin/')) return true;
-  if (pathStarts(path, '/api/tmdb/')) return true;
-  if (pathStarts(path, '/api/email/')) return true;
-  if (path === '/api/link-check') return true;
-  if (path === '/api/push/send') return true;
+  if (pathIs(path, '/api/admin/login')) return false;
 
+  // Herkese açık public endpointler admin token istememeli.
+  // Not: Vercel/Express bazı kurulumlarda req.path değerini /api olmadan verebilir.
+  if (method === 'GET' && pathIs(path, '/api/content-requests/public')) return false;
+  if (method === 'POST' && pathMatches(path, /^\/?(?:api\/)?content-requests\/[^/]+\/vote$/)) return false;
 
-   // Public içerik istekleri herkese açık olmalı
-  if (method === 'GET' && path === '/api/content-requests/public') return false;
+  if (pathStarts(path, '/api/admin/') || pathStarts(path, '/admin/')) return true;
+  if (pathStarts(path, '/api/tmdb/') || pathStarts(path, '/tmdb/')) return true;
+  if (pathStarts(path, '/api/email/') || pathStarts(path, '/email/')) return true;
+  if (pathIs(path, '/api/link-check')) return true;
+  if (pathIs(path, '/api/push/send')) return true;
 
-  
   // Yönetim içerik işlemleri
   if (['POST','PUT','PATCH','DELETE'].includes(method) && pathMatches(path, /^\/api\/series(?:\/[^/]+)?$/)) return true;
   if (['POST','PUT','PATCH','DELETE'].includes(method) && pathMatches(path, /^\/api\/seasons(?:\/[^/]+)?$/)) return true;
   if (['POST','PUT','PATCH','DELETE'].includes(method) && pathMatches(path, /^\/api\/episodes(?:\/[^/]+)?(?:\/subtitle)?$/)) return true;
   if (['POST','PUT','PATCH','DELETE'].includes(method) && pathMatches(path, /^\/api\/categories(?:\/[^/]+)?$/)) return true;
   if (['POST','PUT','PATCH','DELETE'].includes(method) && pathStarts(path, '/api/announcements')) return true;
-  if (method === 'GET' && path === '/api/announcements') return true;
+  if (method === 'GET' && pathIs(path, '/api/announcements')) return true;
   if (['GET','PATCH','DELETE'].includes(method) && pathMatches(path, /^\/api\/reports(?:\/[^/]+)?$/)) return true;
-  if (['GET','PATCH','DELETE'].includes(method) && pathMatches(path, /^\/api\/content-requests(?:\/[^/]+)?$/)) return true;
+  if (['GET','PATCH','DELETE'].includes(method) && pathMatches(path, /^\/?(?:api\/)?content-requests(?:\/[^/]+)?$/)) return true;
   return false;
 }
 

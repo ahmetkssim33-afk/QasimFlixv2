@@ -1,8 +1,8 @@
 {
-  "version": "1.0.6",
-  "build": 2026053106,
+  "version": "1.0.8",
+  "build": 2026060301,
   "apkRequired": false,
-  "message": "Güvenlik sertleştirme, APK sürüm eşitleme, CORS/rate limit ve üretim temizliği güncellendi.",
+  "message": "Public API 401, Firebase/CDN, cache ve APK domain düzeltmeleri eklendi.",
   "apkUrl": "",
   "notifyUpdates": true,
   "notifyNewContent": true,

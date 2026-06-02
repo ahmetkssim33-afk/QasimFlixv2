@@ -31,7 +31,7 @@ import android.widget.Toast;
 
 
 public class MainActivity extends android.app.Activity {
-    private static final String HOME_URL = "https://qasim-flixv2-swnm.vercel.app/index.html?source=apk";
+    private static final String HOME_URL = "https://qasim-flix2-swnn.vercel.app/index.html?source=apk";
     private static final int FILE_CHOOSER_REQUEST = 1001;
     private static final int NOTIFICATION_REQUEST = 2001;
 
