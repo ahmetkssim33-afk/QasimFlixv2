@@ -181,7 +181,7 @@
     const titleInput = document.getElementById('s-title');
     if(!type) return;
     const apply = () => {
-      const isMovie = type.value === 'movie' || type.value === 'documentary';
+      const isMovie = type.value === 'movie';
       if(titleLabel) titleLabel.textContent = isMovie ? 'Film Adı' : 'Dizi Adı';
       if(titleInput) titleInput.placeholder = isMovie ? 'örn. Requiem for a Dream' : 'örn. Squid Game';
       const sea = document.querySelector('[data-view="seasons"]'); const ep = document.querySelector('[data-view="episodes"]');

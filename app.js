@@ -265,6 +265,19 @@ function pad(n) {
     return String(n || 0).padStart(2, '0');
 }
 
+function isAnimeContent(item) {
+    const cats = (item.categories || []).map(c => String(c || '').toLowerCase().trim());
+    return item.type === 'anime' || cats.some(c => ['anime', 'animasyon', 'أنمي', 'انمي'].includes(c));
+}
+
+function isSeriesContent(item) {
+    return item.type === 'series';
+}
+
+function isMovieContent(item) {
+    return item.type === 'movie';
+}
+
 // Initialize app on page load: auth, data and continue-watching
 (async function boot() {
     try { await initAuth(); } catch (e) { console.warn('initAuth error', e); }
@@ -293,9 +306,9 @@ async function loadAll() {
 
         renderHero(allData);
         renderRow('popular-row', allData.slice(0, 12));
-        renderRow('series-row', allData.filter(s => s.type === 'series'));
-        renderRow('documentaries-row', allData.filter(s => (s.categories||[]).some(c => (c||'').toLowerCase() === 'documentary' || (c||'').toLowerCase() === 'belgesel')));
-        renderRow('movies-row', allData.filter(s => s.type === 'movie' || s.type === 'documentary'));
+        renderRow('series-row', allData.filter(isSeriesContent));
+        renderRow('documentaries-row', allData.filter(isAnimeContent));
+        renderRow('movies-row', allData.filter(isMovieContent));
         // Yerli diziler (local) bölümü
         renderRow('local-series-row', allData.filter(s => s.type === 'yerli'));
         // show local section if content exists
@@ -394,7 +407,7 @@ function createCard(item) {
     let typeLabel = qfText('content.series'); let typeI18n = 'content.series';
     let typeCls = 'badge-series';
     if (tKey === 'movie') { typeLabel = qfText('content.movie'); typeI18n = 'content.movie'; typeCls = 'badge-movie'; }
-    else if (tKey === 'documentary') { typeLabel = qfText('content.documentary'); typeI18n = 'content.documentary'; typeCls = 'badge-documentary'; }
+    else if (tKey === 'anime') { typeLabel = qfText('content.anime') || '🍥 Anime'; typeI18n = 'content.anime'; typeCls = 'badge-documentary'; }
     else if (tKey === 'yerli') { typeLabel = qfText('content.localSeries'); typeI18n = 'content.localSeries'; typeCls = 'badge-red'; }
     const cat = item.categories?.[0] || '';
     const rating = item.rating ? item.rating : '';
@@ -408,7 +421,7 @@ function createCard(item) {
     <div class="card" data-series="${item._id}">
       ${imgHtml}
       <div class="card-placeholder" style="${placeholderStyle}">
-        <span class="icon">${tKey === 'movie' ? '🎬' : tKey === 'documentary' ? '🎞' : '📺'}</span>
+        <span class="icon">${tKey === 'movie' ? '🎬' : tKey === 'anime' ? '🍥' : '📺'}</span>
         <span>${esc(item.title)}</span>
       </div>
       <span class="badge-type ${typeCls}" data-i18n="${typeI18n}">${typeLabel}</span>
@@ -499,9 +512,9 @@ function showCategory(type, btn) {
 
     // Re-render rows from cached data to ensure content shows
     if (type === 'series') {
-        renderRow('series-row', allData.filter(s => s.type === 'series'));
+        renderRow('series-row', allData.filter(isSeriesContent));
     } else if (type === 'movie') {
-        renderRow('movies-row', allData.filter(s => s.type === 'movie' || s.type === 'documentary'));
+        renderRow('movies-row', allData.filter(isMovieContent));
     }
 }
 
@@ -519,14 +532,14 @@ function showAll(btn) {
 
     // Re-render all rows from cached data
     renderRow('popular-row', allData.slice(0, 12));
-    renderRow('series-row', allData.filter(s => s.type === 'series'));
-    renderRow('documentaries-row', allData.filter(s => (s.categories||[]).some(c => (c||'').toLowerCase() === 'documentary' || (c||'').toLowerCase() === 'belgesel')));
-    renderRow('movies-row', allData.filter(s => s.type === 'movie' || s.type === 'documentary'));
+    renderRow('series-row', allData.filter(isSeriesContent));
+    renderRow('documentaries-row', allData.filter(isAnimeContent));
+    renderRow('movies-row', allData.filter(isMovieContent));
     renderRow('local-series-row', allData.filter(s => s.type === 'yerli'));
 }
 
 function showDocumentaries(btn) {
-    currentFilter = 'documentaries';
+    currentFilter = 'anime';
     setActiveNavBtn(btn);
     document.getElementById('search-input').value = '';
     document.getElementById('search-results').style.display = 'none';
@@ -535,7 +548,7 @@ function showDocumentaries(btn) {
     document.getElementById('series-section').style.display = 'none';
     document.getElementById('movies-section').style.display = 'none';
     document.getElementById('documentaries-section').style.display = '';
-    renderRow('documentaries-row', allData.filter(s => (s.categories||[]).some(c => (c||'').toLowerCase() === 'documentary' || (c||'').toLowerCase() === 'belgesel')));
+    renderRow('documentaries-row', allData.filter(isAnimeContent));
 }
 
 function showLocalSeries(btn) {
@@ -640,7 +653,7 @@ async function openDetail(seriesId, autoPlay = false) {
         const meta = [];
         if (series.rating) meta.push(`<span class="rating">⭐ ${series.rating}/10</span>`);
         if (series.releaseYear) meta.push(`<span>${series.releaseYear}</span>`);
-        if (series.type) meta.push(`<span data-i18n="${series.type === 'movie' ? 'content.movie' : series.type === 'documentary' ? 'content.documentary' : 'content.series'}">${series.type === 'movie' ? qfText('content.movie') : series.type === 'documentary' ? qfText('content.documentary') : qfText('content.series')}</span>`);
+        if (series.type) meta.push(`<span data-i18n="${series.type === 'movie' ? 'content.movie' : series.type === 'anime' ? 'content.anime' : 'content.series'}">${series.type === 'movie' ? qfText('content.movie') : series.type === 'anime' ? (qfText('content.anime') || '🍥 Anime') : qfText('content.series')}</span>`);
         if (series.categories?.length) meta.push(`<span>${series.categories.join(', ')}</span>`);
         document.getElementById('modal-meta').innerHTML = meta.join('<span style="color:#444">•</span>');
 
@@ -651,7 +664,7 @@ async function openDetail(seriesId, autoPlay = false) {
 
         // Action buttons
         const actions = document.getElementById('modal-actions');
-        if (series.type === 'movie' || series.type === 'documentary') {
+        if (series.type === 'movie') {
             const watchLabel = qfText('action.watch');
             actions.innerHTML = `
                 <button class="btn-play" onclick="playMovieDirect()" data-i18n="action.watch">${watchLabel}</button>
@@ -681,7 +694,7 @@ async function openDetail(seriesId, autoPlay = false) {
         loadRatings(series._id).catch(() => {});
 
         if (autoPlay) {
-            if (series.type === 'movie' || series.type === 'documentary') {
+            if (series.type === 'movie') {
                 playMovieDirect();
             } else {
                 playFirstEpisode();

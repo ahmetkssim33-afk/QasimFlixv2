@@ -782,7 +782,7 @@ select{
         <span class="icon">⊟</span> <span data-i18n="nav.subtitles">Altyazılar</span>
       </div>
       <div class="nav-item" data-view="documentaries" onclick="navigate(this,'documentaries')">
-        <span class="icon">🎞</span> <span data-i18n="nav.documentaries">Belgeseller</span>
+        <span class="icon">🍥</span> <span data-i18n="nav.documentaries">Anime</span>
         <span class="nav-badge" id="nb-documentaries">0</span>
       </div>
       <div class="nav-item" data-view="reports" onclick="navigate(this,'reports')">
@@ -913,7 +913,7 @@ select{
               <select id="s-type" onchange="onContentTypeChange()">
                 <option value="series">Dizi</option>
                 <option value="movie">Film</option>
-                <option value="documentary">Belgesel</option>
+                <option value="anime">Anime</option>
                 <option value="yerli">Yerli Dizi</option>
               </select>
             </div>
@@ -964,7 +964,7 @@ select{
           <div class="form-group" id="s-video-group" style="display:none">
             <label><span data-i18n="form.video">Video URL</span> <span class="required">*</span></label>
             <input type="text" id="s-video" data-i18n-placeholder="ph.video" placeholder="https://.../video.mp4 veya embed linki">
-            <div class="hint">Film/Belgesel için doğrudan video adresi (MP4, M3U8, iframe embed vb.)</div>
+            <div class="hint">Film için doğrudan video adresi (MP4, M3U8, iframe embed vb.)</div>
           </div>
           <div class="form-group" id="s-duration-group" style="display:none">
             <label><span data-i18n="form.duration">Süre (saniye)</span></label>
@@ -1095,7 +1095,7 @@ select{
       <!-- SUBTITLES VIEW -->
       <div class="view" id="view-subtitles">
         <div class="form-card">
-          <h3>Altyazı Ekle</h3>
+          <h3>Altyazı Ekle / Oluştur</h3>
           <div class="form-row">
             <div class="form-group">
               <label>Seri <span class="required">*</span></label>
@@ -1110,38 +1110,81 @@ select{
               </select>
             </div>
           </div>
-          <div class="form-group">
-            <label>Dil <span class="required">*</span></label>
-            <select id="sub-lang">
-              <option value="TR">Türkçe (TR)</option>
-              <option value="EN">İngilizce (EN)</option>
-              <option value="ES">İspanyolca (ES)</option>
-              <option value="FR">Fransızca (FR)</option>
-              <option value="DE">Almanca (DE)</option>
-              <option value="AR">Arapça (AR)</option>
-            </select>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Dil <span class="required">*</span></label>
+              <select id="sub-lang">
+                <option value="AR">Arapça (AR)</option>
+                <option value="TR">Türkçe (TR)</option>
+                <option value="EN">İngilizce (EN)</option>
+                <option value="ES">İspanyolca (ES)</option>
+                <option value="FR">Fransızca (FR)</option>
+                <option value="DE">Almanca (DE)</option>
+              </select>
+            </div>
           </div>
           <div class="form-group">
             <label>VTT İçeriği <span class="required">*</span></label>
-            <textarea id="sub-vtt" style="min-height:140px;font-family:var(--font-mono);font-size:.8rem" placeholder="WEBVTT&#10;&#10;00:00:00.000 --> 00:00:05.000&#10;Altyazı metni..."></textarea>
-            <div class="hint">WebVTT formatında altyazı içeriği</div>
+            <textarea id="sub-vtt" style="min-height:150px;font-family:var(--font-mono);font-size:.8rem" placeholder="WEBVTT&#10;&#10;00:00:00.000 --> 00:00:05.000&#10;Altyazı metni..."></textarea>
+            <div class="hint">WebVTT formatında altyazı içeriği. AI oluşturucudan çıkan metin buraya otomatik gelir.</div>
           </div>
           <button class="btn btn-red" id="btn-add-sub" onclick="addSubtitle()">
-            <span>+ Altyazı Ekle</span>
+            <span>+ Altyazıyı Bölüme Kaydet</span>
           </button>
+        </div>
+
+        <div class="form-card" style="margin-top:18px">
+          <h3>🤖 Otomatik Arapça Altyazı Oluştur</h3>
+          <div class="hint" style="margin-bottom:12px;line-height:1.55">
+            Video veya ses dosyası yükle; sistem konuşmayı algılar, Arapçaya çevirir, SRT/VTT üretir. Büyük film/dizi dosyaları için önce sesi MP3/M4A olarak çıkarmak daha hızlıdır. Sadece kendi hakkın olan veya lisanslı videolarda kullan.
+          </div>
+          <div class="form-row three">
+            <div class="form-group">
+              <label>Kaynak Dil</label>
+              <select id="ai-sub-source-lang">
+                <option value="auto">Otomatik algıla</option>
+                <option value="ja">Japonca</option>
+                <option value="en">İngilizce</option>
+                <option value="tr">Türkçe</option>
+                <option value="ar">Arapça</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Hedef Dil</label>
+              <select id="ai-sub-target-lang">
+                <option value="ar">Arapça</option>
+                <option value="tr">Türkçe</option>
+                <option value="en">İngilizce</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Dosya</label>
+              <input type="file" id="ai-sub-media" accept="audio/*,video/*,.mp3,.mp4,.m4a,.wav,.webm,.aac,.ogg,.flac" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:10px 12px;border-radius:var(--radius);font-family:var(--font-head);font-size:.85rem;width:100%;cursor:pointer;">
+            </div>
+          </div>
+          <label style="display:flex;gap:8px;align-items:center;margin:8px 0 14px;color:var(--muted);font-size:.88rem">
+            <input type="checkbox" id="ai-sub-save-to-episode" checked style="width:auto;min-height:auto">
+            Oluşturunca seçili bölüme otomatik kaydet
+          </label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <button class="btn btn-red" id="btn-ai-sub-generate" onclick="generateAiSubtitle()"><span>🤖 Altyazı Oluştur</span></button>
+            <button class="btn btn-ghost sm" id="btn-ai-sub-download-vtt" onclick="downloadGeneratedSubtitle('vtt')" disabled>VTT indir</button>
+            <button class="btn btn-ghost sm" id="btn-ai-sub-download-srt" onclick="downloadGeneratedSubtitle('srt')" disabled>SRT indir</button>
+          </div>
+          <div id="ai-sub-result" class="hint" style="margin-top:12px"></div>
         </div>
       </div>
 
-      <!-- DOCUMENTARIES VIEW -->
+      <!-- ANIME VIEW -->
       <div class="view" id="view-documentaries">
         <div class="section-header">
-          <h2>Belgeseller</h2>
-          <div class="sub">Tüm belgesel içeriği</div>
+          <h2>Anime</h2>
+          <div class="sub">Tüm anime içeriği</div>
         </div>
         <div id="documentaries-list-wrap">
           <div class="empty-state">
-            <div class="empty-icon">🎞</div>
-            <p>Belgesel yüklenemedi</p>
+            <div class="empty-icon">🍥</div>
+            <p>Anime yüklenemedi</p>
           </div>
         </div>
       </div>
@@ -1187,7 +1230,7 @@ const ADMIN_I18N = {
     'nav.seasons':'Sezonlar',
     'nav.episodes':'Bölümler',
     'nav.subtitles':'Altyazılar',
-    'nav.documentaries':'Belgeseller',
+    'nav.documentaries':'Anime',
     'auth.placeholder':'Admin şifresi',
     'auth.login':'Giriş Yap →',
     'toast.refreshed':'Yenilendi',
@@ -1218,7 +1261,7 @@ const ADMIN_I18N = {
     'btn.add_season':'+ Sezon Ekle',
     'btn.add_episode':'+ Bölüm Ekle',
     'msg.title_required':'Başlık zorunludur',
-    'err.video_required':'Film/Belgesel için Video URL zorunludur',
+    'err.video_required':'Film için Video URL zorunludur',
     'msg.added':'✓ Eklendi',
     'msg.deleted':'Silindi',
     'err.select_series':'Seri seçin',
@@ -1237,7 +1280,7 @@ const ADMIN_I18N = {
       'empty.no_results':'Sonuç bulunamadı',
       'list.count':'{n} içerik listeleniyor',
       'badge.movie':'Film',
-      'badge.documentary':'Belgesel',
+      'badge.anime':'Anime',
       'badge.series':'Dizi',
       'btn.edit':'Düzenle',
       'btn.delete':'Sil',
@@ -1268,7 +1311,7 @@ const ADMIN_I18N = {
     'nav.seasons':'المواسم',
     'nav.episodes':'الحلقات',
     'nav.subtitles':'الترجمة',
-    'nav.documentaries':'وثائقيات',
+    'nav.documentaries':'أنمي',
     'auth.placeholder':'كلمة مرور المدير',
     'auth.login':'تسجيل الدخول →',
     'toast.refreshed':'تم التحديث',
@@ -1299,7 +1342,7 @@ const ADMIN_I18N = {
     'btn.add_season':'+ أضف موسم',
     'btn.add_episode':'+ أضف حلقة',
     'msg.title_required':'العنوان مطلوب',
-    'err.video_required':'عنوان الفيديو مطلوب للفيلم/الوثائقي',
+    'err.video_required':'رابط الفيديو مطلوب للفيلم',
     'msg.added':'✓ تم الإضافة',
     'msg.deleted':'تم الحذف',
     'err.select_series':'اختر مسلسلًا',
@@ -1318,7 +1361,7 @@ const ADMIN_I18N = {
     'empty.no_results':'لم يتم العثور على نتائج',
     'list.count':'عرض {n} عنصر',
     'badge.movie':'فيلم',
-    'badge.documentary':'وثائقي',
+    'badge.anime':'أنمي',
     'badge.series':'مسلسل',
     'btn.edit':'تعديل',
     'btn.delete':'حذف',
@@ -1367,7 +1410,7 @@ ADMIN_I18N.tr['modal.edit_season'] = 'Sezon Düzenle';
 ADMIN_I18N.tr['modal.edit_episode'] = 'Bölüm Düzenle';
 ADMIN_I18N.tr['type.series'] = 'Dizi';
 ADMIN_I18N.tr['type.movie'] = 'Film';
-ADMIN_I18N.tr['type.documentary'] = 'Belgesel';
+ADMIN_I18N.tr['type.anime'] = 'Anime';
 ADMIN_I18N.tr['type.local'] = 'Yerli Dizi';
 
 ADMIN_I18N.ar['form.title'] = 'اسم المسلسل';
@@ -1392,7 +1435,7 @@ ADMIN_I18N.ar['modal.edit_season'] = 'تعديل الموسم';
 ADMIN_I18N.ar['modal.edit_episode'] = 'تعديل الحلقة';
 ADMIN_I18N.ar['type.series'] = 'مسلسل';
 ADMIN_I18N.ar['type.movie'] = 'فيلم';
-ADMIN_I18N.ar['type.documentary'] = 'وثائقي';
+ADMIN_I18N.ar['type.anime'] = 'أنمي';
 ADMIN_I18N.ar['type.local'] = 'مسلسل محلي';
 ADMIN_I18N.tr['nav.requests'] = 'İstekler';
 ADMIN_I18N.tr['requests.title'] = 'Kullanıcı İçerik İstekleri';
@@ -1593,7 +1636,7 @@ const pageTitles = {
   seasons: ['Sezon Yönetimi', 'Sezonlar'],
   episodes: ['Bölüm Yönetimi', 'Bölümler'],
   subtitles: ['Altyazı Yönetimi', 'Altyazılar'],
-  documentaries: ['Belgeseller', 'Belgeseller'],
+  documentaries: ['Anime', 'Anime'],
 };
 
 function navigate(el, view) {
@@ -1656,7 +1699,7 @@ async function loadAllSeries() {
     allSeries = d.series || [];
     document.getElementById('nb-series').textContent = allSeries.length;
     // update documentaries counter if present
-    const docCount = allSeries.filter(s => (s.categories||[]).some(c => ['documentary','belgesel'].includes((c||'').toLowerCase()))).length;
+    const docCount = allSeries.filter(isAnimeContent).length;
     const nbDocEl = document.getElementById('nb-documentaries');
     if (nbDocEl) nbDocEl.textContent = docCount;
     populateSeriesSelects();
@@ -1817,6 +1860,11 @@ async function deleteReport(id) {
 // ═══════════════════════════════════════════════════════════════
 // SERIES
 // ═══════════════════════════════════════════════════════════════
+function isAnimeContent(s) {
+  const cats = (s.categories || []).map(c => String(c || '').toLowerCase().trim());
+  return s.type === 'anime' || cats.some(c => ['anime','animasyon','أنمي','انمي'].includes(c));
+}
+
 async function loadSeriesList() {
   await loadAllSeries();
   renderSeriesList();
@@ -1826,7 +1874,7 @@ function renderSeriesList() {
   const filter = document.getElementById('filter-type')?.value || '';
   let list;
   if (!filter) list = allSeries.slice();
-  else if (filter === 'documentary') list = allSeries.filter(s => s.type === 'documentary');
+  else if (filter === 'anime') list = allSeries.filter(isAnimeContent);
   else list = allSeries.filter(s => s.type === filter);
   if (searchTerm) list = list.filter(s => s.title.toLowerCase().includes(searchTerm));
   const lbl = document.getElementById('series-count-label');
@@ -1845,7 +1893,7 @@ async function loadDocumentariesList() {
 }
 
 function renderDocumentariesList() {
-  let list = allSeries.filter(s => s.type === 'documentary');
+  let list = allSeries.filter(isAnimeContent);
   if (searchTerm) list = list.filter(s => s.title.toLowerCase().includes(searchTerm));
   const lbl = document.getElementById('documentaries-count-label');
   if (lbl) lbl.textContent = adminT('list.count').replace('{n}', list.length);
@@ -1861,8 +1909,8 @@ function seriesItemHTML(s) {
   const cats = (s.categories||[]).join(', ') || '—';
   const typeBadge = s.type === 'movie'
     ? `<span class="badge badge-blue">🎬 ${adminT('badge.movie')}</span>`
-    : s.type === 'documentary'
-      ? `<span class="badge badge-green">🎞 ${adminT('badge.documentary')}</span>`
+    : s.type === 'anime'
+      ? `<span class="badge badge-green">🍥 ${adminT('badge.anime') || 'Anime'}</span>`
       : `<span class="badge badge-red">📺 ${adminT('badge.series')}</span>`;
   const poster = s.poster
     ? `<img class="list-thumb" src="${esc(s.poster)}" alt="" onerror="this.style.display='none';this.nextSibling.style.display='flex'">`
@@ -1890,7 +1938,7 @@ function seriesItemHTML(s) {
 // ─── İçerik türü değişince form alanlarını göster/gizle ──────
 function onContentTypeChange() {
   const type = v('s-type');
-  const isFilm = type === 'movie' || type === 'documentary';
+  const isFilm = type === 'movie';
   document.getElementById('s-video-group').style.display = isFilm ? '' : 'none';
   document.getElementById('s-duration-group').style.display = isFilm ? '' : 'none';
   const label = document.getElementById('btn-add-series-label');
@@ -1902,7 +1950,7 @@ async function addSeries() {
   const title = v('s-title');
   const type = v('s-type');
   if (!title) { toast(adminT('msg.title_required'), 'error'); return; }
-  const isFilm = type === 'movie' || type === 'documentary';
+  const isFilm = type === 'movie';
   if (isFilm && !v('s-video').trim()) { toast(adminT('err.video_required'), 'error'); return; }
   const btn = document.getElementById('btn-add-series');
   setLoading(btn, true);
@@ -1946,7 +1994,7 @@ async function addSeries() {
       payload.duration = parseInt(v('s-duration')) || 0;
     }
     await api('POST', '/series', payload);
-    const typeLabel = type === 'movie' ? 'Film' : type === 'documentary' ? 'Belgesel' : 'Dizi';
+    const typeLabel = type === 'movie' ? 'Film' : type === 'anime' ? 'Anime' : 'Dizi';
     toast(adminT('msg.added') + ' ' + title, 'success');
     ['s-title','s-desc','s-desc-tr','s-desc-ar','s-year','s-cats','s-rating','s-video','s-duration','s-poster-url','s-banner-url','s-trailer','s-tmdb-id','s-tmdb-type','s-original-title','s-cast'].forEach(id => {
       const el = document.getElementById(id); if (el) el.value = '';
@@ -2210,6 +2258,83 @@ async function addSubtitle() {
   finally { setLoading(btn, false, adminT('btn.add_subtitle')); }
 }
 
+
+let lastGeneratedSubtitle = null;
+
+function setAiSubtitleButtons(enabled) {
+  const vttBtn = document.getElementById('btn-ai-sub-download-vtt');
+  const srtBtn = document.getElementById('btn-ai-sub-download-srt');
+  if (vttBtn) vttBtn.disabled = !enabled;
+  if (srtBtn) srtBtn.disabled = !enabled;
+}
+
+async function generateAiSubtitle() {
+  const file = document.getElementById('ai-sub-media')?.files?.[0];
+  const epId = v('sub-episode');
+  const saveToEpisode = !!document.getElementById('ai-sub-save-to-episode')?.checked;
+  const targetLang = v('ai-sub-target-lang') || 'ar';
+  const sourceLang = v('ai-sub-source-lang') || 'auto';
+  const resultEl = document.getElementById('ai-sub-result');
+  const btn = document.getElementById('btn-ai-sub-generate');
+
+  if (!file) { toast('Video veya ses dosyası seçin', 'error'); return; }
+  if (saveToEpisode && !epId) { toast('Otomatik kaydetmek için bölüm seçin', 'error'); return; }
+
+  const fd = new FormData();
+  fd.append('media', file);
+  fd.append('sourceLang', sourceLang);
+  fd.append('targetLang', targetLang);
+  fd.append('translate', 'true');
+  if (epId) fd.append('episodeId', epId);
+  fd.append('saveToEpisode', saveToEpisode ? 'true' : 'false');
+
+  setLoading(btn, true);
+  setAiSubtitleButtons(false);
+  lastGeneratedSubtitle = null;
+  if (resultEl) resultEl.textContent = 'Konuşma algılanıyor ve altyazı hazırlanıyor...';
+
+  try {
+    const r = await fetch(API + '/admin/subtitles/generate', {
+      method: 'POST',
+      headers: window.qfAdminHeaders ? window.qfAdminHeaders() : {},
+      body: fd
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || 'Altyazı oluşturulamadı');
+    lastGeneratedSubtitle = d;
+    const subVtt = document.getElementById('sub-vtt');
+    if (subVtt) subVtt.value = d.vttContent || '';
+    const subLang = document.getElementById('sub-lang');
+    if (subLang) subLang.value = String(d.targetLang || targetLang).toUpperCase();
+    setAiSubtitleButtons(true);
+    if (resultEl) resultEl.textContent = `Hazır: ${d.segmentCount || 0} satır üretildi${d.savedToEpisode ? ' ve seçili bölüme kaydedildi' : ''}.`;
+    toast(d.savedToEpisode ? '✓ Altyazı oluşturuldu ve kaydedildi' : '✓ Altyazı oluşturuldu', 'success');
+  } catch(e) {
+    if (resultEl) resultEl.textContent = e.message;
+    toast(e.message, 'error');
+  } finally {
+    setLoading(btn, false, '🤖 Altyazı Oluştur');
+  }
+}
+
+function downloadGeneratedSubtitle(format) {
+  if (!lastGeneratedSubtitle) { toast('Önce altyazı oluşturun', 'error'); return; }
+  const isSrt = format === 'srt';
+  const content = isSrt ? lastGeneratedSubtitle.srtContent : lastGeneratedSubtitle.vttContent;
+  if (!content) { toast('İndirilecek altyazı yok', 'error'); return; }
+  const epText = document.getElementById('sub-episode')?.selectedOptions?.[0]?.textContent || 'qasimflix-subtitle';
+  const safe = epText.toLowerCase().replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').slice(0, 80) || 'qasimflix-subtitle';
+  const blob = new Blob([content], { type: isSrt ? 'application/x-subrip;charset=utf-8' : 'text/vtt;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${safe}-${String(lastGeneratedSubtitle.targetLang || 'AR').toLowerCase()}.${isSrt ? 'srt' : 'vtt'}`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 500);
+}
+
 // ═══════════════════════════════════════════════════════════════
 // POPULATE SELECTS
 // ═══════════════════════════════════════════════════════════════
@@ -2223,7 +2348,7 @@ function populateSeriesSelects() {
     allSeries.forEach(s => {
       const o = document.createElement('option');
       o.value = s._id;
-      o.textContent = s.title + (s.type === 'movie' ? ' [🎬 Film]' : s.type === 'documentary' ? ' [🎞 Belgesel]' : '');
+      o.textContent = s.title + (s.type === 'movie' ? ' [🎬 Film]' : s.type === 'anime' ? ' [🍥 Anime]' : '');
       el.appendChild(o);
     });
     if (cur) el.value = cur;
@@ -2332,7 +2457,7 @@ async function openEditSeries(id) {
         <select id="edit-s-type">
           <option value="series" ${s.type==='series'?'selected':''}>Dizi</option>
           <option value="movie" ${s.type==='movie'?'selected':''}>Film</option>
-          <option value="documentary" ${s.type==='documentary'?'selected':''}>Belgesel</option>
+          <option value="anime" ${s.type==='anime'?'selected':''}>Anime</option>
           <option value="yerli" ${s.type==='yerli'?'selected':''}>Yerli Dizi</option>
         </select>
       </div>

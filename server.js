@@ -69,6 +69,148 @@ app.use('/uploads', express.static(uploadsDir));
 const { connectDB } = require('./lib/db');
 const { Series, Season, Episode, WatchProgress, Category, Film, User, Rating, Analytics, EmailLog, ContentRequest, IssueReport, PushSubscription, Announcement, AdminLog } = require('./lib/models');
 
+
+// ───────────────────────────────────────────────────────────
+// AI ALTYAZI OLUŞTURUCU — OpenAI Whisper + çeviri
+// Not: Büyük dizi/film dosyalarını Vercel üzerinde işlemek önerilmez.
+// En iyi kullanım: küçük video klibi veya videodan çıkarılmış ses dosyası yüklemek.
+// Env: OPENAI_API_KEY, OPENAI_TRANSCRIBE_MODEL=whisper-1, OPENAI_TRANSLATE_MODEL=gpt-4o-mini
+// ───────────────────────────────────────────────────────────
+const subtitleUploadMaxMb = Math.max(1, Number(process.env.SUBTITLE_UPLOAD_MAX_MB || 50));
+const subtitleUploadMemory = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: subtitleUploadMaxMb * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const ok = String(file.mimetype || '').startsWith('audio/') || String(file.mimetype || '').startsWith('video/') || /\.(mp3|mp4|m4a|wav|webm|aac|ogg|flac)$/i.test(file.originalname || '');
+    if (ok) cb(null, true);
+    else cb(new Error('Sadece video veya ses dosyası yükleyin.'));
+  }
+});
+
+function cleanSubtitleText(text = '') {
+  return String(text || '').replace(/\r/g, '').replace(/\s+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+function subtitleStamp(seconds = 0, mode = 'vtt') {
+  const n = Math.max(0, Number(seconds) || 0);
+  const h = Math.floor(n / 3600);
+  const m = Math.floor((n % 3600) / 60);
+  const s = Math.floor(n % 60);
+  const ms = Math.round((n - Math.floor(n)) * 1000);
+  const sep = mode === 'srt' ? ',' : '.';
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}${sep}${String(ms).padStart(3,'0')}`;
+}
+
+function segmentsToVtt(segments = []) {
+  const lines = ['WEBVTT', ''];
+  segments.forEach((seg, idx) => {
+    const text = cleanSubtitleText(seg.text);
+    if (!text) return;
+    const start = subtitleStamp(seg.start, 'vtt');
+    const end = subtitleStamp(seg.end && seg.end > seg.start ? seg.end : (Number(seg.start || 0) + 3), 'vtt');
+    lines.push(`${idx + 1}`, `${start} --> ${end}`, text, '');
+  });
+  return lines.join('\n').trim() + '\n';
+}
+
+function segmentsToSrt(segments = []) {
+  const lines = [];
+  segments.forEach((seg, idx) => {
+    const text = cleanSubtitleText(seg.text);
+    if (!text) return;
+    const start = subtitleStamp(seg.start, 'srt');
+    const end = subtitleStamp(seg.end && seg.end > seg.start ? seg.end : (Number(seg.start || 0) + 3), 'srt');
+    lines.push(`${idx + 1}`, `${start} --> ${end}`, text, '');
+  });
+  return lines.join('\n').trim() + '\n';
+}
+
+function normalizeOpenAISegments(data = {}) {
+  if (Array.isArray(data.segments) && data.segments.length) {
+    return data.segments.map((x, i) => ({
+      start: Number(x.start) || 0,
+      end: Number(x.end) || (Number(x.start) || 0) + 3,
+      text: cleanSubtitleText(x.text || '')
+    })).filter(x => x.text);
+  }
+  const text = cleanSubtitleText(data.text || '');
+  return text ? [{ start: 0, end: Math.max(4, Math.min(12, text.length / 12)), text }] : [];
+}
+
+function subtitleLanguageName(code = 'ar') {
+  const map = { ar: 'Arabic', tr: 'Turkish', en: 'English', ja: 'Japanese', es: 'Spanish', fr: 'French', de: 'German', ru: 'Russian', zh: 'Chinese' };
+  return map[String(code || '').toLowerCase()] || 'Arabic';
+}
+
+async function transcribeWithOpenAI(file, sourceLang) {
+  const apiKey = String(process.env.OPENAI_API_KEY || '').trim();
+  if (!apiKey) {
+    const err = new Error('OPENAI_API_KEY ayarlı değil. Vercel Environment Variables içine ekleyin.');
+    err.statusCode = 500;
+    throw err;
+  }
+  const fd = new FormData();
+  const safeName = String(file.originalname || 'audio.mp3').replace(/[^a-zA-Z0-9._-]/g, '_').slice(-120) || 'audio.mp3';
+  fd.append('file', new Blob([file.buffer], { type: file.mimetype || 'application/octet-stream' }), safeName);
+  fd.append('model', process.env.OPENAI_TRANSCRIBE_MODEL || 'whisper-1');
+  fd.append('response_format', 'verbose_json');
+  const lang = String(sourceLang || '').toLowerCase();
+  if (lang && lang !== 'auto') fd.append('language', lang);
+
+  const r = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + apiKey },
+    body: fd
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error?.message || data.message || 'Konuşma algılama başarısız oldu.');
+  return normalizeOpenAISegments(data);
+}
+
+async function translateSegmentsWithOpenAI(segments, targetLang) {
+  const apiKey = String(process.env.OPENAI_API_KEY || '').trim();
+  const target = subtitleLanguageName(targetLang || 'ar');
+  if (!apiKey || !segments.length) return segments;
+  const model = process.env.OPENAI_TRANSLATE_MODEL || 'gpt-4o-mini';
+  const output = [];
+  for (let i = 0; i < segments.length; i += 35) {
+    const batch = segments.slice(i, i + 35);
+    const payload = batch.map((seg, idx) => ({ id: idx + 1, text: seg.text }));
+    const r = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + apiKey },
+      body: JSON.stringify({
+        model,
+        temperature: 0,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: `You translate subtitle lines to ${target}. Keep names, numbers, punctuation, and line count. Return only valid JSON: {"translations":["..."]}.` },
+          { role: 'user', content: JSON.stringify({ targetLanguage: target, items: payload }) }
+        ]
+      })
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error?.message || data.message || 'Altyazı çevirisi başarısız oldu.');
+    let translated = [];
+    try { translated = JSON.parse(data.choices?.[0]?.message?.content || '{}').translations || []; } catch (_) { translated = []; }
+    batch.forEach((seg, idx) => output.push({ ...seg, text: cleanSubtitleText(translated[idx] || seg.text) }));
+  }
+  return output;
+}
+
+async function saveGeneratedSubtitleToEpisode(episodeId, lang, vttContent) {
+  if (!episodeId) return null;
+  if (!mongoose.Types.ObjectId.isValid(episodeId)) throw new Error('Geçersiz bölüm ID.');
+  await connectDB();
+  const episode = await Episode.findById(episodeId);
+  if (!episode) throw new Error('Bölüm bulunamadı.');
+  const code = String(lang || 'AR').toUpperCase();
+  episode.subtitles = (episode.subtitles || []).filter(s => String(s.language).toUpperCase() !== code);
+  episode.subtitles.push({ language: code, vttContent });
+  await episode.save();
+  return episode;
+}
+
 // ───────────────────────────────────────────────────────────
 // ADMIN SECURITY — local server için de Vercel API ile aynı koruma
 // ───────────────────────────────────────────────────────────
@@ -165,6 +307,45 @@ app.post('/api/admin/login', async (req, res) => {
 app.use((req, res, next) => {
   if (!shouldRequireAdmin(req)) return next();
   return requireAdmin(req, res, next);
+});
+
+
+app.post('/api/admin/subtitles/generate', subtitleUploadMemory.single('media'), async (req, res) => {
+  try {
+    const file = req.file;
+    if (!file) return res.status(400).json({ error: 'Video veya ses dosyası seçin.' });
+    const sourceLang = String(req.body.sourceLang || 'auto').toLowerCase();
+    const targetLang = String(req.body.targetLang || 'ar').toLowerCase();
+    const shouldTranslate = String(req.body.translate || 'true') !== 'false';
+    let segments = await transcribeWithOpenAI(file, sourceLang);
+    if (!segments.length) return res.status(400).json({ error: 'Konuşma algılanamadı.' });
+    if (shouldTranslate) segments = await translateSegmentsWithOpenAI(segments, targetLang);
+    const vttContent = segmentsToVtt(segments);
+    const srtContent = segmentsToSrt(segments);
+    const episodeId = String(req.body.episodeId || '').trim();
+    let savedToEpisode = false;
+    if (episodeId && String(req.body.saveToEpisode || 'false') === 'true') {
+      await saveGeneratedSubtitleToEpisode(episodeId, targetLang, vttContent);
+      savedToEpisode = true;
+      await writeAdminLog('subtitle_generate_save', req, `Episode ${episodeId} için ${targetLang.toUpperCase()} altyazı oluşturuldu`);
+    } else {
+      await writeAdminLog('subtitle_generate', req, `${file.originalname || 'media'} için ${targetLang.toUpperCase()} altyazı oluşturuldu`);
+    }
+    res.json({
+      success: true,
+      configured: true,
+      sourceLang,
+      targetLang: targetLang.toUpperCase(),
+      segmentCount: segments.length,
+      duration: Math.max(...segments.map(s => Number(s.end) || 0)),
+      savedToEpisode,
+      vttContent,
+      srtContent
+    });
+  } catch (err) {
+    const status = err.statusCode || (err.message && err.message.includes('OPENAI_API_KEY') ? 500 : 400);
+    res.status(status).json({ error: err.message || 'Altyazı oluşturulamadı.' });
+  }
 });
 
 function ensureJwtConfigured(res) {
@@ -528,7 +709,7 @@ app.post('/api/series', async (req, res) => {
     });
 
     const saved = await newSeries.save();
-    if ((type === 'movie' || type === 'documentary') && videoUrl) {
+    if ((type === 'movie') && videoUrl) {
       const season = await Season.create({ seriesId: saved._id, seasonNumber: 1, title, description: description || description_tr || description_ar || '' });
       await Episode.create({ seasonId: season._id, seriesId: saved._id, episodeNumber: 1, title, description: description || description_tr || description_ar || '', videoUrl, duration: duration || 0, subtitles: [] });
     }
@@ -862,7 +1043,7 @@ app.post('/api/content-requests', async (req, res) => {
     const safeTitle = cleanTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const existing = await ContentRequest.findOne({ title: { $regex: '^' + safeTitle + '$', $options: 'i' }, status: 'open' });
     if (existing) { existing.voteCount = Number(existing.voteCount || 1) + 1; if(note) existing.note = String(note).trim().slice(0,1200); await existing.save(); return res.status(200).json({ success:true, request:existing, message:'İstek sayacı artırıldı' }); }
-    const doc = await ContentRequest.create({ title: cleanTitle.slice(0,180), requestType: ['movie','series','documentary'].includes(requestType) ? requestType : 'unknown', releaseYear: Number(releaseYear)||undefined, note: String(note||'').trim().slice(0,1200), userId:String(userId||''), userName:String(userName||'').slice(0,120), userEmail:String(userEmail||'').slice(0,180), voteCount:1 });
+    const doc = await ContentRequest.create({ title: cleanTitle.slice(0,180), requestType: ['movie','series','anime'].includes(requestType) ? requestType : 'unknown', releaseYear: Number(releaseYear)||undefined, note: String(note||'').trim().slice(0,1200), userId:String(userId||''), userName:String(userName||'').slice(0,120), userEmail:String(userEmail||'').slice(0,180), voteCount:1 });
     res.status(201).json({ success:true, request:doc, message:'İstek gönderildi' });
   } catch (err) { res.status(500).json({ error:'İstek gönderilemedi.' }); }
 });

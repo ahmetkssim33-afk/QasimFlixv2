@@ -75,8 +75,8 @@
     const selected = $('qf-tmdb-type')?.value || 'multi';
     if (selected !== 'multi') return selected;
     const type = $('s-type')?.value || '';
-    if (type === 'movie' || type === 'documentary') return 'movie';
-    if (type === 'series' || type === 'yerli') return 'tv';
+    if (type === 'movie') return 'movie';
+    if (type === 'series' || type === 'yerli' || type === 'anime') return 'tv';
     return 'multi';
   }
   async function checkTMDBStatus(showToast=true){

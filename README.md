@@ -4,7 +4,7 @@ QasimFlix; film, dizi, sezon ve bölüm yönetimi olan bir izleme platformudur. 
 
 ## Öne çıkan özellikler
 
-- Film / dizi / belgesel / yerli dizi katalog yönetimi
+- Film / dizi / anime / yerli dizi katalog yönetimi
 - Seri → sezon → bölüm yapısı
 - Admin panelinden içerik, sezon, bölüm ve altyazı ekleme
 - Kullanıcı kayıt / giriş / Google giriş desteği
