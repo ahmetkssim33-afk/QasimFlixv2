@@ -253,6 +253,11 @@ function shouldRequireAdmin(req) {
   if (path === '/api/link-check') return true;
   if (path === '/api/push/send') return true;
 
+
+   // Public içerik istekleri herkese açık olmalı
+  if (method === 'GET' && path === '/api/content-requests/public') return false;
+
+  
   // Yönetim içerik işlemleri
   if (['POST','PUT','PATCH','DELETE'].includes(method) && pathMatches(path, /^\/api\/series(?:\/[^/]+)?$/)) return true;
   if (['POST','PUT','PATCH','DELETE'].includes(method) && pathMatches(path, /^\/api\/seasons(?:\/[^/]+)?$/)) return true;
