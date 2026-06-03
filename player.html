@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>QasimFlix Player</title>
+<title>SineQ Player</title>
 <meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -14,7 +14,7 @@
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --accent: #E50914;
+    --accent: #F5B942;
     --accent2: #ff6b35;
     --bg: #0a0a0f;
     --surface: #13131a;
@@ -125,7 +125,7 @@
   .gd-overlay.hidden { opacity: 0; pointer-events: none; }
   .gd-spinner {
     width: 48px; height: 48px;
-    border: 3px solid rgba(229,9,20,0.2);
+    border: 3px solid rgba(245,185,66,0.2);
     border-top-color: var(--accent);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
@@ -198,7 +198,7 @@
     border: 1px solid;
   }
   .badge-year { border-color: var(--border); color: var(--muted); }
-  .badge-genre { border-color: rgba(229,9,20,0.4); color: #ff6b6b; background: rgba(229,9,20,0.08); }
+  .badge-genre { border-color: rgba(245,185,66,0.4); color: #ff6b6b; background: rgba(245,185,66,0.08); }
   .badge-imdb { border-color: rgba(255,187,0,0.4); color: #ffbb00; background: rgba(255,187,0,0.08); }
   .badge-quality { border-color: rgba(100,220,100,0.4); color: #64dc64; background: rgba(100,220,100,0.08); }
 
@@ -254,7 +254,7 @@
     border: 1px solid var(--border);
   }
   .btn-secondary:hover { background: rgba(255,255,255,0.16); }
-  .btn-secondary.active { background: rgba(229,9,20,0.15); border-color: rgba(229,9,20,0.4); color: #ff6b6b; }
+  .btn-secondary.active { background: rgba(245,185,66,0.15); border-color: rgba(245,185,66,0.4); color: #ff6b6b; }
 
   /* ── DIVIDER ── */
   .divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
@@ -311,7 +311,7 @@
     text-align: left;
   }
   .episode-card:hover { background: var(--surface2); border-color: rgba(255,255,255,0.15); transform: translateY(-2px); }
-  .episode-card.active { border-color: var(--accent); background: rgba(229,9,20,0.08); }
+  .episode-card.active { border-color: var(--accent); background: rgba(245,185,66,0.08); }
   .ep-num {
     font-size: 22px;
     font-weight: 700;
@@ -436,7 +436,7 @@
   /* ── Mobile cinema controls ── */
   .mobile-video-controls{position:absolute;inset:0;display:none;align-items:center;justify-content:center;gap:26px;z-index:12;pointer-events:none;background:linear-gradient(to top,rgba(0,0,0,.20),transparent 45%,rgba(0,0,0,.16))}
   .mobile-video-controls button{pointer-events:auto;width:58px;height:58px;border-radius:50%;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.48);color:#fff;font:800 13px var(--font);backdrop-filter:blur(14px);box-shadow:0 10px 26px rgba(0,0,0,.35)}
-  .mobile-video-controls .play-toggle{width:68px;height:68px;font-size:22px;background:rgba(229,9,20,.86)}
+  .mobile-video-controls .play-toggle{width:68px;height:68px;font-size:22px;background:rgba(245,185,66,.86)}
   .seek-toast{position:absolute;top:50%;transform:translateY(-50%);z-index:14;padding:10px 16px;border-radius:16px;background:rgba(0,0,0,.65);color:#fff;font-weight:800;opacity:0;transition:opacity .18s ease;pointer-events:none}
   .seek-toast.show{opacity:1}.seek-toast.left{left:12%}.seek-toast.right{right:12%}
   @media(max-width:768px){
@@ -464,7 +464,7 @@
   .landscape-card{width:min(420px,92vw);padding:22px 18px;border:1px solid rgba(255,255,255,.12);border-radius:28px;background:rgba(16,16,22,.88);box-shadow:0 30px 80px rgba(0,0,0,.6);text-align:center}
   .landscape-logo{font-weight:900;font-size:30px;letter-spacing:-.04em;margin-bottom:8px}.landscape-logo b{color:var(--accent)}
   .landscape-card p{color:rgba(255,255,255,.70);font-size:14px;line-height:1.45;margin-bottom:16px}
-  .landscape-btn{width:100%;min-height:54px;border:0;border-radius:18px;background:linear-gradient(135deg,var(--accent),#ff3b30);color:#fff;font:900 16px var(--font);box-shadow:0 14px 36px rgba(229,9,20,.35)}
+  .landscape-btn{width:100%;min-height:54px;border:0;border-radius:18px;background:linear-gradient(135deg,var(--accent),#ff3b30);color:#fff;font:900 16px var(--font);box-shadow:0 14px 36px rgba(245,185,66,.35)}
   .landscape-small{margin-top:10px;color:rgba(255,255,255,.48);font-size:12px}
   body.mobile-cinema{background:#000;overflow:hidden}
   body.mobile-cinema .topbar{opacity:0;pointer-events:none}
@@ -484,7 +484,7 @@
     .info-section { display:none !important; }
     .mobile-video-controls, .seek-toast { display:none !important; }
     .gd-overlay { background:#000; }
-    .landscape-start { position:fixed; inset:0; z-index:100; display:flex; align-items:center; justify-content:center; padding:24px; background:radial-gradient(circle at top,rgba(229,9,20,.22),transparent 34%),#000; backdrop-filter:none; }
+    .landscape-start { position:fixed; inset:0; z-index:100; display:flex; align-items:center; justify-content:center; padding:24px; background:radial-gradient(circle at top,rgba(245,185,66,.22),transparent 34%),#000; backdrop-filter:none; }
     .landscape-start:not(.show) { display:flex; }
     .landscape-card { width:min(430px,92vw); padding:26px 18px; border-radius:30px; background:rgba(18,18,24,.92); border:1px solid rgba(255,255,255,.12); }
     .landscape-logo { font-size:34px; }
@@ -528,7 +528,7 @@
 
     <div class="landscape-start" id="landscapeStart" aria-hidden="true">
       <div class="landscape-card">
-        <div class="landscape-logo">Qasim<b>Flix</b></div>
+        <div class="landscape-logo">SineQ<b>Flix</b></div>
         <p>Videoyu düzgün izlemek için tam ekran yatay modu aç.</p>
         <button class="landscape-btn" type="button" onclick="startLandscapePlayback()">▶ Tam Ekran Yatay Aç</button>
         <div class="landscape-small">Android Chrome destekler. Desteklemezse telefonu elle yataya çevir.</div>
@@ -628,7 +628,7 @@
 
 <script>
 // ══════════════════════════════════════════════
-//  QasimFlix Player — Google Drive Entegrasyon
+//  SineQ Player — Google Drive Entegrasyon
 // ══════════════════════════════════════════════
 
 const state = {
@@ -742,7 +742,7 @@ function loadFromSrc(src) {
       </video>
       <div class="landscape-start show" id="landscapeStart" aria-hidden="false">
         <div class="landscape-card">
-          <div class="landscape-logo">Qasim<b>Flix</b></div>
+          <div class="landscape-logo">SineQ<b>Flix</b></div>
           <p>Videoyu düzgün izlemek için tam ekran yatay modu aç.</p>
           <button class="landscape-btn" type="button" onclick="startLandscapePlayback()">▶ Tam Ekran Yatay Aç</button>
           <div class="landscape-small">Android Chrome destekler. Desteklemezse telefonu elle yataya çevir.</div>
@@ -808,7 +808,7 @@ function retryLoad() {
 
 // ── Render Info ──────────────────────────────
 function renderInfo(params) {
-  document.title = params.title + ' — QasimFlix';
+  document.title = params.title + ' — SineQ';
   document.getElementById('topbarTitle').textContent = params.title;
   document.getElementById('contentTitle').textContent = params.title;
   document.getElementById('contentDesc').textContent = params.desc || 'Bu içerik için açıklama bulunmuyor.';
@@ -1016,7 +1016,7 @@ async function requestFullscreenSafe(target) {
     if (target.webkitRequestFullscreen) { target.webkitRequestFullscreen(); return true; }
     if (target.msRequestFullscreen) { target.msRequestFullscreen(); return true; }
   } catch (e) {
-    console.warn('[QasimFlix] Fullscreen blocked:', e);
+    console.warn('[SineQ] Fullscreen blocked:', e);
   }
   return false;
 }
@@ -1028,7 +1028,7 @@ async function lockLandscapeSafe() {
       return true;
     }
   } catch (e) {
-    console.warn('[QasimFlix] Orientation lock blocked:', e);
+    console.warn('[SineQ] Orientation lock blocked:', e);
   }
   return false;
 }

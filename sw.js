@@ -1,4 +1,4 @@
-// QasimFlix Service Worker
+// SineQ Service Worker
 // Firebase CDN dosyaları artık burada import edilmez.
 // Böylece gstatic erişim hatası olsa bile site/cache/player etkilenmez.
 // FCM/Web Push geldiyse native push event ile bildirim gösterilir.
@@ -25,7 +25,7 @@ self.addEventListener('push', function (event) {
         catch (__) { }
     }
     var note = payload.notification || payload.data || {};
-    var title = note.title || payload.title || 'QasimFlix';
+    var title = note.title || payload.title || 'SineQ';
     var options = {
         body: note.body || payload.body || 'Yeni içerik eklendi',
         icon: note.icon || '/assets/icons/icon-192.png',
@@ -34,7 +34,7 @@ self.addEventListener('push', function (event) {
     };
     event.waitUntil(self.registration.showNotification(title, options));
 });
-var CACHE_NAME = 'qasimflix-v1.0.10-qfapk-es5-fix';
+var CACHE_NAME = 'sineq-v1.0.10-qfapk-es5-fix';
 var STATIC = [
     '/', '/index.html', '/auth.html', '/offline.html', '/style.css', '/qf-enhancements.css', '/qf-smart-features.css', '/qf-apk.css', '/qf-apk.js', '/qf-player-apk.js', '/qf-apk-bridge.js', '/qf-player-failsafe.js',
     '/app.js', '/qf-enhancements.js', '/qf-public-pro-tools.js', '/qf-smart-public.js', '/admin.js', '/qf-admin-enhancements.js', '/qf-admin-pro-tools.js', '/qf-smart-admin.js', '/player.html', '/manifest.json', '/version.json', '/favicon.svg',

@@ -28,7 +28,7 @@ function exists(rel) {
 const api = read('api/index.js');
 const server = read('server.js');
 const security = read('lib/security.js');
-const androidMain = read('APK_WEBVIEW_TEMPLATE/app/src/main/java/com/qasimflix/app/MainActivity.java');
+const androidMain = read('APK_WEBVIEW_TEMPLATE/app/src/main/java/com/sineq/app/MainActivity.java');
 const androidGradle = read('APK_WEBVIEW_TEMPLATE/app/build.gradle');
 const version = JSON.parse(read('version.json'));
 

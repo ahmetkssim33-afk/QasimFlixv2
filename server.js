@@ -488,9 +488,9 @@ async function checkOneVideoLink(rawUrl = '') {
   if (!safe.ok) return { status: 'broken', ok: false, message: safe.reason || 'Geçersiz link.' };
   try {
     const signal = AbortSignal.timeout ? AbortSignal.timeout(8500) : undefined;
-    let response = await fetch(url, { method: 'HEAD', redirect: 'follow', signal, headers: { 'User-Agent': 'QasimFlixLinkCheck/1.0' } }).catch(async () => null);
+    let response = await fetch(url, { method: 'HEAD', redirect: 'follow', signal, headers: { 'User-Agent': 'SineQLinkCheck/1.0' } }).catch(async () => null);
     if (!response || response.status === 405 || response.status === 403) {
-      response = await fetch(url, { method: 'GET', redirect: 'follow', signal, headers: { 'Range': 'bytes=0-0', 'User-Agent': 'QasimFlixLinkCheck/1.0' } });
+      response = await fetch(url, { method: 'GET', redirect: 'follow', signal, headers: { 'Range': 'bytes=0-0', 'User-Agent': 'SineQLinkCheck/1.0' } });
     }
     if (response.status === 401 || response.status === 403) return { status: 'access_denied', ok: false, httpStatus: response.status, message: 'Erişim yok / izin kapalı.' };
     if (response.status === 404) return { status: 'broken', ok: false, httpStatus: response.status, message: 'Link bulunamadı.' };

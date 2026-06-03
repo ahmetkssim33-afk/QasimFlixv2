@@ -447,9 +447,9 @@ async function checkOneVideoLink(rawUrl = '') {
   if (!safe.ok) return { status: 'broken', ok: false, message: safe.reason || 'Geçersiz link.' };
   try {
     const signal = AbortSignal.timeout ? AbortSignal.timeout(8500) : undefined;
-    let response = await fetch(url, { method: 'HEAD', redirect: 'follow', signal, headers: { 'User-Agent': 'QasimFlixLinkCheck/1.0' } }).catch(async () => null);
+    let response = await fetch(url, { method: 'HEAD', redirect: 'follow', signal, headers: { 'User-Agent': 'SineQLinkCheck/1.0' } }).catch(async () => null);
     if (!response || response.status === 405 || response.status === 403) {
-      response = await fetch(url, { method: 'GET', redirect: 'follow', signal, headers: { 'Range': 'bytes=0-0', 'User-Agent': 'QasimFlixLinkCheck/1.0' } });
+      response = await fetch(url, { method: 'GET', redirect: 'follow', signal, headers: { 'Range': 'bytes=0-0', 'User-Agent': 'SineQLinkCheck/1.0' } });
     }
     if (response.status === 401 || response.status === 403) return { status: 'access_denied', ok: false, httpStatus: response.status, message: 'Erişim yok / izin kapalı.' };
     if (response.status === 404) return { status: 'broken', ok: false, httpStatus: response.status, message: 'Link bulunamadı.' };
@@ -504,7 +504,7 @@ app.post('/api/episodes/bulk', async (req, res) => {
       const series = await Series.findById(seriesId).select('title poster tmdbPoster').lean().catch(() => null);
       await safePush({
         title: 'Yeni bölüm eklendi',
-        body: `${series?.title || 'QasimFlix'} için ${created.length} yeni bölüm yayında.`,
+        body: `${series?.title || 'SineQ'} için ${created.length} yeni bölüm yayında.`,
         url: `/?content=${seriesId}`,
         icon: series?.poster || series?.tmdbPoster || '/assets/icons/icon-192.png'
       });
@@ -673,11 +673,11 @@ app.delete('/api/announcements/:id', async (req, res) => {
 // Vercel Environment Variables içine FIREBASE_SERVER_KEY eklenirse
 // admin panelinden/otomatik içerik eklemeden kayıtlı cihazlara bildirim gider.
 // ───────────────────────────────────────────────────────────
-async function sendQasimPush(payload = {}) {
+async function sendSineQPush(payload = {}) {
   const serverKey = String(process.env.FIREBASE_SERVER_KEY || process.env.FCM_SERVER_KEY || '').trim();
   if (!serverKey) return { sent: false, configured: false, message: 'FIREBASE_SERVER_KEY ayarlı değil.' };
 
-  const title = String(payload.title || 'QasimFlix').slice(0, 120);
+  const title = String(payload.title || 'SineQ').slice(0, 120);
   const body = String(payload.body || 'Yeni bir güncelleme var.').slice(0, 240);
   const url = String(payload.url || '/').slice(0, 500);
   const icon = String(payload.icon || '/assets/icons/icon-192.png').slice(0, 500);
@@ -717,7 +717,7 @@ async function sendQasimPush(payload = {}) {
 }
 
 async function safePush(payload) {
-  try { return await sendQasimPush(payload); }
+  try { return await sendSineQPush(payload); }
   catch (err) { console.warn('Push gönderimi başarısız:', err.message); return { sent: false, error: err.message }; }
 }
 
@@ -752,10 +752,10 @@ app.post('/api/push/subscribe', async (req, res) => {
 app.post('/api/push/send', requireAdmin, async (req, res) => {
   try {
     await connectDB();
-    const title = String(req.body?.title || 'QasimFlix').trim();
+    const title = String(req.body?.title || 'SineQ').trim();
     const body = String(req.body?.body || req.body?.message || '').trim();
     if (!body) return res.status(400).json({ error: 'Bildirim mesajı gerekli.' });
-    const result = await sendQasimPush({ title, body, url: req.body?.url || '/', icon: req.body?.icon || '/assets/icons/icon-192.png' });
+    const result = await sendSineQPush({ title, body, url: req.body?.url || '/', icon: req.body?.icon || '/assets/icons/icon-192.png' });
     await writeAdminLog('push_send', req, `${title}: ${body}`);
     res.json({ success: true, result });
   } catch (err) {
@@ -764,7 +764,7 @@ app.post('/api/push/send', requireAdmin, async (req, res) => {
 });
 
 // ───────────────────────────────────────────────────────────
-// QasimFlix HTML5 player için Google Drive video proxy
+// SineQ HTML5 player için Google Drive video proxy
 // Bu endpoint DB istemez; bu yüzden DB middleware'inden önce durur.
 // ───────────────────────────────────────────────────────────
 function extractDriveFileId(input = '') {
@@ -835,7 +835,7 @@ app.get('/api/video-proxy', async (req, res) => {
     }
 
     const headers = {
-      'User-Agent': 'Mozilla/5.0 QasimFlixPlayer/1.0'
+      'User-Agent': 'Mozilla/5.0 SineQPlayer/1.0'
     };
     if (req.headers.range) headers.Range = req.headers.range;
 
@@ -1097,7 +1097,7 @@ app.post("/api/series", async (req, res) => {
 
     if (process.env.PUSH_ON_NEW_CONTENT !== 'false') {
       saved._pushResult = await safePush({
-        title: 'QasimFlix’e yeni içerik eklendi',
+        title: 'SineQ’e yeni içerik eklendi',
         body: `${saved.title} şimdi yayında.`,
         url: `/?content=${saved._id}`,
         icon: saved.poster || saved.tmdbPoster || '/assets/icons/icon-192.png'
@@ -1572,12 +1572,12 @@ async function sendResetEmail(toEmail, token) {
   await transporter.sendMail({
     from: process.env.EMAIL_FROM || smtpUser,
     to: toEmail,
-    subject: 'QasimFlix şifre sıfırlama bağlantısı',
+    subject: 'SineQ şifre sıfırlama bağlantısı',
     html: `
       <div style="font-family:Arial,sans-serif;background:#111;color:#fff;padding:24px;border-radius:12px">
         <h2 style="margin-top:0">Şifre sıfırlama</h2>
         <p>Şifrenizi yenilemek için aşağıdaki bağlantıya tıklayın. Bağlantı 1 saat geçerlidir.</p>
-        <p><a href="${resetLink}" style="display:inline-block;background:#e50914;color:#fff;padding:12px 18px;border-radius:8px;text-decoration:none">Şifremi yenile</a></p>
+        <p><a href="${resetLink}" style="display:inline-block;background:#F5B942;color:#fff;padding:12px 18px;border-radius:8px;text-decoration:none">Şifremi yenile</a></p>
         <p style="color:#aaa;font-size:13px">Buton çalışmazsa bu bağlantıyı tarayıcıya yapıştırın:<br>${resetLink}</p>
       </div>
     `
@@ -1699,7 +1699,7 @@ async function getFirebaseCert(kid) {
 }
 
 async function verifyFirebaseIdToken(idToken) {
-  const projectId = String(process.env.FIREBASE_PROJECT_ID || 'qasimflix-8ba04').trim();
+  const projectId = String(process.env.FIREBASE_PROJECT_ID || 'sineq-8ba04').trim();
   if (!projectId) throw new Error('FIREBASE_PROJECT_ID eksik.');
   const header = decodeJwtPart(idToken, 0);
   const cert = await getFirebaseCert(header.kid);
@@ -2066,7 +2066,7 @@ app.patch('/api/content-requests/:id', async (req, res) => {
     if (status === 'done') update.completedAt = new Date();
     const doc = await ContentRequest.findByIdAndUpdate(req.params.id, update, { new: true });
     if (doc && status === 'done') {
-      await Announcement.create({ title: 'İstek eklendi', message: `${doc.title} artık QasimFlix'te.`, level: 'success', isActive: true }).catch(() => {});
+      await Announcement.create({ title: 'İstek eklendi', message: `${doc.title} artık SineQ'te.`, level: 'success', isActive: true }).catch(() => {});
     }
     res.json(doc);
   } catch (err) {

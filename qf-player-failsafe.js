@@ -1,4 +1,4 @@
-/* QasimFlix Player Failsafe: hata paneli, tekrar dene, alternatif kalite ve tek tık rapor */
+/* SineQ Player Failsafe: hata paneli, tekrar dene, alternatif kalite ve tek tık rapor */
 (function(){
   'use strict';
   let loadTimer = null;
@@ -17,7 +17,7 @@
     style.id = 'qf-player-failsafe-style';
     style.textContent = `
       .qf-player-failsafe{position:absolute;left:50%;bottom:max(74px,env(safe-area-inset-bottom) + 74px);z-index:75;transform:translateX(-50%);width:min(520px,92vw);display:none;padding:14px;border-radius:20px;background:rgba(12,12,16,.92);border:1px solid rgba(255,255,255,.13);box-shadow:0 22px 70px rgba(0,0,0,.62);color:#fff;backdrop-filter:blur(14px)}
-      .qf-player-failsafe.show{display:block}.qf-player-failsafe b{display:block;font-size:15px;margin-bottom:5px}.qf-player-failsafe p{margin:0 0 10px;color:rgba(255,255,255,.68);font-size:12px;line-height:1.45}.qf-failsafe-actions{display:flex;gap:8px;flex-wrap:wrap}.qf-failsafe-actions button{border:1px solid rgba(255,255,255,.13);border-radius:999px;background:rgba(255,255,255,.08);color:#fff;font-weight:900;font-size:12px;padding:9px 12px;cursor:pointer}.qf-failsafe-actions button.primary{background:#e50914;border-color:#e50914}.qf-alt-list{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0 0}.qf-alt-list button{border:0;border-radius:999px;background:rgba(229,9,20,.18);color:#fff;font-weight:900;font-size:11px;padding:7px 10px;cursor:pointer}
+      .qf-player-failsafe.show{display:block}.qf-player-failsafe b{display:block;font-size:15px;margin-bottom:5px}.qf-player-failsafe p{margin:0 0 10px;color:rgba(255,255,255,.68);font-size:12px;line-height:1.45}.qf-failsafe-actions{display:flex;gap:8px;flex-wrap:wrap}.qf-failsafe-actions button{border:1px solid rgba(255,255,255,.13);border-radius:999px;background:rgba(255,255,255,.08);color:#fff;font-weight:900;font-size:12px;padding:9px 12px;cursor:pointer}.qf-failsafe-actions button.primary{background:#F5B942;border-color:#F5B942}.qf-alt-list{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0 0}.qf-alt-list button{border:0;border-radius:999px;background:rgba(245,185,66,.18);color:#fff;font-weight:900;font-size:11px;padding:7px 10px;cursor:pointer}
       @media(max-width:950px){.qf-player-failsafe{bottom:max(18px,env(safe-area-inset-bottom) + 18px)}}`;
     document.head.appendChild(style);
   }

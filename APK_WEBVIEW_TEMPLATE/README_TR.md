@@ -1,4 +1,4 @@
-# QasimFlix APK WebView Native Template
+# SineQ APK WebView Native Template
 
 Bu klasör, mevcut siteni Android Studio WebView APK içine koyarken kullanman için hazır örnektir. Artık settings.gradle, root build.gradle, tema ve launcher ikonları da eklendiği için Android Studio ile direkt içe aktarılabilir.
 
@@ -10,7 +10,7 @@ Bu klasör, mevcut siteni Android Studio WebView APK içine koyarken kullanman i
 - Ekran açık tutma
 - Dosya seçme desteği
 - Native indirme desteği
-- `window.QasimFlixAndroid` bridge desteği
+- `window.SineQAndroid` bridge desteği
 
 ## Kullanım
 

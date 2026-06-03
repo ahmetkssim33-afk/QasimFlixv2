@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace 'com.qasimflix.app'
+    namespace 'com.sineq.app'
     compileSdk 35
 
     defaultConfig {
-        applicationId 'com.qasimflix.app'
+        applicationId 'com.sineq.app'
         minSdk 24
         targetSdk 35
         versionCode 10

@@ -38,11 +38,11 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     'use strict';
     var LS_DOWNLOADS = 'qf_offline_downloads';
     var LS_DISMISSED = 'qf_update_dismissed_build';
-    var LS_SETTINGS = 'qasimflix_settings';
-    var LANG_KEY = 'qasimflix_lang';
+    var LS_SETTINGS = 'sineq_settings';
+    var LANG_KEY = 'sineq_lang';
     var OLD_LANG_KEY = 'qfLang';
     var DEFAULT_SETTINGS = { autoplay: true, autoNext: true, tryFullscreen: true, tryLandscape: true, notifications: false };
-    var APK_UA = /; wv\)|Android.*Version\/\d+|QasimFlixAPK/i.test(navigator.userAgent);
+    var APK_UA = /; wv\)|Android.*Version\/\d+|SineQAPK/i.test(navigator.userAgent);
     var standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
     var mobile = window.matchMedia('(max-width: 768px)').matches || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     if (mobile || standalone || APK_UA)
@@ -133,7 +133,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
     function versionText() {
         var _a, _b;
-        var meta = ((_a = document.querySelector('meta[name="app-version"]')) === null || _a === void 0 ? void 0 : _a.content) || window.QASIMFLIX_VERSION || '';
+        var meta = ((_a = document.querySelector('meta[name="app-version"]')) === null || _a === void 0 ? void 0 : _a.content) || window.SINEQ_VERSION || '';
         return meta || ((_b = document.getElementById('qf-settings-sheet')) === null || _b === void 0 ? void 0 : _b.dataset.version) || '1.0.0';
     }
     function loadVersion() {
@@ -241,11 +241,11 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
                     case 2:
                         perm = _a.sent();
                         s.notifications = perm === 'granted';
-                        if (!(s.notifications && typeof window.enableQasimFlixPush === 'function')) return [3 /*break*/, 6];
+                        if (!(s.notifications && typeof window.enableSineQPush === 'function')) return [3 /*break*/, 6];
                         _a.label = 3;
                     case 3:
                         _a.trys.push([3, 5, , 6]);
-                        return [4 /*yield*/, window.enableQasimFlixPush()];
+                        return [4 /*yield*/, window.enableSineQPush()];
                     case 4:
                         _a.sent();
                         return [3 /*break*/, 6];
@@ -553,7 +553,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         setTimeout(openDownloads, 350); if (action === 'search')
         setTimeout(openSearch, 350); window.addEventListener('online', function () { return toast(t('toast.online')); }); window.addEventListener('offline', function () { return toast(t('toast.offline')); }); });
 })();
-// QasimFlix APK update + content notification guard
+// SineQ APK update + content notification guard
 (function () {
     'use strict';
     var VERSION_URL = '/version.json';
@@ -561,7 +561,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     var LS_BUILD = 'qf_last_seen_build';
     var LS_UPDATE_RELOADED = 'qf_update_reloaded_build';
     var LS_LATEST_CONTENT = 'qf_latest_content_id';
-    var LS_SETTINGS = 'qasimflix_settings';
+    var LS_SETTINGS = 'sineq_settings';
     var CHECK_INTERVAL = 5 * 60 * 1000;
     function ready(fn) {
         document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', fn) : fn();
@@ -617,7 +617,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
                             return [2 /*return*/];
                         options = {
                             body: body || '',
-                            tag: 'qasimflix-' + String(title || '').toLowerCase().replace(/\s+/g, '-'),
+                            tag: 'sineq-' + String(title || '').toLowerCase().replace(/\s+/g, '-'),
                             renotify: true,
                             data: { url: url || '/' },
                             icon: '/assets/icons/icon-192.png',
@@ -679,7 +679,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (!el) {
             el = document.createElement('div');
             el.id = 'qf-auto-update-overlay';
-            el.innerHTML = '<div><b>QasimFlix güncelleniyor</b><p></p></div>';
+            el.innerHTML = '<div><b>SineQ güncelleniyor</b><p></p></div>';
             document.body.appendChild(el);
         }
         var p = el.querySelector('p');
@@ -723,7 +723,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
                         }
                         if (!(oldBuild !== build)) return [3 /*break*/, 4];
                         localStorage.setItem(LS_BUILD, build);
-                        return [4 /*yield*/, sendLocalNotification('QasimFlix güncellendi', data.message || 'Yeni sürüm geldi. Uygulama yenileniyor.', '/')];
+                        return [4 /*yield*/, sendLocalNotification('SineQ güncellendi', data.message || 'Yeni sürüm geldi. Uygulama yenileniyor.', '/')];
                     case 2:
                         _a.sent();
                         if (!(alreadyReloadedFor !== build)) return [3 /*break*/, 4];
@@ -775,7 +775,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
                         type = latest.kind === 'episode' ? 'bölüm' : (latest.type === 'movie' ? 'film' : 'içerik');
                         title = latest.title || latest.name || 'Yeni içerik';
                         seriesTitle = latest.seriesTitle ? latest.seriesTitle + ' • ' : '';
-                        return [4 /*yield*/, sendLocalNotification('Yeni ' + type + ' eklendi', seriesTitle + title + ' artık QasimFlix’te.', '/')];
+                        return [4 /*yield*/, sendLocalNotification('Yeni ' + type + ' eklendi', seriesTitle + title + ' artık SineQ’te.', '/')];
                     case 2:
                         _b.sent();
                         _b.label = 3;

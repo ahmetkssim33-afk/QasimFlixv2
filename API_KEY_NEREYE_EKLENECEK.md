@@ -5,7 +5,7 @@ Bu projede TMDB bilgileri **admin panelinden otomatik film/dizi bilgisi çekmek*
 ## En güvenli yöntem: Vercel Environment Variables
 
 1. Vercel hesabına gir.
-2. QasimFlix projesini aç.
+2. SineQ projesini aç.
 3. **Settings** sekmesine gir.
 4. **Environment Variables** bölümüne gir.
 5. Yeni değişken ekle:

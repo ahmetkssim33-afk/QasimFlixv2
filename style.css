@@ -1,10 +1,10 @@
 /* ═══════════════════════════════════════════════════════
-   STREAMING PLATFORM - NETFLIX STYLE
+   STREAMING PLATFORM - PREMIUM CINEMA STYLE
    ═══════════════════════════════════════════════════════ */
 
 :root {
-    --primary: #e50914;
-    --primary-dark: #b81d24;
+    --primary: #F5B942;
+    --primary-dark: #C88912;
     --bg: #141414;
     --bg-secondary: #221f1f;
     --text: #e5e5e5;
@@ -87,7 +87,7 @@ body.scrolled .navbar {
     color: var(--primary);
     cursor: pointer;
     letter-spacing: -1px;
-    text-shadow: 0 0 12px rgba(229, 9, 20, 0.5);
+    text-shadow: 0 0 12px rgba(245,185,66,0.5);
 }
 
 .nav-left {
@@ -103,7 +103,7 @@ body.scrolled .navbar {
     color: var(--primary);
     cursor: pointer;
     letter-spacing: -1px;
-    text-shadow: 0 0 8px rgba(229, 9, 20, 0.45);
+    text-shadow: 0 0 8px rgba(245,185,66,0.45);
     position: absolute; /* pin to top-left of navbar */
     left: 4%;
     top: 12px;
@@ -160,7 +160,7 @@ body.scrolled .navbar {
     color: var(--text);
     text-decoration: none;
     padding: 8px 16px;
-    background: rgba(229, 9, 20, 0.1);
+    background: rgba(245,185,66,0.1);
     border: 1px solid var(--primary);
     border-radius: 4px;
     font-weight: 600;
@@ -233,18 +233,18 @@ body.scrolled .navbar {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    box-shadow: 0 4px 12px rgba(229, 9, 20, 0.3);
+    box-shadow: 0 4px 12px rgba(245,185,66,0.3);
 }
 
 .btn-play:hover {
     background: var(--primary-dark);
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(229, 9, 20, 0.5);
+    box-shadow: 0 6px 20px rgba(245,185,66,0.5);
 }
 
 .btn-play:active {
     transform: translateY(0);
-    box-shadow: 0 2px 8px rgba(229, 9, 20, 0.3);
+    box-shadow: 0 2px 8px rgba(245,185,66,0.3);
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -358,13 +358,13 @@ body.scrolled .navbar {
 }
 
 .heart-btn:hover {
-    background: rgba(229, 9, 20, 0.8);
-    border-color: rgba(229, 9, 20, 1);
+    background: rgba(245,185,66,0.8);
+    border-color: rgba(245,185,66,1);
     transform: scale(1.1);
 }
 
 .heart-btn.active {
-    background: rgba(229, 9, 20, 1);
+    background: rgba(245,185,66,1);
     color: #fff;
 }
 
@@ -515,7 +515,7 @@ body.scrolled .navbar {
 }
 
 .season-card:hover {
-    background: rgba(229, 9, 20, 0.1);
+    background: rgba(245,185,66,0.1);
     border-color: var(--primary);
 }
 
@@ -551,7 +551,7 @@ body.scrolled .navbar {
 .back-btn:hover {
     background: var(--primary);
     color: white;
-    box-shadow: 0 4px 12px rgba(229, 9, 20, 0.3);
+    box-shadow: 0 4px 12px rgba(245,185,66,0.3);
 }
 
 .episode-card {
@@ -567,7 +567,7 @@ body.scrolled .navbar {
 }
 
 .episode-card:hover {
-    background: rgba(229, 9, 20, 0.1);
+    background: rgba(245,185,66,0.1);
     border-color: var(--primary);
 }
 
@@ -578,7 +578,7 @@ body.scrolled .navbar {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(229, 9, 20, 0.1);
+    background: rgba(245,185,66,0.1);
     border-radius: 4px;
 }
 
@@ -677,7 +677,7 @@ body.scrolled .navbar {
     .logo {
         position: static; /* restore normal flow */
         font-size: 20px;
-        text-shadow: 0 0 6px rgba(229, 9, 20, 0.35);
+        text-shadow: 0 0 6px rgba(245,185,66,0.35);
         margin-right: 8px;
     }
 
@@ -798,7 +798,7 @@ body.scrolled .navbar {
     .logo {
         position: static;
         font-size: 18px;
-        text-shadow: 0 0 6px rgba(229, 9, 20, 0.35);
+        text-shadow: 0 0 6px rgba(245,185,66,0.35);
     }
 
     .hero {
@@ -931,7 +931,7 @@ body.scrolled .navbar {
     content: '';
     position: absolute;
     inset: 0;
-    background: radial-gradient(ellipse at 30% 50%, rgba(229,9,20,0.12) 0%, transparent 60%),
+    background: radial-gradient(ellipse at 30% 50%, rgba(245,185,66,0.12) 0%, transparent 60%),
                 radial-gradient(ellipse at 70% 30%, rgba(200,169,110,0.08) 0%, transparent 50%);
 }
 
@@ -1062,7 +1062,7 @@ body.scrolled .navbar {
     background: var(--red);
     color: #fff;
     border-color: var(--red);
-    box-shadow: 0 0 20px rgba(229,9,20,0.3);
+    box-shadow: 0 0 20px rgba(245,185,66,0.3);
 }
 
 /* ─── CONTENT ─── */
@@ -1330,7 +1330,7 @@ body.scrolled .navbar {
     backdrop-filter: blur(4px);
 }
 
-.modal-close:hover { background: rgba(229,9,20,0.8); }
+.modal-close:hover { background: rgba(245,185,66,0.8); }
 
 #video { width: 100%; height: 100%; border: none; display: block; }
 
@@ -1346,7 +1346,7 @@ body.scrolled .navbar {
 
 /* Continue Watching */
 .badge-continue{
-  background:rgba(229,9,20,.92);
+  background:rgba(245,185,66,.92);
   color:#fff;
 }
 .continue-card .continue-progress{
@@ -1355,7 +1355,7 @@ body.scrolled .navbar {
   right:0;
   bottom:0;
   height:4px;
-  background:#e50914;
+  background:#F5B942;
   z-index:3;
 }
 
@@ -1643,7 +1643,7 @@ body.scrolled .navbar {
 }
 
 /* ═══════════════════════════════════════════════════════
-   QASIMFLIX MODERN VIDEO PLAYER
+   SINEQ MODERN VIDEO PLAYER
    ═══════════════════════════════════════════════════════ */
 
 /* --- Modal box --- */
@@ -1711,7 +1711,7 @@ body.scrolled .navbar {
 }
 .qplayer-close svg { width: 16px; height: 16px; }
 .qasim-player-wrap:hover .qplayer-close { opacity: 1; }
-.qplayer-close:hover { background: rgba(229,9,20,.85); transform: scale(1.08); }
+.qplayer-close:hover { background: rgba(245,185,66,.85); transform: scale(1.08); }
 
 /* --- Loading spinner --- */
 .qasim-center-loader {
@@ -1730,7 +1730,7 @@ body.scrolled .navbar {
   width: 44px;
   height: 44px;
   border: 3px solid rgba(255,255,255,.15);
-  border-top-color: #e50914;
+  border-top-color: #F5B942;
   border-radius: 50%;
   animation: qp-spin .75s linear infinite;
 }
@@ -1799,7 +1799,7 @@ body.scrolled .navbar {
 #qasim-progress::-webkit-slider-runnable-track {
   height: 100%;
   border-radius: 99px;
-  background: linear-gradient(to right, #e50914 var(--qp-pct), rgba(255,255,255,.22) var(--qp-pct));
+  background: linear-gradient(to right, #F5B942 var(--qp-pct), rgba(255,255,255,.22) var(--qp-pct));
 }
 #qasim-progress::-moz-range-track {
   height: 100%;
@@ -1807,7 +1807,7 @@ body.scrolled .navbar {
   background: rgba(255,255,255,.22);
 }
 #qasim-progress::-moz-range-progress {
-  background: #e50914;
+  background: #F5B942;
   border-radius: 99px;
 }
 #qasim-progress::-webkit-slider-thumb {
@@ -1952,7 +1952,7 @@ body.scrolled .navbar {
   backdrop-filter: blur(6px);
 }
 .qp-select-group select:hover { border-color: rgba(255,255,255,.35); }
-.qp-select-group select:focus { border-color: #e50914; }
+.qp-select-group select:focus { border-color: #F5B942; }
 
 /* --- Embed player --- */
 #embed-player {
@@ -2021,9 +2021,9 @@ body.scrolled .navbar {
   transition: all .15s;
 }
 #player-download-btn-container button:hover {
-  border-color: #e50914;
+  border-color: #F5B942;
   color: #fff;
-  background: rgba(229,9,20,.15);
+  background: rgba(245,185,66,.15);
 }
 
 /* ─── MOBILE ────────────────────────────────────────────── */

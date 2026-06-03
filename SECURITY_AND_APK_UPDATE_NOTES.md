@@ -1,4 +1,4 @@
-# QasimFlix Güvenlik + APK Güncelleme Notları
+# SineQ Güvenlik + APK Güncelleme Notları
 
 Bu paket içinde eksik görülen en kritik noktalar tamamlandı.
 
@@ -52,7 +52,7 @@ Yeni dosya:
 
 - `qf-apk-bridge.js`
 
-Bu dosya Android WebView içinde `window.QasimFlixAndroid` varsa şunları native tarafa iletir:
+Bu dosya Android WebView içinde `window.SineQAndroid` varsa şunları native tarafa iletir:
 
 - Video açıldı/kapatıldı
 - Fullscreen aç/kapat

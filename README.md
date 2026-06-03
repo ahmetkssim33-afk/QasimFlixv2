@@ -1,6 +1,6 @@
-# QasimFlix
+# SineQ
 
-QasimFlix; film, dizi, sezon ve bölüm yönetimi olan bir izleme platformudur. Proje Vercel serverless API, MongoDB, admin paneli, kullanıcı hesabı, izleme takibi, bildirim, rapor ve içerik istekleri altyapısı içerir.
+SineQ; film, dizi, sezon ve bölüm yönetimi olan bir izleme platformudur. Proje Vercel serverless API, MongoDB, admin paneli, kullanıcı hesabı, izleme takibi, bildirim, rapor ve içerik istekleri altyapısı içerir.
 
 ## Öne çıkan özellikler
 
@@ -45,7 +45,7 @@ SMTP_PORT=587
 SMTP_SECURE=false
 SMTP_USER=...
 SMTP_PASS=...
-EMAIL_FROM=QasimFlix <noreply@senin-domainin.com>
+EMAIL_FROM=SineQ <noreply@senin-domainin.com>
 ```
 
 ## Komutlar
@@ -65,4 +65,4 @@ Bu zip içinden `.git`, `.idea` ve `node_modules` temizlendi. GitHub'a gönderir
 
 ## APK notu
 
-`APK_WEBVIEW_TEMPLATE/app/src/main/java/com/qasimflix/app/MainActivity.java` içindeki `HOME_URL` canlı Vercel domaininle aynı olmalıdır. Site domaini değişirse APK içindeki URL de güncellenmelidir.
+`APK_WEBVIEW_TEMPLATE/app/src/main/java/com/sineq/app/MainActivity.java` içindeki `HOME_URL` canlı Vercel domaininle aynı olmalıdır. Site domaini değişirse APK içindeki URL de güncellenmelidir.

@@ -3,15 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Qasimflix — Dizi & Film İzle</title>
-<meta name="description" content="QasimFlix ile dizi, film ve bölümleri modern arayüzle keşfet. Kaldığın yerden devam et, favorilerine ekle ve yeni içerikleri takip et.">
+<title>SineQ — Dizi & Film İzle</title>
+<meta name="description" content="SineQ ile dizi, film ve bölümleri modern arayüzle keşfet. Kaldığın yerden devam et, favorilerine ekle ve yeni içerikleri takip et.">
 <meta name="robots" content="index,follow">
-<meta property="og:title" content="QasimFlix — Dizi & Film İzle">
-<meta property="og:description" content="Dizi ve film izleme platformu QasimFlix.">
+<meta property="og:title" content="SineQ — Dizi & Film İzle">
+<meta property="og:description" content="Dizi ve film izleme platformu SineQ.">
 <meta property="og:type" content="website">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#050508">
+<meta name="theme-color" content="#070B1A">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -22,14 +22,14 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#050508;--bg2:rgba(10,10,15,0.85);--surface:rgba(255,255,255,0.05);
-  --border:rgba(255,255,255,0.1);--accent:#e50914;--accent2:#f40612;
+  --bg:#070B1A;--bg2:rgba(10,10,15,0.85);--surface:rgba(255,255,255,0.05);
+  --border:rgba(255,255,255,0.1);--accent:#F5B942;--accent2:#D89B18;
   --text:#ffffff;--muted:#b3b3b3;--muted2:#666;
   --font:'DM Sans',sans-serif;--font-display:'Bebas Neue',sans-serif;
   --mono:'DM Mono',monospace;--nav-h:72px;
 }
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);overflow-x:hidden;scrollbar-width:thin;scrollbar-color:var(--muted2) transparent;
-  background-image: radial-gradient(circle at 15% 50%, rgba(229, 9, 20, 0.08), transparent 25%),
+  background-image: radial-gradient(circle at 15% 50%, rgba(245,185,66,0.08), transparent 25%),
                     radial-gradient(circle at 85% 30%, rgba(108, 99, 255, 0.08), transparent 25%);
   background-attachment: fixed;
 }
@@ -40,12 +40,12 @@ body::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:3px}
 .navbar{position:fixed;top:0;left:0;right:0;z-index:100;height:var(--nav-h);display:flex;align-items:center;justify-content:space-between;padding:0 4%;background:linear-gradient(to bottom,rgba(0,0,0,0.9) 0%,transparent 100%);transition:background .3s}
 .navbar.scrolled{background:var(--bg2)}
 .nav-left{display:flex;align-items:center;gap:28px}
-.logo{font-family:var(--font-display);font-size:2.2rem;letter-spacing:.08em;background:linear-gradient(135deg, #ff0f1e 0%, #a78bfa 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-decoration:none;flex-shrink:0;filter:drop-shadow(0 0 12px rgba(229,9,20,0.5));transition:filter 0.3s}
-.logo:hover{filter:drop-shadow(0 0 20px rgba(229,9,20,0.8))}
+.logo{font-family:var(--font-display);font-size:2.2rem;letter-spacing:.08em;background:linear-gradient(135deg, #F5B942 0%, #a78bfa 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-decoration:none;flex-shrink:0;filter:drop-shadow(0 0 12px rgba(245,185,66,0.5));transition:filter 0.3s}
+.logo:hover{filter:drop-shadow(0 0 20px rgba(245,185,66,0.8))}
 .nav-links{display:flex;gap:8px;list-style:none}
 .nav-link{color:var(--muted);font-size:.85rem;font-weight:600;padding:8px 16px;text-decoration:none;transition:all .3s;cursor:pointer;border:1px solid transparent;background:rgba(255,255,255,0.03);border-radius:24px;font-family:var(--font)}
 .nav-link:hover{color:var(--text);background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.2)}
-.nav-link.active{color:#fff;background:var(--accent);box-shadow:0 0 16px rgba(229,9,20,0.4);border-color:var(--accent)}
+.nav-link.active{color:#fff;background:var(--accent);box-shadow:0 0 16px rgba(245,185,66,0.4);border-color:var(--accent)}
 .nav-right{display:flex;align-items:center;gap:14px}
 .mobile-menu-btn{display:none;background:none;border:none;color:#fff;font-size:1.5rem;cursor:pointer}
 .search-box{display:flex;align-items:center;gap:8px;background:rgba(0,0,0,0.6);border:1px solid var(--border);border-radius:4px;padding:7px 12px;transition:border-color .2s}
@@ -75,7 +75,7 @@ body::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:3px}
 .login-history-list::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:2px}
 .login-entry{display:flex;align-items:center;gap:12px;padding:10px 22px;border-bottom:1px solid rgba(255,255,255,0.04)}
 .login-entry:last-child{border-bottom:none}
-.login-entry-icon{width:36px;height:36px;border-radius:50%;background:rgba(229,9,20,0.15);display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0}
+.login-entry-icon{width:36px;height:36px;border-radius:50%;background:rgba(245,185,66,0.15);display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0}
 .login-entry-info{flex:1;min-width:0}
 .login-entry-date{font-size:.82rem;font-weight:500;color:var(--text)}
 .login-entry-sub{font-size:.72rem;color:var(--muted);margin-top:2px}
@@ -121,7 +121,7 @@ body::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:3px}
 
 /* CARD */
 .card{flex:0 0 175px;position:relative;border-radius:8px;overflow:hidden;cursor:pointer;transition:transform .3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow .3s, border-color .3s;border:1px solid transparent}
-.card:hover{transform:scale(1.08) translateY(-6px);z-index:10;box-shadow:0 12px 28px rgba(229,9,20,0.3);border-color:rgba(229,9,20,0.5)}
+.card:hover{transform:scale(1.08) translateY(-6px);z-index:10;box-shadow:0 12px 28px rgba(245,185,66,0.3);border-color:rgba(245,185,66,0.5)}
 .card-img{width:100%;aspect-ratio:2/3;object-fit:cover;display:block;background:#1a1a2e}
 .card-placeholder{width:100%;aspect-ratio:2/3;background:linear-gradient(135deg,#1a1a2e,#16213e);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--muted2);font-size:.75rem;text-align:center;padding:12px}
 .card-placeholder .icon{font-size:2.5rem}
@@ -149,7 +149,7 @@ body::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:3px}
 .empty-state .icon{font-size:3rem;margin-bottom:12px}
 
 /* NOTICE */
-.notice{background:rgba(229,9,20,0.1);border:1px solid rgba(229,9,20,0.3);border-radius:6px;padding:12px 16px;margin:12px 4%;font-size:.82rem;color:#ff8a8a;display:none;gap:8px;align-items:center}
+.notice{background:rgba(245,185,66,0.1);border:1px solid rgba(245,185,66,0.3);border-radius:6px;padding:12px 16px;margin:12px 4%;font-size:.82rem;color:#ff8a8a;display:none;gap:8px;align-items:center}
 .notice.show{display:flex}
 
 /* DETAIL MODAL */
@@ -174,7 +174,7 @@ body::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:3px}
 .season-label{font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);margin-bottom:10px}
 .season-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
 .season-tab{padding:6px 16px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--font);font-size:.82rem;font-weight:600;cursor:pointer;transition:all .2s}
-.season-tab.active,.season-tab:hover{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 0 16px rgba(229,9,20,0.4)}
+.season-tab.active,.season-tab:hover{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 0 16px rgba(245,185,66,0.4)}
 .episodes-list{display:flex;flex-direction:column;gap:6px}
 .ep-card{display:flex;gap:12px;align-items:center;padding:10px 12px;border-radius:6px;background:var(--surface);border:1px solid var(--border);cursor:pointer;transition:background .2s}
 .ep-card:hover{background:rgba(255,255,255,0.1)}
@@ -366,7 +366,7 @@ html[dir="rtl"] .badge-type{left:auto;right:6px}
 html[dir="rtl"] .user-dropdown{right:auto;left:0}
 
 /* ════════════════════════════════════════════════════════════
-   QASIMFLIX VIDEO PLAYER — MODERN PREMIUM DESIGN
+   SINEQ VIDEO PLAYER — MODERN PREMIUM DESIGN
    ════════════════════════════════════════════════════════════ */
 
 /* ── Player Modal Box ── */
@@ -440,7 +440,7 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
   opacity: 1;
 }
 .qplayer-close svg { width: 16px; height: 16px; }
-.qplayer-close:hover { background: rgba(229,9,20,.75); transform: scale(1.08); }
+.qplayer-close:hover { background: rgba(245,185,66,.75); transform: scale(1.08); }
 .player-wrap.controls-hidden .qplayer-close { opacity: 0; pointer-events: none; }
 .player-wrap:not(.controls-hidden) .qplayer-close { opacity: 1; pointer-events: all; }
 
@@ -483,7 +483,7 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
   height: 52px;
   border-radius: 50%;
   border: 3.5px solid rgba(255,255,255,.12);
-  border-top-color: var(--accent, #e50914);
+  border-top-color: var(--accent, #F5B942);
   animation: qpSpin .75s linear infinite;
 }
 @keyframes qpSpin { to { transform: rotate(360deg); } }
@@ -557,7 +557,7 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
   position: absolute;
   top: 0; left: 0; bottom: 0;
   width: var(--qp-pct, 0%);
-  background: var(--accent, #e50914);
+  background: var(--accent, #F5B942);
   border-radius: 2px;
   pointer-events: none;
   transition: width .1s linear;
@@ -632,7 +632,7 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
   width: 12px; height: 12px;
   border-radius: 50%;
   background: #fff;
-  box-shadow: calc(-100vw - 6px) 0 0 100vw var(--accent, #e50914);
+  box-shadow: calc(-100vw - 6px) 0 0 100vw var(--accent, #F5B942);
 }
 .qp-vol-slider::-moz-range-thumb {
   width: 12px; height: 12px;
@@ -640,7 +640,7 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
   background: #fff;
   border: none;
 }
-.qp-vol-slider::-moz-range-progress { background: var(--accent, #e50914); height: 4px; border-radius: 2px; }
+.qp-vol-slider::-moz-range-progress { background: var(--accent, #F5B942); height: 4px; border-radius: 2px; }
 
 /* ── Time Display ── */
 .qasim-time {
@@ -791,8 +791,8 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
 }
 
 
-/* QasimFlix gerçek açılış animasyonu */
-#qasimflix-splash {
+/* SineQ gerçek açılış animasyonu */
+#sineq-splash {
   position: fixed;
   inset: 0;
   z-index: 99999;
@@ -801,21 +801,21 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
   justify-content: center;
   flex-direction: column;
   background:
-    radial-gradient(circle at 50% 20%, rgba(229,9,20,.22), transparent 34%),
+    radial-gradient(circle at 50% 20%, rgba(245,185,66,.22), transparent 34%),
     linear-gradient(135deg, #050505 0%, #101018 48%, #000 100%);
   color: #fff;
   overflow: hidden;
   transition: opacity .55s ease, visibility .55s ease;
 }
-#qasimflix-splash.qf-hide { opacity: 0; visibility: hidden; pointer-events: none; }
-#qasimflix-splash::before {
+#sineq-splash.qf-hide { opacity: 0; visibility: hidden; pointer-events: none; }
+#sineq-splash::before {
   content: '';
   position: absolute;
   inset: -40%;
-  background: conic-gradient(from 0deg, transparent, rgba(229,9,20,.28), transparent, rgba(255,255,255,.06), transparent);
+  background: conic-gradient(from 0deg, transparent, rgba(245,185,66,.28), transparent, rgba(255,255,255,.06), transparent);
   animation: qfSplashSpin 3.8s linear infinite;
 }
-#qasimflix-splash::after {
+#sineq-splash::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -823,16 +823,16 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
   opacity: .22;
 }
 .qf-splash-inner { position: relative; z-index: 2; text-align: center; padding: 24px; animation: qfSplashUp .75s ease both; }
-.qf-splash-logo { font-family: 'Bebas Neue', var(--font-display), sans-serif; font-size: clamp(3rem, 14vw, 7rem); letter-spacing: .08em; line-height: .9; color: #e50914; text-shadow: 0 0 28px rgba(229,9,20,.7); }
+.qf-splash-logo { font-family: 'Bebas Neue', var(--font-display), sans-serif; font-size: clamp(3rem, 14vw, 7rem); letter-spacing: .08em; line-height: .9; color: #F5B942; text-shadow: 0 0 28px rgba(245,185,66,.7); }
 .qf-splash-logo span { color: #fff; }
 .qf-splash-title { margin-top: 18px; font-size: clamp(1rem, 4vw, 1.4rem); font-weight: 700; letter-spacing: .02em; }
 .qf-splash-sub { margin-top: 8px; color: rgba(255,255,255,.62); font-size: .9rem; }
 .qf-splash-loader { width: min(220px, 58vw); height: 4px; margin: 28px auto 0; border-radius: 99px; background: rgba(255,255,255,.12); overflow: hidden; }
-.qf-splash-loader i { display: block; width: 45%; height: 100%; background: linear-gradient(90deg, transparent, #e50914, #fff); border-radius: inherit; animation: qfSplashLoad 1.15s ease-in-out infinite; }
+.qf-splash-loader i { display: block; width: 45%; height: 100%; background: linear-gradient(90deg, transparent, #F5B942, #fff); border-radius: inherit; animation: qfSplashLoad 1.15s ease-in-out infinite; }
 @keyframes qfSplashSpin { to { transform: rotate(360deg); } }
 @keyframes qfSplashUp { from { opacity:0; transform: translateY(18px) scale(.96); } to { opacity:1; transform: translateY(0) scale(1); } }
 @keyframes qfSplashLoad { 0% { transform: translateX(-120%); } 100% { transform: translateX(240%); } }
-@media (prefers-reduced-motion: reduce) { #qasimflix-splash::before, .qf-splash-loader i, .qf-splash-inner { animation: none; } }
+@media (prefers-reduced-motion: reduce) { #sineq-splash::before, .qf-splash-loader i, .qf-splash-inner { animation: none; } }
 
 
 /* Video tıklamasında modal hızlı açılsın; masaüstü oranları korunur. */
@@ -986,10 +986,10 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
 </head>
 <body>
 
-<div id="qasimflix-splash" aria-label="QasimFlix açılış ekranı">
+<div id="sineq-splash" aria-label="SineQ açılış ekranı">
   <div class="qf-splash-inner">
-    <div class="qf-splash-logo">Qasim<span>Flix</span></div>
-    <div class="qf-splash-title">QasimFlix'e hoş geldiniz</div>
+    <div class="qf-splash-logo">Sine<span>Q</span></div>
+    <div class="qf-splash-title">SineQ'e hoş geldiniz</div>
     <div class="qf-splash-sub">Sinema deneyimi hazırlanıyor...</div>
     <div class="qf-splash-loader"><i></i></div>
   </div>
@@ -999,7 +999,7 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
 <nav class="navbar" id="navbar">
   <div class="nav-left">
     <button class="mobile-menu-btn" onclick="document.querySelector('.nav-links').classList.toggle('open')">☰</button>
-    <a href="#" class="logo" onclick="showAll();return false;">Qasimflix</a>
+    <a href="#" class="logo" onclick="showAll();return false;">SineQ</a>
     <ul class="nav-links">
       <li><button class="nav-link active" onclick="showAll(this)" data-i18n="nav.home">Ana Sayfa</button></li>
       <li><button class="nav-link" onclick="showCategory('series',this)" data-i18n="nav.series">Diziler</button></li>
@@ -1059,7 +1059,7 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
 <div class="hero" id="hero">
   <div class="hero-content">
     <div class="hero-badge">▶ Öne Çıkan</div>
-    <h1 class="hero-title" id="hero-title">Qasimflix'e Hoş Geldiniz</h1>
+    <h1 class="hero-title" id="hero-title">SineQ'e Hoş Geldiniz</h1>
     <div class="hero-meta">
       <span class="rating" id="hero-rating"></span>
       <span id="hero-year"></span>
@@ -1121,7 +1121,7 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
 
 <footer class="qf-footer" style="padding:28px 4%;border-top:1px solid rgba(255,255,255,.08);color:#aaa;font-size:.85rem;background:rgba(0,0,0,.28)">
   <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;justify-content:space-between">
-    <span>© 2026 QasimFlix</span>
+    <span>© 2026 SineQ</span>
     <nav style="display:flex;gap:12px;flex-wrap:wrap">
       <a href="/privacy.html" style="color:#ddd;text-decoration:none">Gizlilik Politikası</a>
       <a href="/terms.html" style="color:#ddd;text-decoration:none">Kullanım Şartları</a>
@@ -1150,7 +1150,7 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
   </div>
 </div>
 
-<!-- PLAYER MODAL — entegre QasimFlix player -->
+<!-- PLAYER MODAL — entegre SineQ player -->
 <div class="modal" id="player-modal" onclick="if(event.target===this)closePlayer()">
   <div class="player-modal-box" onclick="event.stopPropagation()">
     <div class="player-wrap controls-hidden" id="player-wrap">
@@ -1158,7 +1158,7 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
         <source id="video-source" src="" type="video/mp4">
       </video>
       <div id="embed-player" style="display:none;position:absolute;inset:0;background:#000"></div>
-      <div class="qasim-player-logo">QASIMFLIX</div>
+      <div class="qasim-player-logo">SINEQ</div>
       <button class="qplayer-close" onclick="closePlayer()" aria-label="Kapat">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
       </button>
@@ -1224,7 +1224,7 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
 <!-- PROFİL SEÇİM EKRANI (giriş sonrası gösterilir)       -->
 <!-- ══════════════════════════════════════════════════════ -->
 <div id="profile-select-screen" style="display:none;position:fixed;inset:0;z-index:500;background:var(--bg);align-items:center;justify-content:center;flex-direction:column">
-  <a href="#" class="logo" style="font-family:'Bebas Neue',sans-serif;font-size:2.4rem;letter-spacing:.08em;background:linear-gradient(135deg,#ff0f1e 0%,#a78bfa 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-decoration:none;margin-bottom:48px;display:block">Qasimflix</a>
+  <a href="#" class="logo" style="font-family:'Bebas Neue',sans-serif;font-size:2.4rem;letter-spacing:.08em;background:linear-gradient(135deg,#F5B942 0%,#a78bfa 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-decoration:none;margin-bottom:48px;display:block">SineQ</a>
   <h2 style="font-size:1.5rem;font-weight:600;color:var(--text);margin-bottom:36px;text-align:center">Kim izliyor?</h2>
   <div id="profile-avatars" style="display:flex;gap:24px;flex-wrap:wrap;justify-content:center;max-width:600px;padding:0 16px"></div>
   <button onclick="openProfileManageModal()" style="margin-top:40px;background:transparent;border:1px solid var(--muted);color:var(--muted);padding:10px 28px;border-radius:4px;cursor:pointer;font-family:var(--font);font-size:.88rem;transition:all .2s" onmouseover="this.style.borderColor='#fff';this.style.color='#fff'" onmouseout="this.style.borderColor='var(--muted)';this.style.color='var(--muted)'">Profilleri Yönet</button>
@@ -1261,7 +1261,7 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
       <!-- ANA PROFİL -->
       <div style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:20px">
         <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
-          <div id="mp-avatar" style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#f40612);display:flex;align-items:center;justify-content:center;font-size:1.6rem;flex-shrink:0">👤</div>
+          <div id="mp-avatar" style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#D89B18);display:flex;align-items:center;justify-content:center;font-size:1.6rem;flex-shrink:0">👤</div>
           <div>
             <div id="mp-name" style="font-size:.95rem;font-weight:600"></div>
             <div style="font-size:.75rem;color:var(--muted)">Ana Hesap</div>
@@ -1361,7 +1361,7 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
 <!-- APP_I18N: public / mobile / APK language system. Admin panel is untouched. -->
 <script>
   (function(){
-    const LANG_KEY = 'qasimflix_lang';
+    const LANG_KEY = 'sineq_lang';
     const OLD_LANG_KEY = 'qfLang';
     const DEFAULT_LANG = 'tr';
     const LANG_META = {
@@ -1373,25 +1373,25 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
       tr:{
         'nav.home':'Ana Sayfa','nav.series':'Diziler','nav.local':'Yerli Diziler','nav.documentaries':'Anime','nav.movies':'Filmler',
         'nav.search':'Arama','nav.downloads':'İndirilenler','nav.favorites':'Favoriler','nav.profile':'Profil',
-        'search.placeholder':'Ara...','hero.welcome':'Qasimflix\'e Hoş Geldiniz','hero.desc':'Admin panelinden içerik ekleyerek başlayın.','local.new':'🌟 Yeni Eklenen Yerli Diziler',
+        'search.placeholder':'Ara...','hero.welcome':'SineQ\'e Hoş Geldiniz','hero.desc':'Admin panelinden içerik ekleyerek başlayın.','local.new':'🌟 Yeni Eklenen Yerli Diziler',
         'profile.manage':'⚙️ Profil Yönetimi','profile.switch':'👤 Profil Değiştir','profile.title':'Profil','profile.login':'Giriş / Kayıt','profile.account':'Hesap','profile.watchlist':'📋 İzlenecekler','profile.signout':'🚪 Çıkış Yap',
         'settings.open':'⚙️ Ayarlar','settings.title':'Ayarlar','settings.subtitle':'Mobil/APK tercihleri','settings.language':'Dil seçimi','settings.autoplay':'Otomatik oynatma','settings.fullscreen':'Video açılınca tam ekran dene','settings.landscape':'Video açılınca yatay moda geçmeyi dene','settings.notifications':'Bildirimler','settings.clearCache':'Önbelleği temizle','settings.version':'Uygulama sürümü','settings.close':'Kapat','settings.on':'Açık','settings.off':'Kapalı','settings.saved':'Ayar kaydedildi','settings.cacheCleared':'Önbellek temizlendi','settings.cacheError':'Önbellek temizlenemedi','settings.notSupported':'Bu cihaz desteklemiyor','settings.updated':'Dil güncellendi',
-        'downloads.empty':'Henüz indirme yok.<br>MP4 destekli içeriklerde “İndir” butonuna basınca burada görünür.','downloads.open':'Aç','downloads.title':'İndirilenler','update.title':'Yeni APK sürümü var','update.message':'Uygulamayı güncellemen önerilir.','update.action':'Güncelle','update.later':'Sonra','install.tip':'QasimFlix’i telefona uygulama gibi ekleyebilirsin.','install.close':'Kapat','toast.offline':'İnternet yok. Çevrimdışı mod.','toast.online':'Bağlantı geri geldi.','download.unsupported':'Bu video çevrimdışı indirme için uygun değil. Sadece direkt MP4 desteklenir.','download.started':'İndirme başlatıldı.'
+        'downloads.empty':'Henüz indirme yok.<br>MP4 destekli içeriklerde “İndir” butonuna basınca burada görünür.','downloads.open':'Aç','downloads.title':'İndirilenler','update.title':'Yeni APK sürümü var','update.message':'Uygulamayı güncellemen önerilir.','update.action':'Güncelle','update.later':'Sonra','install.tip':'SineQ’i telefona uygulama gibi ekleyebilirsin.','install.close':'Kapat','toast.offline':'İnternet yok. Çevrimdışı mod.','toast.online':'Bağlantı geri geldi.','download.unsupported':'Bu video çevrimdışı indirme için uygun değil. Sadece direkt MP4 desteklenir.','download.started':'İndirme başlatıldı.'
       },
       ar:{
         'nav.home':'الصفحة الرئيسية','nav.series':'مسلسلات','nav.local':'مسلسلات محلية','nav.documentaries':'أنمي','nav.movies':'أفلام','nav.search':'بحث','nav.downloads':'التنزيلات','nav.favorites':'المفضلة','nav.profile':'الملف',
-        'search.placeholder':'ابحث...','hero.welcome':'مرحبًا بك في Qasimflix','hero.desc':'ابدأ بإضافة محتوى من لوحة التحكم.','local.new':'🌟 المسلسلات المحلية المضافة حديثًا','profile.manage':'⚙️ إدارة الملفات','profile.switch':'👤 تبديل الملف','profile.title':'الملف الشخصي','profile.login':'تسجيل الدخول / إنشاء حساب','profile.account':'الحساب','profile.watchlist':'📋 قائمة المشاهدة','profile.signout':'🚪 تسجيل الخروج',
+        'search.placeholder':'ابحث...','hero.welcome':'مرحبًا بك في SineQ','hero.desc':'ابدأ بإضافة محتوى من لوحة التحكم.','local.new':'🌟 المسلسلات المحلية المضافة حديثًا','profile.manage':'⚙️ إدارة الملفات','profile.switch':'👤 تبديل الملف','profile.title':'الملف الشخصي','profile.login':'تسجيل الدخول / إنشاء حساب','profile.account':'الحساب','profile.watchlist':'📋 قائمة المشاهدة','profile.signout':'🚪 تسجيل الخروج',
         'settings.open':'⚙️ الإعدادات','settings.title':'الإعدادات','settings.subtitle':'تفضيلات الهاتف والتطبيق','settings.language':'اختيار اللغة','settings.autoplay':'التشغيل التلقائي','settings.fullscreen':'جرّب ملء الشاشة عند فتح الفيديو','settings.landscape':'جرّب الوضع الأفقي عند فتح الفيديو','settings.notifications':'الإشعارات','settings.clearCache':'مسح الذاكرة المؤقتة','settings.version':'إصدار التطبيق','settings.close':'إغلاق','settings.on':'تشغيل','settings.off':'إيقاف','settings.saved':'تم حفظ الإعداد','settings.cacheCleared':'تم مسح الذاكرة المؤقتة','settings.cacheError':'تعذر مسح الذاكرة المؤقتة','settings.notSupported':'غير مدعوم على هذا الجهاز','settings.updated':'تم تحديث اللغة',
-        'downloads.empty':'لا توجد تنزيلات بعد.<br>ستظهر هنا عند الضغط على زر التنزيل لمحتوى MP4.','downloads.open':'فتح','downloads.title':'التنزيلات','update.title':'يوجد إصدار APK جديد','update.message':'ننصحك بتحديث التطبيق.','update.action':'تحديث','update.later':'لاحقًا','install.tip':'يمكنك إضافة QasimFlix كتطبيق على هاتفك.','install.close':'إغلاق','toast.offline':'لا يوجد إنترنت. وضع عدم الاتصال.','toast.online':'عاد الاتصال.','download.unsupported':'هذا الفيديو غير مناسب للتنزيل دون اتصال. يتم دعم MP4 المباشر فقط.','download.started':'بدأ التنزيل.'
+        'downloads.empty':'لا توجد تنزيلات بعد.<br>ستظهر هنا عند الضغط على زر التنزيل لمحتوى MP4.','downloads.open':'فتح','downloads.title':'التنزيلات','update.title':'يوجد إصدار APK جديد','update.message':'ننصحك بتحديث التطبيق.','update.action':'تحديث','update.later':'لاحقًا','install.tip':'يمكنك إضافة SineQ كتطبيق على هاتفك.','install.close':'إغلاق','toast.offline':'لا يوجد إنترنت. وضع عدم الاتصال.','toast.online':'عاد الاتصال.','download.unsupported':'هذا الفيديو غير مناسب للتنزيل دون اتصال. يتم دعم MP4 المباشر فقط.','download.started':'بدأ التنزيل.'
       },
-      en:{'nav.home':'Home','nav.series':'Series','nav.local':'Local Series','nav.documentaries':'Anime','nav.movies':'Movies','nav.search':'Search','nav.downloads':'Downloads','nav.favorites':'Favorites','nav.profile':'Profile','search.placeholder':'Search...','hero.welcome':'Welcome to Qasimflix','hero.desc':'Start by adding content from the admin panel.','local.new':'🌟 Newly Added Local Series','profile.manage':'⚙️ Profile Management','profile.switch':'👤 Switch Profile','profile.title':'Profile','profile.login':'Login / Sign up','profile.account':'Account','profile.watchlist':'📋 Watchlist','profile.signout':'🚪 Sign out','settings.open':'⚙️ Settings','settings.title':'Settings','settings.subtitle':'Mobile/APK preferences','settings.language':'Language','settings.autoplay':'Autoplay','settings.fullscreen':'Try fullscreen when video opens','settings.landscape':'Try landscape mode when video opens','settings.notifications':'Notifications','settings.clearCache':'Clear cache','settings.version':'App version','settings.close':'Close','settings.on':'On','settings.off':'Off','settings.saved':'Setting saved','settings.cacheCleared':'Cache cleared','settings.cacheError':'Cache could not be cleared','settings.notSupported':'Not supported on this device','settings.updated':'Language updated','downloads.empty':'No downloads yet.<br>Supported MP4 content will appear here after you tap Download.','downloads.open':'Open','downloads.title':'Downloads','update.title':'New APK version available','update.message':'We recommend updating the app.','update.action':'Update','update.later':'Later','install.tip':'You can add QasimFlix to your phone like an app.','install.close':'Close','toast.offline':'No internet. Offline mode.','toast.online':'Connection is back.','download.unsupported':'This video is not available for offline download. Only direct MP4 is supported.','download.started':'Download started.'},
-      'en-GB':{'nav.home':'Home','nav.series':'Series','nav.local':'Local Series','nav.documentaries':'Anime','nav.movies':'Films','nav.search':'Search','nav.downloads':'Downloads','nav.favorites':'Favourites','nav.profile':'Profile','search.placeholder':'Search...','hero.welcome':'Welcome to Qasimflix','hero.desc':'Start by adding content from the admin panel.','local.new':'🌟 Newly Added Local Series','profile.manage':'⚙️ Profile Management','profile.switch':'👤 Switch Profile','profile.title':'Profile','profile.login':'Log in / Register','profile.account':'Account','profile.watchlist':'📋 Watchlist','profile.signout':'🚪 Sign out','settings.open':'⚙️ Settings','settings.title':'Settings','settings.subtitle':'Mobile/APK preferences','settings.language':'Language','settings.autoplay':'Autoplay','settings.fullscreen':'Try full screen when video opens','settings.landscape':'Try landscape mode when video opens','settings.notifications':'Notifications','settings.clearCache':'Clear cache','settings.version':'App version','settings.close':'Close','settings.on':'On','settings.off':'Off','settings.saved':'Setting saved','settings.cacheCleared':'Cache cleared','settings.cacheError':'Cache could not be cleared','settings.notSupported':'Not supported on this device','settings.updated':'Language updated','downloads.empty':'No downloads yet.<br>Supported MP4 content will appear here after you tap Download.','downloads.open':'Open','downloads.title':'Downloads','update.title':'New APK version available','update.message':'We recommend updating the app.','update.action':'Update','update.later':'Later','install.tip':'You can add QasimFlix to your phone like an app.','install.close':'Close','toast.offline':'No internet. Offline mode.','toast.online':'Connection is back.','download.unsupported':'This video is not available for offline download. Only direct MP4 is supported.','download.started':'Download started.'},
-      es:{'nav.home':'Inicio','nav.series':'Series','nav.local':'Series locales','nav.documentaries':'Anime','nav.movies':'Películas','nav.search':'Buscar','nav.downloads':'Descargas','nav.favorites':'Favoritos','nav.profile':'Perfil','search.placeholder':'Buscar...','hero.welcome':'Bienvenido a Qasimflix','hero.desc':'Empieza agregando contenido desde el panel de admin.','local.new':'🌟 Series locales recién añadidas','profile.manage':'⚙️ Gestión de perfiles','profile.switch':'👤 Cambiar perfil','profile.title':'Perfil','profile.login':'Iniciar sesión / Registro','profile.account':'Cuenta','profile.watchlist':'📋 Lista','profile.signout':'🚪 Salir','settings.open':'⚙️ Ajustes','settings.title':'Ajustes','settings.subtitle':'Preferencias móvil/APK','settings.language':'Idioma','settings.autoplay':'Reproducción automática','settings.fullscreen':'Intentar pantalla completa al abrir vídeo','settings.landscape':'Intentar modo horizontal al abrir vídeo','settings.notifications':'Notificaciones','settings.clearCache':'Limpiar caché','settings.version':'Versión de la app','settings.close':'Cerrar','settings.on':'Activado','settings.off':'Desactivado','settings.saved':'Ajuste guardado','settings.cacheCleared':'Caché limpiada','settings.cacheError':'No se pudo limpiar la caché','settings.notSupported':'No compatible con este dispositivo','settings.updated':'Idioma actualizado','downloads.title':'Descargas','downloads.open':'Abrir'},
-      it:{'nav.home':'Home','nav.series':'Serie','nav.local':'Serie locali','nav.documentaries':'Anime','nav.movies':'Film','nav.search':'Cerca','nav.downloads':'Download','nav.favorites':'Preferiti','nav.profile':'Profilo','search.placeholder':'Cerca...','hero.welcome':'Benvenuto su Qasimflix','hero.desc':'Inizia aggiungendo contenuti dal pannello admin.','local.new':'🌟 Serie locali appena aggiunte','profile.manage':'⚙️ Gestione profili','profile.switch':'👤 Cambia profilo','profile.title':'Profilo','profile.login':'Accesso / Registrazione','settings.open':'⚙️ Impostazioni','settings.title':'Impostazioni','settings.subtitle':'Preferenze mobile/APK','settings.language':'Lingua','settings.autoplay':'Riproduzione automatica','settings.fullscreen':'Prova schermo intero quando si apre il video','settings.landscape':'Prova modalità orizzontale quando si apre il video','settings.notifications':'Notifiche','settings.clearCache':'Svuota cache','settings.version':'Versione app','settings.close':'Chiudi','settings.on':'Attivo','settings.off':'Disattivo','settings.saved':'Impostazione salvata','settings.cacheCleared':'Cache svuotata','settings.updated':'Lingua aggiornata','downloads.title':'Download','downloads.open':'Apri'},
-      fr:{'nav.home':'Accueil','nav.series':'Séries','nav.local':'Séries locales','nav.documentaries':'Anime','nav.movies':'Films','nav.search':'Recherche','nav.downloads':'Téléchargements','nav.favorites':'Favoris','nav.profile':'Profil','search.placeholder':'Rechercher...','hero.welcome':'Bienvenue sur Qasimflix','hero.desc':'Commencez par ajouter du contenu depuis le panneau admin.','local.new':'🌟 Séries locales récemment ajoutées','profile.manage':'⚙️ Gestion des profils','profile.switch':'👤 Changer de profil','profile.title':'Profil','profile.login':'Connexion / Inscription','settings.open':'⚙️ Paramètres','settings.title':'Paramètres','settings.subtitle':'Préférences mobile/APK','settings.language':'Langue','settings.autoplay':'Lecture automatique','settings.fullscreen':'Essayer le plein écran à l’ouverture de la vidéo','settings.landscape':'Essayer le mode paysage à l’ouverture de la vidéo','settings.notifications':'Notifications','settings.clearCache':'Vider le cache','settings.version':'Version de l’app','settings.close':'Fermer','settings.on':'Activé','settings.off':'Désactivé','settings.saved':'Paramètre enregistré','settings.cacheCleared':'Cache vidé','settings.updated':'Langue mise à jour','downloads.title':'Téléchargements','downloads.open':'Ouvrir'},
-      de:{'nav.home':'Startseite','nav.series':'Serien','nav.local':'Lokale Serien','nav.documentaries':'Anime','nav.movies':'Filme','nav.search':'Suche','nav.downloads':'Downloads','nav.favorites':'Favoriten','nav.profile':'Profil','search.placeholder':'Suchen...','hero.welcome':'Willkommen bei Qasimflix','hero.desc':'Beginne, indem du Inhalte im Admin-Panel hinzufügst.','local.new':'🌟 Neu hinzugefügte lokale Serien','profile.manage':'⚙️ Profilverwaltung','profile.switch':'👤 Profil wechseln','profile.title':'Profil','profile.login':'Anmelden / Registrieren','settings.open':'⚙️ Einstellungen','settings.title':'Einstellungen','settings.subtitle':'Mobile/APK-Einstellungen','settings.language':'Sprache','settings.autoplay':'Automatische Wiedergabe','settings.fullscreen':'Beim Öffnen des Videos Vollbild versuchen','settings.landscape':'Beim Öffnen des Videos Querformat versuchen','settings.notifications':'Benachrichtigungen','settings.clearCache':'Cache leeren','settings.version':'App-Version','settings.close':'Schließen','settings.on':'Ein','settings.off':'Aus','settings.saved':'Einstellung gespeichert','settings.cacheCleared':'Cache geleert','settings.updated':'Sprache aktualisiert','downloads.title':'Downloads','downloads.open':'Öffnen'},
-      ru:{'nav.home':'Главная','nav.series':'Сериалы','nav.local':'Местные сериалы','nav.documentaries':'Аниме','nav.movies':'Фильмы','nav.search':'Поиск','nav.downloads':'Загрузки','nav.favorites':'Избранное','nav.profile':'Профиль','search.placeholder':'Поиск...','hero.welcome':'Добро пожаловать в Qasimflix','hero.desc':'Начните с добавления контента в админ-панели.','local.new':'🌟 Новые местные сериалы','profile.manage':'⚙️ Управление профилями','profile.switch':'👤 Сменить профиль','profile.title':'Профиль','profile.login':'Вход / Регистрация','settings.open':'⚙️ Настройки','settings.title':'Настройки','settings.subtitle':'Настройки мобильной версии/APK','settings.language':'Язык','settings.autoplay':'Автовоспроизведение','settings.fullscreen':'Пробовать полноэкранный режим при открытии видео','settings.landscape':'Пробовать горизонтальный режим при открытии видео','settings.notifications':'Уведомления','settings.clearCache':'Очистить кэш','settings.version':'Версия приложения','settings.close':'Закрыть','settings.on':'Вкл','settings.off':'Выкл','settings.saved':'Настройка сохранена','settings.cacheCleared':'Кэш очищен','settings.updated':'Язык обновлён','downloads.title':'Загрузки','downloads.open':'Открыть'},
-      zh:{'nav.home':'首页','nav.series':'剧集','nav.local':'本地剧集','nav.documentaries':'动漫','nav.movies':'电影','nav.search':'搜索','nav.downloads':'下载','nav.favorites':'收藏','nav.profile':'个人资料','search.placeholder':'搜索...','hero.welcome':'欢迎来到 Qasimflix','hero.desc':'请先从管理面板添加内容。','local.new':'🌟 新增本地剧集','profile.manage':'⚙️ 资料管理','profile.switch':'👤 切换资料','profile.title':'个人资料','profile.login':'登录 / 注册','settings.open':'⚙️ 设置','settings.title':'设置','settings.subtitle':'移动/APK 偏好','settings.language':'语言','settings.autoplay':'自动播放','settings.fullscreen':'视频打开时尝试全屏','settings.landscape':'视频打开时尝试横屏','settings.notifications':'通知','settings.clearCache':'清除缓存','settings.version':'应用版本','settings.close':'关闭','settings.on':'开启','settings.off':'关闭','settings.saved':'设置已保存','settings.cacheCleared':'缓存已清除','settings.updated':'语言已更新','downloads.title':'下载','downloads.open':'打开'}
+      en:{'nav.home':'Home','nav.series':'Series','nav.local':'Local Series','nav.documentaries':'Anime','nav.movies':'Movies','nav.search':'Search','nav.downloads':'Downloads','nav.favorites':'Favorites','nav.profile':'Profile','search.placeholder':'Search...','hero.welcome':'Welcome to SineQ','hero.desc':'Start by adding content from the admin panel.','local.new':'🌟 Newly Added Local Series','profile.manage':'⚙️ Profile Management','profile.switch':'👤 Switch Profile','profile.title':'Profile','profile.login':'Login / Sign up','profile.account':'Account','profile.watchlist':'📋 Watchlist','profile.signout':'🚪 Sign out','settings.open':'⚙️ Settings','settings.title':'Settings','settings.subtitle':'Mobile/APK preferences','settings.language':'Language','settings.autoplay':'Autoplay','settings.fullscreen':'Try fullscreen when video opens','settings.landscape':'Try landscape mode when video opens','settings.notifications':'Notifications','settings.clearCache':'Clear cache','settings.version':'App version','settings.close':'Close','settings.on':'On','settings.off':'Off','settings.saved':'Setting saved','settings.cacheCleared':'Cache cleared','settings.cacheError':'Cache could not be cleared','settings.notSupported':'Not supported on this device','settings.updated':'Language updated','downloads.empty':'No downloads yet.<br>Supported MP4 content will appear here after you tap Download.','downloads.open':'Open','downloads.title':'Downloads','update.title':'New APK version available','update.message':'We recommend updating the app.','update.action':'Update','update.later':'Later','install.tip':'You can add SineQ to your phone like an app.','install.close':'Close','toast.offline':'No internet. Offline mode.','toast.online':'Connection is back.','download.unsupported':'This video is not available for offline download. Only direct MP4 is supported.','download.started':'Download started.'},
+      'en-GB':{'nav.home':'Home','nav.series':'Series','nav.local':'Local Series','nav.documentaries':'Anime','nav.movies':'Films','nav.search':'Search','nav.downloads':'Downloads','nav.favorites':'Favourites','nav.profile':'Profile','search.placeholder':'Search...','hero.welcome':'Welcome to SineQ','hero.desc':'Start by adding content from the admin panel.','local.new':'🌟 Newly Added Local Series','profile.manage':'⚙️ Profile Management','profile.switch':'👤 Switch Profile','profile.title':'Profile','profile.login':'Log in / Register','profile.account':'Account','profile.watchlist':'📋 Watchlist','profile.signout':'🚪 Sign out','settings.open':'⚙️ Settings','settings.title':'Settings','settings.subtitle':'Mobile/APK preferences','settings.language':'Language','settings.autoplay':'Autoplay','settings.fullscreen':'Try full screen when video opens','settings.landscape':'Try landscape mode when video opens','settings.notifications':'Notifications','settings.clearCache':'Clear cache','settings.version':'App version','settings.close':'Close','settings.on':'On','settings.off':'Off','settings.saved':'Setting saved','settings.cacheCleared':'Cache cleared','settings.cacheError':'Cache could not be cleared','settings.notSupported':'Not supported on this device','settings.updated':'Language updated','downloads.empty':'No downloads yet.<br>Supported MP4 content will appear here after you tap Download.','downloads.open':'Open','downloads.title':'Downloads','update.title':'New APK version available','update.message':'We recommend updating the app.','update.action':'Update','update.later':'Later','install.tip':'You can add SineQ to your phone like an app.','install.close':'Close','toast.offline':'No internet. Offline mode.','toast.online':'Connection is back.','download.unsupported':'This video is not available for offline download. Only direct MP4 is supported.','download.started':'Download started.'},
+      es:{'nav.home':'Inicio','nav.series':'Series','nav.local':'Series locales','nav.documentaries':'Anime','nav.movies':'Películas','nav.search':'Buscar','nav.downloads':'Descargas','nav.favorites':'Favoritos','nav.profile':'Perfil','search.placeholder':'Buscar...','hero.welcome':'Bienvenido a SineQ','hero.desc':'Empieza agregando contenido desde el panel de admin.','local.new':'🌟 Series locales recién añadidas','profile.manage':'⚙️ Gestión de perfiles','profile.switch':'👤 Cambiar perfil','profile.title':'Perfil','profile.login':'Iniciar sesión / Registro','profile.account':'Cuenta','profile.watchlist':'📋 Lista','profile.signout':'🚪 Salir','settings.open':'⚙️ Ajustes','settings.title':'Ajustes','settings.subtitle':'Preferencias móvil/APK','settings.language':'Idioma','settings.autoplay':'Reproducción automática','settings.fullscreen':'Intentar pantalla completa al abrir vídeo','settings.landscape':'Intentar modo horizontal al abrir vídeo','settings.notifications':'Notificaciones','settings.clearCache':'Limpiar caché','settings.version':'Versión de la app','settings.close':'Cerrar','settings.on':'Activado','settings.off':'Desactivado','settings.saved':'Ajuste guardado','settings.cacheCleared':'Caché limpiada','settings.cacheError':'No se pudo limpiar la caché','settings.notSupported':'No compatible con este dispositivo','settings.updated':'Idioma actualizado','downloads.title':'Descargas','downloads.open':'Abrir'},
+      it:{'nav.home':'Home','nav.series':'Serie','nav.local':'Serie locali','nav.documentaries':'Anime','nav.movies':'Film','nav.search':'Cerca','nav.downloads':'Download','nav.favorites':'Preferiti','nav.profile':'Profilo','search.placeholder':'Cerca...','hero.welcome':'Benvenuto su SineQ','hero.desc':'Inizia aggiungendo contenuti dal pannello admin.','local.new':'🌟 Serie locali appena aggiunte','profile.manage':'⚙️ Gestione profili','profile.switch':'👤 Cambia profilo','profile.title':'Profilo','profile.login':'Accesso / Registrazione','settings.open':'⚙️ Impostazioni','settings.title':'Impostazioni','settings.subtitle':'Preferenze mobile/APK','settings.language':'Lingua','settings.autoplay':'Riproduzione automatica','settings.fullscreen':'Prova schermo intero quando si apre il video','settings.landscape':'Prova modalità orizzontale quando si apre il video','settings.notifications':'Notifiche','settings.clearCache':'Svuota cache','settings.version':'Versione app','settings.close':'Chiudi','settings.on':'Attivo','settings.off':'Disattivo','settings.saved':'Impostazione salvata','settings.cacheCleared':'Cache svuotata','settings.updated':'Lingua aggiornata','downloads.title':'Download','downloads.open':'Apri'},
+      fr:{'nav.home':'Accueil','nav.series':'Séries','nav.local':'Séries locales','nav.documentaries':'Anime','nav.movies':'Films','nav.search':'Recherche','nav.downloads':'Téléchargements','nav.favorites':'Favoris','nav.profile':'Profil','search.placeholder':'Rechercher...','hero.welcome':'Bienvenue sur SineQ','hero.desc':'Commencez par ajouter du contenu depuis le panneau admin.','local.new':'🌟 Séries locales récemment ajoutées','profile.manage':'⚙️ Gestion des profils','profile.switch':'👤 Changer de profil','profile.title':'Profil','profile.login':'Connexion / Inscription','settings.open':'⚙️ Paramètres','settings.title':'Paramètres','settings.subtitle':'Préférences mobile/APK','settings.language':'Langue','settings.autoplay':'Lecture automatique','settings.fullscreen':'Essayer le plein écran à l’ouverture de la vidéo','settings.landscape':'Essayer le mode paysage à l’ouverture de la vidéo','settings.notifications':'Notifications','settings.clearCache':'Vider le cache','settings.version':'Version de l’app','settings.close':'Fermer','settings.on':'Activé','settings.off':'Désactivé','settings.saved':'Paramètre enregistré','settings.cacheCleared':'Cache vidé','settings.updated':'Langue mise à jour','downloads.title':'Téléchargements','downloads.open':'Ouvrir'},
+      de:{'nav.home':'Startseite','nav.series':'Serien','nav.local':'Lokale Serien','nav.documentaries':'Anime','nav.movies':'Filme','nav.search':'Suche','nav.downloads':'Downloads','nav.favorites':'Favoriten','nav.profile':'Profil','search.placeholder':'Suchen...','hero.welcome':'Willkommen bei SineQ','hero.desc':'Beginne, indem du Inhalte im Admin-Panel hinzufügst.','local.new':'🌟 Neu hinzugefügte lokale Serien','profile.manage':'⚙️ Profilverwaltung','profile.switch':'👤 Profil wechseln','profile.title':'Profil','profile.login':'Anmelden / Registrieren','settings.open':'⚙️ Einstellungen','settings.title':'Einstellungen','settings.subtitle':'Mobile/APK-Einstellungen','settings.language':'Sprache','settings.autoplay':'Automatische Wiedergabe','settings.fullscreen':'Beim Öffnen des Videos Vollbild versuchen','settings.landscape':'Beim Öffnen des Videos Querformat versuchen','settings.notifications':'Benachrichtigungen','settings.clearCache':'Cache leeren','settings.version':'App-Version','settings.close':'Schließen','settings.on':'Ein','settings.off':'Aus','settings.saved':'Einstellung gespeichert','settings.cacheCleared':'Cache geleert','settings.updated':'Sprache aktualisiert','downloads.title':'Downloads','downloads.open':'Öffnen'},
+      ru:{'nav.home':'Главная','nav.series':'Сериалы','nav.local':'Местные сериалы','nav.documentaries':'Аниме','nav.movies':'Фильмы','nav.search':'Поиск','nav.downloads':'Загрузки','nav.favorites':'Избранное','nav.profile':'Профиль','search.placeholder':'Поиск...','hero.welcome':'Добро пожаловать в SineQ','hero.desc':'Начните с добавления контента в админ-панели.','local.new':'🌟 Новые местные сериалы','profile.manage':'⚙️ Управление профилями','profile.switch':'👤 Сменить профиль','profile.title':'Профиль','profile.login':'Вход / Регистрация','settings.open':'⚙️ Настройки','settings.title':'Настройки','settings.subtitle':'Настройки мобильной версии/APK','settings.language':'Язык','settings.autoplay':'Автовоспроизведение','settings.fullscreen':'Пробовать полноэкранный режим при открытии видео','settings.landscape':'Пробовать горизонтальный режим при открытии видео','settings.notifications':'Уведомления','settings.clearCache':'Очистить кэш','settings.version':'Версия приложения','settings.close':'Закрыть','settings.on':'Вкл','settings.off':'Выкл','settings.saved':'Настройка сохранена','settings.cacheCleared':'Кэш очищен','settings.updated':'Язык обновлён','downloads.title':'Загрузки','downloads.open':'Открыть'},
+      zh:{'nav.home':'首页','nav.series':'剧集','nav.local':'本地剧集','nav.documentaries':'动漫','nav.movies':'电影','nav.search':'搜索','nav.downloads':'下载','nav.favorites':'收藏','nav.profile':'个人资料','search.placeholder':'搜索...','hero.welcome':'欢迎来到 SineQ','hero.desc':'请先从管理面板添加内容。','local.new':'🌟 新增本地剧集','profile.manage':'⚙️ 资料管理','profile.switch':'👤 切换资料','profile.title':'个人资料','profile.login':'登录 / 注册','settings.open':'⚙️ 设置','settings.title':'设置','settings.subtitle':'移动/APK 偏好','settings.language':'语言','settings.autoplay':'自动播放','settings.fullscreen':'视频打开时尝试全屏','settings.landscape':'视频打开时尝试横屏','settings.notifications':'通知','settings.clearCache':'清除缓存','settings.version':'应用版本','settings.close':'关闭','settings.on':'开启','settings.off':'关闭','settings.saved':'设置已保存','settings.cacheCleared':'缓存已清除','settings.updated':'语言已更新','downloads.title':'下载','downloads.open':'打开'}
     };
 
     const APP_I18N_EXTRA = {
@@ -1464,7 +1464,7 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
       document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.getAttribute('data-i18n'), l); });
       document.querySelectorAll('[data-i18n-placeholder]').forEach(el => { el.setAttribute('placeholder', t(el.getAttribute('data-i18n-placeholder'), l)); });
       document.querySelectorAll('[data-i18n-aria-label]').forEach(el => { el.setAttribute('aria-label', t(el.getAttribute('data-i18n-aria-label'), l)); });
-      const heroTitle = document.getElementById('hero-title'); if (heroTitle && /Qasimflix|مرحبا|Welcome|Bienvenido|Benvenuto|Bienvenue|Willkommen|Добро|欢迎/i.test(heroTitle.textContent || '')) heroTitle.textContent = t('hero.welcome', l);
+      const heroTitle = document.getElementById('hero-title'); if (heroTitle && /SineQ|مرحبا|Welcome|Bienvenido|Benvenuto|Bienvenue|Willkommen|Добро|欢迎/i.test(heroTitle.textContent || '')) heroTitle.textContent = t('hero.welcome', l);
       const heroDesc = document.getElementById('hero-desc'); if (heroDesc && !heroDesc.dataset.contentDesc) heroDesc.textContent = t('hero.desc', l);
       document.dispatchEvent(new CustomEvent('qf-lang-changed', {detail:{lang:l}}));
     }
@@ -1488,7 +1488,7 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
 <script>
 (function(){
   const hideSplash = () => {
-    const s = document.getElementById('qasimflix-splash');
+    const s = document.getElementById('sineq-splash');
     if (!s) return;
     s.classList.add('qf-hide');
     setTimeout(() => s.remove(), 700);
@@ -1504,9 +1504,9 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
   (function(){
     var firebaseConfig = {
       apiKey: "AIzaSyAtHW7UW3-ftQq9loSHPJkkbSeDSONI2KE",
-      authDomain: "qasimflix-8ba04.firebaseapp.com",
-      projectId: "qasimflix-8ba04",
-      storageBucket: "qasimflix-8ba04.firebasestorage.app",
+      authDomain: "sineq-8ba04.firebaseapp.com",
+      projectId: "sineq-8ba04",
+      storageBucket: "sineq-8ba04.firebasestorage.app",
       messagingSenderId: "958468258867",
       appId: "1:958468258867:web:08395af3f9a39f9fcf3746"
     };
@@ -1548,7 +1548,7 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
               if (window.Notification && Notification.permission === 'granted') {
                 var n = payload && payload.notification ? payload.notification : {};
                 var d = payload && payload.data ? payload.data : {};
-                new Notification(n.title || 'QasimFlix', {
+                new Notification(n.title || 'SineQ', {
                   body: n.body || 'Yeni içerik eklendi',
                   icon: '/assets/icons/icon-192.png',
                   data: { url: d.url || '/' }
@@ -1565,7 +1565,7 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
         });
     }
 
-    window.enableQasimFlixPush = function(){
+    window.enableSineQPush = function(){
       if (!('Notification' in window)) {
         alert('Bu cihaz bildirim desteklemiyor');
         return Promise.resolve();
@@ -1604,7 +1604,7 @@ html[dir="rtl"] .user-dropdown{right:auto;left:0}
               headers: headers,
               body: JSON.stringify({
                 token: token,
-                platform: window.QasimFlixAndroid ? 'apk-webview' : 'web',
+                platform: window.SineQAndroid ? 'apk-webview' : 'web',
                 userId: localStorage.getItem('userId') || window.USER_ID || '',
                 userName: localStorage.getItem('userName') || '',
                 userEmail: localStorage.getItem('userEmail') || ''

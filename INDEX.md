@@ -1,6 +1,6 @@
 # 🎬 StreamFlix - Complete Documentation Index
 
-Welcome to StreamFlix! A professional, Netflix-like streaming platform built with Node.js, Express, MongoDB, and vanilla JavaScript.
+Welcome to StreamFlix! A professional, premium streaming streaming platform built with Node.js, Express, MongoDB, and vanilla JavaScript.
 
 ---
 
@@ -192,7 +192,7 @@ By studying this codebase, you'll learn:
 - ✅ Watch progress tracking
 
 ### Frontend Features
-- ✅ Netflix-style UI
+- ✅ premium streaming UI
 - ✅ Series/Seasons/Episodes hierarchy
 - ✅ HTML5 video player
 - ✅ Subtitle support (multiple languages)

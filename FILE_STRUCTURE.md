@@ -9,7 +9,7 @@ film proje/
 ├── 📱 FRONTEND
 │   ├── index.html               ← Main user interface
 │   ├── app.js                   ← Frontend logic & API calls
-│   ├── style.css                ← Netflix-like styling
+│   ├── style.css                ← premium streaming styling
 │   └── script.js                ← Deprecated (use app.js)
 │
 ├── 👨‍💼 ADMIN PANEL
@@ -89,7 +89,7 @@ npm start
 
 #### `style.css` (Styling)
 **What it does:**
-- Netflix-like dark theme
+- premium streaming dark theme
 - Responsive design
 - Animations
 - Modal styling

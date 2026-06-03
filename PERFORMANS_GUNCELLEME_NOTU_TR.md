@@ -1,4 +1,4 @@
-# QasimFlix Performans Güncellemesi
+# SineQ Performans Güncellemesi
 
 Bu paket mobil/APK ve web tarafında akıcılığı artırmak için hazırlanmıştır.
 
@@ -20,7 +20,7 @@ Bu paket mobil/APK ve web tarafında akıcılığı artırmak için hazırlanmı
   - `qf-performance.css` sayfaya bağlandı.
 
 - `sw.js`
-  - Cache sürümü `qasimflix-v1.0.8-performance` yapıldı.
+  - Cache sürümü `sineq-v1.0.8-performance` yapıldı.
   - JS/CSS/JSON/görsel dosyaları için cache-first + arka planda güncelleme mantığı eklendi.
   - İkinci açılışlar ve APK içinde geri dönüşler daha hızlı olur.
 
@@ -28,7 +28,7 @@ Bu paket mobil/APK ve web tarafında akıcılığı artırmak için hazırlanmı
   - Liste/arama/kategori sorgularına `.lean()` eklendi.
   - Mongoose doküman yükü azalır, API cevapları daha hafif ve hızlı döner.
 
-- `APK_WEBVIEW_TEMPLATE/app/src/main/java/com/qasimflix/app/MainActivity.java`
+- `APK_WEBVIEW_TEMPLATE/app/src/main/java/com/sineq/app/MainActivity.java`
   - WebView cache modu ve hardware layer eklendi.
 
 - `APK_WEBVIEW_TEMPLATE/app/src/main/AndroidManifest.xml`

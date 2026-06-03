@@ -1,4 +1,4 @@
-# QasimFlix — AI Altyazı Oluşturucu Güncellemesi
+# SineQ — AI Altyazı Oluşturucu Güncellemesi
 
 Bu güncellemede admin paneline otomatik altyazı üretme sistemi eklendi.
 

@@ -1,4 +1,4 @@
-# QasimFlix Akıllı Özellik Güncellemesi
+# SineQ Akıllı Özellik Güncellemesi
 
 Bu güncellemede alternatif/fallback video link sistemi özellikle eklenmedi. Onun dışında istenen geliştirmeler hem PC/web hem de APK/PWA tarafında çalışacak şekilde projeye bağlandı.
 

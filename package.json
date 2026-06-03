@@ -1,7 +1,7 @@
 {
-  "name": "qasimflix",
+  "name": "sineq",
   "version": "1.0.0",
-  "description": "QasimFlix film ve dizi izleme platformu",
+  "description": "SineQ film ve dizi izleme platformu",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

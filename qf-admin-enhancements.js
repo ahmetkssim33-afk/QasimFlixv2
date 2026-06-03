@@ -5,7 +5,7 @@
   const ready = fn => document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', fn) : fn();
   const esc = s => String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 
-  function lang(){ return localStorage.getItem('qfLang') || localStorage.getItem('qasimflix_lang') || 'tr'; }
+  function lang(){ return localStorage.getItem('qfLang') || localStorage.getItem('sineq_lang') || 'tr'; }
   function t(key){
     const tr = {
       'nav.requests':'İstekler','requests.title':'Kullanıcı İçerik İstekleri','requests.sub':'Sitede olmayan film/dizi istekleri','requests.empty':'Henüz istek yok','requests.open':'Bekliyor','requests.done':'Tamamlandı','requests.markDone':'Tamamlandı','requests.reopen':'Geri al','requests.delete':'Sil','requests.user':'Kullanıcı','requests.date':'Tarih','requests.year':'Yıl',

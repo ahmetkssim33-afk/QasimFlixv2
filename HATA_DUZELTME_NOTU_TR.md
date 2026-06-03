@@ -1,4 +1,4 @@
-# QasimFlix Hata Düzeltme Notu
+# SineQ Hata Düzeltme Notu
 
 Bu paket şu sorunlar için güncellendi:
 
@@ -16,7 +16,7 @@ Bu paket şu sorunlar için güncellendi:
 3. **Service Worker Firebase CDN hataları**
    - `sw.js` içindeki Firebase `importScripts` kaldırıldı.
    - Native `push` event desteği eklendi.
-   - Cache sürümü `qasimflix-v1.0.8-error-fixes` olarak yükseltildi.
+   - Cache sürümü `sineq-v1.0.8-error-fixes` olarak yükseltildi.
 
 4. **PWA beforeinstallprompt console uyarısı**
    - Kullanıcı kurulum önerisini kapattıysa `preventDefault()` çağrısı yapılmaz.
@@ -44,7 +44,7 @@ git push
 ```js
 navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister()));
 caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
-localStorage.removeItem('qasimflix-cache');
+localStorage.removeItem('sineq-cache');
 location.reload();
 ```
 

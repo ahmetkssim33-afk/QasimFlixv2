@@ -1,4 +1,4 @@
-# QasimFlix Vercel 500 Acil Düzeltme
+# SineQ Vercel 500 Acil Düzeltme
 
 Bu paket root sayfasının Serverless Function gibi çalışıp 500 vermesi ihtimaline karşı hazırlanmıştır.
 

@@ -19,7 +19,7 @@
     ru:{'request.title':'🎬 Запросить контент','request.subtitle':'Напишите отсутствующий фильм или сериал.','request.name':'Название','request.year':'Год','request.note':'Описание / заметка','request.send':'Отправить','request.sent':'Запрос отправлен','request.error':'Не удалось отправить','list.watchLater':'Смотреть позже','list.liked':'Понравилось','list.disliked':'Не понравилось','list.watched':'Просмотрено','list.remove':'Удалить','search.results':'результатов','player.preparing':'Видео готовится...'},
     zh:{'request.title':'🎬 请求内容','request.subtitle':'告诉我们缺少的电影或剧集。','request.name':'名称','request.year':'年份','request.note':'说明 / 备注','request.send':'发送','request.sent':'请求已发送','request.error':'发送失败','list.watchLater':'稍后观看','list.liked':'喜欢','list.disliked':'不喜欢','list.watched':'已观看','list.remove':'移除','search.results':'结果','player.preparing':'视频准备中...'}
   };
-  function currentLang(){ return localStorage.getItem('qasimflix_lang') || localStorage.getItem('qfLang') || 'tr'; }
+  function currentLang(){ return localStorage.getItem('sineq_lang') || localStorage.getItem('qfLang') || 'tr'; }
   function t(key){ const fromApp = window.qfT ? window.qfT(key) : key; if (fromApp && fromApp !== key) return fromApp; const l = currentLang(); return (FALLBACK_I18N[l] && FALLBACK_I18N[l][key]) || (FALLBACK_I18N.tr && FALLBACK_I18N.tr[key]) || key; }
   const esc = s => String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   function getUserId(){ return localStorage.getItem('userId') || window.USER_ID || 'guest'; }
@@ -40,7 +40,7 @@
     };
     window.APP_I18N = window.APP_I18N || {};
     Object.keys(extra).forEach(l => window.APP_I18N[l] = Object.assign(window.APP_I18N[l] || {}, extra[l]));
-    if (window.qfApplyLang) window.qfApplyLang(localStorage.getItem('qasimflix_lang') || localStorage.getItem('qfLang') || 'tr');
+    if (window.qfApplyLang) window.qfApplyLang(localStorage.getItem('sineq_lang') || localStorage.getItem('qfLang') || 'tr');
   }
 
   function injectRequestBox(){
@@ -186,7 +186,7 @@
     document.querySelectorAll('#series-section .section-title').forEach(el => el.setAttribute('data-i18n','nav.series'));
     document.querySelectorAll('#movies-section .section-title').forEach(el => el.setAttribute('data-i18n','nav.movies'));
     document.querySelectorAll('#documentaries-section .section-title').forEach(el => el.setAttribute('data-i18n','nav.documentaries'));
-    if (window.qfApplyLang) window.qfApplyLang(localStorage.getItem('qasimflix_lang') || localStorage.getItem('qfLang') || 'tr');
+    if (window.qfApplyLang) window.qfApplyLang(localStorage.getItem('sineq_lang') || localStorage.getItem('qfLang') || 'tr');
   }
 
 

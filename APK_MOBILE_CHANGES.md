@@ -1,4 +1,4 @@
-# QasimFlix APK / Mobil Deneyim Değişiklikleri
+# SineQ APK / Mobil Deneyim Değişiklikleri
 
 Bu güncelleme sadece APK/PWA/mobil uygulama hissini güçlendirmek için yapıldı. Masaüstü site ve admin panel genel yapısı korunmuştur.
 
@@ -35,6 +35,6 @@ Yeni APK linkini yayınladığında `version.json` şöyle olabilir:
   "build": 20260530,
   "apkRequired": true,
   "message": "Yeni APK sürümü hazır. Güncellemen önerilir.",
-  "apkUrl": "https://senin-siten.com/QasimFlix-1.0.1.apk"
+  "apkUrl": "https://senin-siten.com/SineQ-1.0.1.apk"
 }
 ```

@@ -1,4 +1,4 @@
-# QasimFlix Yayın Hazırlık Güncelleme Notu
+# SineQ Yayın Hazırlık Güncelleme Notu
 
 Bu paket, canlı yayına daha temiz ve güvenli çıkmak için düzenlendi.
 
@@ -14,7 +14,7 @@ Bu paket, canlı yayına daha temiz ve güvenli çıkmak için düzenlendi.
    - Yeni endpoint: `POST /api/auth/google`
    - Firebase ID token sunucuda doğrulanır.
    - Kullanıcı MongoDB içinde oluşturulur veya mevcut hesapla eşleştirilir.
-   - Sonra normal QasimFlix JWT token üretilir.
+   - Sonra normal SineQ JWT token üretilir.
    - Böylece favoriler, izlenecekler, yorumlar ve profil işlemleri Google girişte de düzgün çalışır.
 
 3. Gerçek push bildirim altyapısı eklendi
@@ -59,7 +59,7 @@ APP_URL=https://senin-site-adresin.vercel.app
 Google giriş için:
 
 ```env
-FIREBASE_PROJECT_ID=qasimflix-8ba04
+FIREBASE_PROJECT_ID=sineq-8ba04
 ```
 
 Gerçek push bildirim için:
@@ -93,4 +93,4 @@ Son temiz paket içinde `node_modules`, `.git` ve `.idea` yoktur.
 
 ## Kalan not
 
-Google Drive video altyapısı hâlâ Drive preview/iframe mantığına bağlıdır. Bu paket onu daha güvenli ve temiz hale getirir, ancak gerçek Netflix tarzı en stabil video deneyimi için ileride Bunny Stream, Cloudflare Stream veya CDN/MP4 tabanlı sisteme geçmek gerekir.
+Google Drive video altyapısı hâlâ Drive preview/iframe mantığına bağlıdır. Bu paket onu daha güvenli ve temiz hale getirir, ancak gerçek profesyonel streaming tarzı en stabil video deneyimi için ileride Bunny Stream, Cloudflare Stream veya CDN/MP4 tabanlı sisteme geçmek gerekir.

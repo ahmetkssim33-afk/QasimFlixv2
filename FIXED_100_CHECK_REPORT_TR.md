@@ -1,4 +1,4 @@
-# QasimFlix — 100/100 Hata Düzeltme Raporu
+# SineQ — 100/100 Hata Düzeltme Raporu
 
 Bu paket, canlı Vercel + admin panel + bildirim + APK/WebView uyumu için düzeltilmiş sürümdür.
 
@@ -35,7 +35,7 @@ Bu paket, canlı Vercel + admin panel + bildirim + APK/WebView uyumu için düze
    - `settings.gradle`, root `build.gradle`, `gradle.properties` eklendi.
    - Android tema dosyaları eklendi.
    - Launcher icon kaynakları eklendi.
-   - `HOME_URL` gerçek QasimFlix Vercel adresine çekildi.
+   - `HOME_URL` gerçek SineQ Vercel adresine çekildi.
    - APK version `1.0.6` yapıldı.
 
 7. **Environment örneği güçlendirildi**

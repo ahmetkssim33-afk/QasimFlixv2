@@ -46,7 +46,7 @@
 }
 
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font-head);
-  background-image: radial-gradient(circle at 100% 0%, rgba(229, 9, 20, 0.08) 0%, transparent 35%),
+  background-image: radial-gradient(circle at 100% 0%, rgba(245,185,66,0.08) 0%, transparent 35%),
                     radial-gradient(circle at 0% 100%, rgba(59, 130, 246, 0.05) 0%, transparent 40%);
   background-attachment: fixed;
 }
@@ -719,13 +719,13 @@ select{
 }
 
 
-/* QasimFlix Admin Mobile Upgrade */
+/* SineQ Admin Mobile Upgrade */
 @media(max-width:768px){
   html{scroll-padding-top:72px} body{padding-bottom:env(safe-area-inset-bottom);overflow-x:hidden}
   .admin-layout,.dashboard-layout,.app-shell{display:block!important}
   .sidebar,aside[class*="sidebar"],.admin-sidebar{position:fixed!important;left:0;top:0;bottom:0;width:min(82vw,320px)!important;z-index:500;transform:translateX(-105%);transition:transform .24s ease;background:rgba(12,12,16,.97)!important;backdrop-filter:blur(18px);box-shadow:20px 0 60px rgba(0,0,0,.55)}
   body.admin-menu-open .sidebar,body.admin-menu-open aside[class*="sidebar"],body.admin-menu-open .admin-sidebar{transform:translateX(0)}
-  .admin-mobile-menu-btn{position:fixed;left:12px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:650;width:54px;height:54px;border-radius:18px;border:1px solid rgba(255,255,255,.12);background:linear-gradient(135deg,#e50914,#7c3aed);color:#fff;font-size:1.25rem;box-shadow:0 14px 34px rgba(0,0,0,.42)}
+  .admin-mobile-menu-btn{position:fixed;left:12px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:650;width:54px;height:54px;border-radius:18px;border:1px solid rgba(255,255,255,.12);background:linear-gradient(135deg,#F5B942,#7c3aed);color:#fff;font-size:1.25rem;box-shadow:0 14px 34px rgba(0,0,0,.42)}
   main,.main,.content,.admin-content{width:100%!important;margin-left:0!important;padding:14px!important}
   .stats-grid,.dashboard-grid,.cards-grid{grid-template-columns:1fr!important;gap:12px!important}
   form,.form-grid,.modal form{grid-template-columns:1fr!important}.form-row{display:block!important}.form-row>*{width:100%!important;margin-bottom:10px!important}
@@ -735,7 +735,7 @@ select{
 
 
 .report-card{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start;padding:14px;border-radius:18px;background:var(--bg2);border:1px solid var(--border)}
-.report-card.unread{border-color:rgba(229,9,20,.55);box-shadow:0 0 0 1px rgba(229,9,20,.18) inset}.report-title{display:flex;align-items:center;gap:8px;font-weight:900;color:var(--text)}.report-message{margin:8px 0;color:var(--muted);line-height:1.45;white-space:pre-wrap}.report-meta{display:flex;flex-wrap:wrap;gap:8px;color:var(--muted);font-size:.78rem}.report-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.nav-badge.danger{background:#e50914;color:#fff}.stat-card.alert{border-color:rgba(229,9,20,.35);background:linear-gradient(135deg,rgba(229,9,20,.11),rgba(255,255,255,.03))}
+.report-card.unread{border-color:rgba(245,185,66,.55);box-shadow:0 0 0 1px rgba(245,185,66,.18) inset}.report-title{display:flex;align-items:center;gap:8px;font-weight:900;color:var(--text)}.report-message{margin:8px 0;color:var(--muted);line-height:1.45;white-space:pre-wrap}.report-meta{display:flex;flex-wrap:wrap;gap:8px;color:var(--muted);font-size:.78rem}.report-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.nav-badge.danger{background:#F5B942;color:#fff}.stat-card.alert{border-color:rgba(245,185,66,.35);background:linear-gradient(135deg,rgba(245,185,66,.11),rgba(255,255,255,.03))}
 
 </style>
 <link rel="stylesheet" href="qf-enhancements.css">
@@ -746,7 +746,7 @@ select{
 <!-- AUTH -->
 <div id="auth-overlay">
   <div class="auth-card">
-    <div class="logo">Cine<span>Admin</span></div>
+    <div class="logo">SineQ<span>Admin</span></div>
     <p>Streaming Platform — Admin Dashboard</p>
     <div class="auth-error" id="auth-error"></div>
     <input type="password" id="auth-pass" placeholder="Admin şifresi" autocomplete="current-password">
@@ -759,7 +759,7 @@ select{
   <!-- SIDEBAR -->
   <aside class="sidebar">
     <div class="sidebar-logo">
-      Cine<span>Admin</span>
+      SineQ<span>Admin</span>
       <span class="version">v2.0 — PROD</span>
     </div>
     <nav>
@@ -2322,8 +2322,8 @@ function downloadGeneratedSubtitle(format) {
   const isSrt = format === 'srt';
   const content = isSrt ? lastGeneratedSubtitle.srtContent : lastGeneratedSubtitle.vttContent;
   if (!content) { toast('İndirilecek altyazı yok', 'error'); return; }
-  const epText = document.getElementById('sub-episode')?.selectedOptions?.[0]?.textContent || 'qasimflix-subtitle';
-  const safe = epText.toLowerCase().replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').slice(0, 80) || 'qasimflix-subtitle';
+  const epText = document.getElementById('sub-episode')?.selectedOptions?.[0]?.textContent || 'sineq-subtitle';
+  const safe = epText.toLowerCase().replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').slice(0, 80) || 'sineq-subtitle';
   const blob = new Blob([content], { type: isSrt ? 'application/x-subrip;charset=utf-8' : 'text/vtt;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

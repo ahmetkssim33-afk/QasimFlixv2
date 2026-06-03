@@ -17,7 +17,7 @@ function qfText(key) {
     return window.qfT ? window.qfT(key) : key;
 }
 function qfCurrentLang() {
-    return localStorage.getItem('qasimflix_lang') || localStorage.getItem('qfLang') || 'tr';
+    return localStorage.getItem('sineq_lang') || localStorage.getItem('qfLang') || 'tr';
 }
 function qfExposeAuthGlobals() {
     window.TOKEN = TOKEN;
@@ -357,7 +357,7 @@ function renderHero(list) {
     }
 
     document.getElementById('hero-title').textContent = item.title;
-    const lang = localStorage.getItem('qasimflix_lang') || localStorage.getItem('qfLang') || 'tr';
+    const lang = localStorage.getItem('sineq_lang') || localStorage.getItem('qfLang') || 'tr';
     const descText = (lang === 'ar') ? (item.description_ar || item.description || item.description_tr || '') : (item.description_tr || item.description || item.description_ar || '');
     document.getElementById('hero-desc').textContent = descText || (lang === 'ar' ? 'ابدأ بإضافة محتوى من لوحة التحكم.' : 'Keşfet ve izle.');
 
@@ -1035,7 +1035,7 @@ function qasimFormatTime(seconds) {
     return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
 }
 
-function updateQasimControls() {
+function updateSineQControls() {
     const video = document.getElementById('video-player');
     if (!video) return;
     const cur = document.getElementById('qasim-current-time');
@@ -1083,7 +1083,7 @@ function updateQasimControls() {
     }
 }
 
-function setQasimLoading(isLoading, message = 'Video hazırlanıyor...') {
+function setSineQLoading(isLoading, message = 'Video hazırlanıyor...') {
     const wrap = document.getElementById('player-wrap');
     if (!wrap) return;
     wrap.classList.toggle('is-loading', !!isLoading);
@@ -1091,7 +1091,7 @@ function setQasimLoading(isLoading, message = 'Video hazırlanıyor...') {
     if (text) text.textContent = message;
 }
 
-function showQasimControls() {
+function showSineQControls() {
     const wrap = document.getElementById('player-wrap');
     if (!wrap) return;
     wrap.classList.remove('controls-hidden');
@@ -1109,7 +1109,7 @@ function spawnRipple(wrap) {
     el.addEventListener('animationend', () => el.remove(), { once: true });
 }
 
-function initQasimPlayerControls() {
+function initSineQPlayerControls() {
     if (qasimPlayerBound) return;
     qasimPlayerBound = true;
 
@@ -1163,11 +1163,11 @@ function initQasimPlayerControls() {
     });
 
     /* ── Mute / Volume ── */
-    muteBtn?.addEventListener('click', () => { video.muted = !video.muted; updateQasimControls(); });
+    muteBtn?.addEventListener('click', () => { video.muted = !video.muted; updateSineQControls(); });
     volume?.addEventListener('input', () => {
         video.volume = Number(volume.value);
         video.muted = video.volume === 0;
-        updateQasimControls();
+        updateSineQControls();
     });
 
     /* ── Fullscreen ── */
@@ -1179,7 +1179,7 @@ function initQasimPlayerControls() {
         }
     };
     fsBtn?.addEventListener('click', toggleFullscreen);
-    document.addEventListener('fullscreenchange', updateQasimControls);
+    document.addEventListener('fullscreenchange', updateSineQControls);
 
     /* ── Keyboard shortcuts (only when player modal is open) ── */
     document.addEventListener('keydown', (e) => {
@@ -1202,30 +1202,30 @@ function initQasimPlayerControls() {
             case 'M':
                 e.preventDefault();
                 video.muted = !video.muted;
-                updateQasimControls();
+                updateSineQControls();
                 break;
             case 'ArrowLeft':
                 e.preventDefault();
                 video.currentTime = Math.max(0, video.currentTime - 10);
-                showQasimControls();
+                showSineQControls();
                 break;
             case 'ArrowRight':
                 e.preventDefault();
                 video.currentTime = Math.min(video.duration || Infinity, video.currentTime + 10);
-                showQasimControls();
+                showSineQControls();
                 break;
             case 'ArrowUp':
                 e.preventDefault();
                 video.volume = Math.min(1, video.volume + 0.1);
                 video.muted = false;
                 if (volume) volume.value = String(video.volume);
-                updateQasimControls();
+                updateSineQControls();
                 break;
             case 'ArrowDown':
                 e.preventDefault();
                 video.volume = Math.max(0, video.volume - 0.1);
                 if (volume) volume.value = String(video.volume);
-                updateQasimControls();
+                updateSineQControls();
                 break;
             case 'Escape':
                 closePlayer();
@@ -1235,13 +1235,13 @@ function initQasimPlayerControls() {
 
     /* ── Video event listeners ── */
     ['play', 'pause', 'timeupdate', 'loadedmetadata', 'volumechange', 'ended'].forEach(ev => {
-        video.addEventListener(ev, updateQasimControls);
+        video.addEventListener(ev, updateSineQControls);
     });
-    ['loadstart', 'waiting'].forEach(ev => video.addEventListener(ev, () => setQasimLoading(true)));
-    ['canplay', 'playing', 'loadeddata'].forEach(ev => video.addEventListener(ev, () => setQasimLoading(false)));
+    ['loadstart', 'waiting'].forEach(ev => video.addEventListener(ev, () => setSineQLoading(true)));
+    ['canplay', 'playing', 'loadeddata'].forEach(ev => video.addEventListener(ev, () => setSineQLoading(false)));
 
     /* ── Show controls on any interaction ── */
-    ['mousemove', 'touchstart', 'click'].forEach(ev => wrap.addEventListener(ev, showQasimControls, { passive: true }));
+    ['mousemove', 'touchstart', 'click'].forEach(ev => wrap.addEventListener(ev, showSineQControls, { passive: true }));
 }
 
 function showIframe(iframeSrc, options = {}) {
@@ -1278,7 +1278,7 @@ function showIframe(iframeSrc, options = {}) {
         playerWrap.style.minHeight = Math.max(260, targetH) + 'px';
     }
 
-    setQasimLoading(true);
+    setSineQLoading(true);
 
     const iframe = document.createElement('iframe');
     iframe.src = iframeSrc;
@@ -1291,10 +1291,10 @@ function showIframe(iframeSrc, options = {}) {
     iframe.loading = 'eager';
     iframe.style.cssText = 'width:100%;height:100%;border:none;position:absolute;inset:0;background:#000';
     iframe.addEventListener('load', () => {
-        if (loadToken === qasimActiveLoadToken) setQasimLoading(false);
+        if (loadToken === qasimActiveLoadToken) setSineQLoading(false);
     }, { once: true });
     iframe.addEventListener('error', () => {
-        if (loadToken === qasimActiveLoadToken) setQasimLoading(false);
+        if (loadToken === qasimActiveLoadToken) setSineQLoading(false);
     }, { once: true });
     embedContainer.appendChild(iframe);
     embedContainer.style.display = 'block';
@@ -1341,10 +1341,10 @@ async function setVideoSource(url, keepTime = 0, autoPlay = true) {
 
     videoPlayer.style.display = 'block';
     if (controls) controls.style.display = '';
-    setQasimLoading(true);
+    setSineQLoading(true);
 
     const hidePlayerLoading = () => {
-        if (loadToken === qasimActiveLoadToken) setQasimLoading(false);
+        if (loadToken === qasimActiveLoadToken) setSineQLoading(false);
     };
     videoPlayer.addEventListener('loadedmetadata', hidePlayerLoading, { once: true });
     videoPlayer.addEventListener('canplay', hidePlayerLoading, { once: true });
@@ -1378,7 +1378,7 @@ async function setVideoSource(url, keepTime = 0, autoPlay = true) {
       if (keepTime > 0 && Number.isFinite(videoPlayer.duration)) {
         videoPlayer.currentTime = Math.min(keepTime, Math.max(0, videoPlayer.duration - 2));
       }
-      updateQasimControls();
+      updateSineQControls();
       if (autoPlay) {
         // Final attempt after metadata is loaded.
         videoPlayer.play().catch(err => {
@@ -1425,7 +1425,7 @@ async function requestPlayerLandscape(force = false) {
         document.getElementById('qf-landscape-start')?.classList.remove('show');
         return true;
     } catch (err) {
-        if (force) console.warn('[QasimFlix] Tam ekran/yatay izin verilmedi:', err);
+        if (force) console.warn('[SineQ] Tam ekran/yatay izin verilmedi:', err);
         return false;
     }
 }
@@ -1455,10 +1455,10 @@ async function playEpisode(episodeId, isMovie = false) {
 
     try {
         prepareMobilePlayerStart();
-        initQasimPlayerControls();
+        initSineQPlayerControls();
         closeDetailModal();
-        setQasimLoading(true);
-        showQasimControls();
+        setSineQLoading(true);
+        showSineQControls();
 
         const info = document.getElementById('player-ep-info');
         if (info) info.textContent = 'Video hazırlanıyor...';
@@ -1481,7 +1481,7 @@ async function playEpisode(episodeId, isMovie = false) {
         if (requestToken !== qasimActiveLoadToken) return;
 
         if (Array.isArray(episode) || !episode || !episode.videoUrl) {
-            setQasimLoading(false);
+            setSineQLoading(false);
             const infoEl = document.getElementById('player-ep-info');
             if (infoEl) infoEl.textContent = 'Video bulunamadı';
             return;
@@ -1533,10 +1533,10 @@ async function playEpisode(episodeId, isMovie = false) {
             if (videoPlayer) {
                 clearEpisodeAutoNextTimer();
                 qasimAutoNextBusy = false;
-                videoPlayer.ontimeupdate = () => { saveProgress(episodeId); updateQasimControls(); };
+                videoPlayer.ontimeupdate = () => { saveProgress(episodeId); updateSineQControls(); };
                 videoPlayer.onended = () => handleEpisodeEndedAutoNext('ended');
                 videoPlayer.onerror = () => {
-                    setQasimLoading(false);
+                    setSineQLoading(false);
                     const infoErr = document.getElementById('player-ep-info');
                     if (infoErr) infoErr.textContent = 'Video yüklenemedi';
                 };
@@ -1553,10 +1553,10 @@ async function playEpisode(episodeId, isMovie = false) {
             showIframe(src);
             scheduleIframeAutoNextFallback(episode);
         } else {
-            setQasimLoading(false);
+            setSineQLoading(false);
         }
     } catch (err) {
-        setQasimLoading(false);
+        setSineQLoading(false);
         const infoEl = document.getElementById('player-ep-info');
         if (infoEl) infoEl.textContent = 'Video açılamadı';
     } finally {
@@ -1600,7 +1600,7 @@ function closePlayer() {
     // minHeight sıfırla (showIframe tarafından set edilmiş olabilir)
     const playerWrap = document.getElementById('player-wrap');
     if (playerWrap) playerWrap.style.minHeight = '';
-    setQasimLoading(false);
+    setSineQLoading(false);
 }
 
 // ═══════════════════════════════════════════
@@ -1988,7 +1988,7 @@ function profileAvatarCard(id, name, isMain, hasPin = false, age = null) {
     <div onclick="${isMain ? 'selectMainProfile()' : `selectChildProfile('${id}','${name}',${hasPin})`}"
          style="display:flex;flex-direction:column;align-items:center;gap:10px;cursor:pointer;padding:8px;border-radius:10px;transition:background .2s;width:110px;min-width:90px"
          onmouseover="this.style.background='rgba(255,255,255,0.07)'" onmouseout="this.style.background='transparent'">
-      <div style="position:relative;width:72px;height:72px;border-radius:10px;background:linear-gradient(135deg,${isMain?'var(--accent),#f40612':'#6c63ff,#a78bfa'});display:flex;align-items:center;justify-content:center;font-size:2.2rem;border:2px solid ${ACTIVE_PROFILE===null&&isMain || ACTIVE_PROFILE&&ACTIVE_PROFILE._id===id?'#fff':'transparent'}">
+      <div style="position:relative;width:72px;height:72px;border-radius:10px;background:linear-gradient(135deg,${isMain?'var(--accent),#D89B18':'#6c63ff,#a78bfa'});display:flex;align-items:center;justify-content:center;font-size:2.2rem;border:2px solid ${ACTIVE_PROFILE===null&&isMain || ACTIVE_PROFILE&&ACTIVE_PROFILE._id===id?'#fff':'transparent'}">
         ${emoji}${pinIcon}
       </div>
       <div style="font-size:.85rem;font-weight:500;text-align:center;word-break:break-word;max-width:90px">${name || 'Profil'}</div>
@@ -2207,7 +2207,7 @@ function initLandscapeMode() {
         console.log('Landscape lock not available');
       });
     }
-    updateQasimControls(); // fullscreen ikonlarını güncelle
+    updateSineQControls(); // fullscreen ikonlarını güncelle
   });
 }
 
@@ -2364,7 +2364,7 @@ function initSwipeGestures() {
       const delta = diffY / 200; // ne kadar kaydırıldı
       video.volume = Math.min(1, Math.max(0, video.volume + delta));
       video.muted = video.volume === 0;
-      updateQasimControls();
+      updateSineQControls();
     }
   }
 

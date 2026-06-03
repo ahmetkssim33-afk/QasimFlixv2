@@ -4,7 +4,7 @@
   const ready = fn => document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', fn) : fn();
   const $ = id => document.getElementById(id);
   const esc = s => String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  const lang = () => localStorage.getItem('qasimflix_lang') || localStorage.getItem('qfLang') || 'tr';
+  const lang = () => localStorage.getItem('sineq_lang') || localStorage.getItem('qfLang') || 'tr';
   const dict = {
     tr:{forYou:'✨ Senin İçin Öneriler', forYouSub:'İzlediklerine ve popüler içeriklere göre', topRequests:'En çok istenenler', vote:'Oy ver', votes:'oy', reviewTitle:'Yorumunu yaz', reviewPh:'Yorumun...', send:'Gönder', loginReview:'Yorum için giriş yapmalısın.', sent:'Kaydedildi', detailInfo:'İçerik bilgileri', cast:'Oyuncular', cats:'Kategoriler', year:'Yıl', type:'Tür'},
     ar:{forYou:'✨ مقترحات لك', forYouSub:'حسب مشاهداتك والمحتوى الرائج', topRequests:'الأكثر طلباً', vote:'صوّت', votes:'صوت', reviewTitle:'اكتب تعليقك', reviewPh:'تعليقك...', send:'إرسال', loginReview:'يجب تسجيل الدخول للتعليق.', sent:'تم الحفظ', detailInfo:'معلومات المحتوى', cast:'الممثلون', cats:'الفئات', year:'السنة', type:'النوع'},

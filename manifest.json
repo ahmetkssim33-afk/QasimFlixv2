@@ -1,13 +1,13 @@
 {
-  "name": "QasimFlix - Film ve Dizi",
-  "short_name": "QasimFlix",
-  "description": "QasimFlix mobil film ve dizi izleme uygulaması",
+  "name": "SineQ - Film ve Dizi",
+  "short_name": "SineQ",
+  "description": "SineQ ile film ve dizi keyfini modern, hızlı ve kaliteli bir deneyimle yaşa.",
   "start_url": "/index.html?source=apk",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#050508",
-  "theme_color": "#050508",
+  "background_color": "#070B1A",
+  "theme_color": "#070B1A",
   "icons": [
     {
       "src": "/assets/icons/icon-48.png",

@@ -1,10 +1,10 @@
-/* QasimFlix APK Native Bridge
-   Web tarafı hazırdır; Android WebView içinde window.QasimFlixAndroid varsa
+/* SineQ APK Native Bridge
+   Web tarafı hazırdır; Android WebView içinde window.SineQAndroid varsa
    tam ekran, yatay mod, ekran açık tutma ve native indirme komutlarını iletir. */
 (function(){
   'use strict';
 
-  const BRIDGE_NAMES = ['QasimFlixAndroid', 'Android', 'QFAndroid'];
+  const BRIDGE_NAMES = ['SineQAndroid', 'Android', 'QFAndroid'];
   const state = { playerActive: false, lastDownload: 0 };
 
   function nativeBridge(){
@@ -22,7 +22,7 @@
       bridge[method](...args.map(v => typeof v === 'string' ? v : JSON.stringify(v)));
       return true;
     } catch (err) {
-      console.warn('[QasimFlix APK Bridge]', method, err);
+      console.warn('[SineQ APK Bridge]', method, err);
       return false;
     }
   }
@@ -73,7 +73,7 @@
     const now = Date.now();
     if (now - state.lastDownload < 900) return true;
     state.lastDownload = now;
-    return callNative('downloadVideo', src, String(title || 'QasimFlix Video'));
+    return callNative('downloadVideo', src, String(title || 'SineQ Video'));
   }
 
   function patchDownloadItem(){
@@ -81,7 +81,7 @@
     if (typeof original !== 'function' || original._qfNativePatched) return;
     window.downloadItem = function(type, itemId, videoUrl, title){
       if (nativeBridge() && videoUrl && window.qfCanDirectDownload && window.qfCanDirectDownload(videoUrl)) {
-        const ok = downloadNative(videoUrl, title || 'QasimFlix Video');
+        const ok = downloadNative(videoUrl, title || 'SineQ Video');
         if (ok) {
           if (window.qfToast) window.qfToast('İndirme APK içinde başlatıldı.');
           return;
