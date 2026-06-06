@@ -1546,7 +1546,8 @@ app.get("/api", (req, res) => {
 
 // Email helper for password reset (works on Vercel serverless)
 async function sendResetEmail(toEmail, token) {
-  const appUrl = (process.env.APP_URL || process.env.PUBLIC_APP_URL || 'https://qasim-flixv2-swnm.vercel.app').replace(/\/$/, '');
+  const rawAppUrl = process.env.APP_URL || process.env.PUBLIC_APP_URL || process.env.VERCEL_URL || 'http://localhost:3000';
+  const appUrl = (String(rawAppUrl).startsWith('http') ? String(rawAppUrl) : `https://${rawAppUrl}`).replace(/\/$/, '');
   const resetLink = `${appUrl}/auth?resetToken=${encodeURIComponent(token)}`;
 
   // If SMTP is not configured, do not crash the password reset request.

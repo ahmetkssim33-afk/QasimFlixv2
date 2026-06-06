@@ -1,6 +1,6 @@
 # SineQ Marka Güncelleme Notu
 
-Bu paket QasimFlix markasından SineQ markasına göre güncellendi.
+Bu paket SineQ markasından SineQ markasına göre güncellendi.
 
 ## Yapılanlar
 

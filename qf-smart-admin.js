@@ -33,7 +33,7 @@
   function patchNavigate(){
     const original=window.navigate;
     if(typeof original!=='function'||original._qfSmartAdmin) return;
-    window.navigate=function(el,view){ const r=original.apply(this,arguments); if(view==='linkscan'){ $('page-title').textContent='Link Tarama'; $('page-breadcrumb').textContent='CineAdmin / Link Tarama'; loadLinkScan(); } if(view==='security'){ $('page-title').textContent='Güvenlik'; $('page-breadcrumb').textContent='CineAdmin / Güvenlik'; loadSecurityLogs(); } return r; };
+    window.navigate=function(el,view){ const r=original.apply(this,arguments); if(view==='linkscan'){ $('page-title').textContent='Link Tarama'; $('page-breadcrumb').textContent='SineQ Admin / Link Tarama'; loadLinkScan(); } if(view==='security'){ $('page-title').textContent='Güvenlik'; $('page-breadcrumb').textContent='SineQ Admin / Güvenlik'; loadSecurityLogs(); } return r; };
     window.navigate._qfSmartAdmin=true;
   }
 
@@ -198,7 +198,8 @@
   async function loadSmartStats(){
     const dash=$('view-dashboard'); if(!dash) return;
     let wrap=$('qf-smart-admin-stats');
-    if(!wrap){ wrap=document.createElement('div'); wrap.id='qf-smart-admin-stats'; dash.insertBefore(wrap, $('dashboard-recent')?.parentElement || dash.children[1]); }
+    if(!wrap){ wrap=document.createElement('div'); wrap.id='qf-smart-admin-stats'; const recent = $('dashboard-recent');
+        dash.insertBefore(wrap, recent || null); }
     wrap.innerHTML='<div class="qf-admin-tool-card">İstatistikler yükleniyor...</div>';
     try{
       const d=await api('GET','/admin/stats?_='+Date.now());

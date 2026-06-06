@@ -80,12 +80,12 @@
       const r = original.apply(this, arguments);
       if (view === 'requests') {
         document.getElementById('page-title').textContent = t('requests.title');
-        document.getElementById('page-breadcrumb').textContent = 'CineAdmin / ' + t('nav.requests');
+        document.getElementById('page-breadcrumb').textContent = 'SineQ Admin / ' + t('nav.requests');
         loadRequests();
       }
       if (view === 'reports') {
         document.getElementById('page-title').textContent = t('reports.title');
-        document.getElementById('page-breadcrumb').textContent = 'CineAdmin / ' + t('nav.reports');
+        document.getElementById('page-breadcrumb').textContent = 'SineQ Admin / ' + t('nav.reports');
         loadReports(false);
       }
       return r;

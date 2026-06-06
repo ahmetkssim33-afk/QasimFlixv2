@@ -67,7 +67,7 @@ SMTP_PASS
 İsteğe bağlı daha sıkı ayarlar:
 
 ```txt
-ALLOWED_ORIGINS=https://qasim-flixv2-swnm.vercel.app
+ALLOWED_ORIGINS=https://sineq.vercel.app
 SINEQ_STRICT_PROXY_HOSTS=true
 ALLOWED_PROXY_HOSTS=drive.google.com,googleusercontent.com
 ENABLE_CSP=true

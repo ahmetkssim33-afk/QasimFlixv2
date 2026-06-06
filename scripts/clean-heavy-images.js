@@ -2,7 +2,11 @@ require("dotenv").config();
 const mongoose = require("mongoose");
 
 async function run() {
-const uri = "mongodb+srv://aimusicgoo_db_user:kGBhd3M2YElBMx8T@flixtv.h4jtttn.mongodb.net/?appName=flixTv";
+  const uri = process.env.MONGODB_URI;
+  if (!uri) {
+    console.error("MONGODB_URI bulunamadı. .env veya Vercel Environment Variables içine ekle.");
+    process.exit(1);
+  }
 
   await mongoose.connect(uri);
   const db = mongoose.connection.db;

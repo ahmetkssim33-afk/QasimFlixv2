@@ -175,7 +175,7 @@
       const res = original.apply(this, arguments);
       if(view === 'announcements'){
         const title = $('page-title'); if(title) title.textContent = t('ann.title');
-        const bc = $('page-breadcrumb'); if(bc) bc.textContent = 'CineAdmin / ' + t('ann.nav');
+        const bc = $('page-breadcrumb'); if(bc) bc.textContent = 'SineQ Admin / ' + t('ann.nav');
         loadAnnouncements();
       }
       return res;

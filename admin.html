@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="/manifest.json">
-<title>CineAdmin — Streaming Platform</title>
+<title>SineQ Admin — Streaming Platform</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
@@ -802,7 +802,7 @@ select{
         <button class="mobile-menu-btn" onclick="document.querySelector('.sidebar').classList.toggle('open')">☰</button>
         <div>
           <h1 id="page-title">Dashboard</h1>
-          <div class="breadcrumb" id="page-breadcrumb">CineAdmin / Dashboard</div>
+          <div class="breadcrumb" id="page-breadcrumb">SineQ Admin / Dashboard</div>
         </div>
       </div>
       <div style="margin-left:12px;display:flex;align-items:center;gap:8px;">
@@ -1657,7 +1657,7 @@ function navigate(el, view) {
   const title = adminT('nav.' + view) || (pageTitles[view] ? pageTitles[view][0] : view);
   const crumb = adminT('nav.' + view) || (pageTitles[view] ? pageTitles[view][1] : view);
   document.getElementById('page-title').textContent = title;
-  document.getElementById('page-breadcrumb').textContent = `CineAdmin / ${crumb}`;
+  document.getElementById('page-breadcrumb').textContent = `SineQ Admin / ${crumb}`;
   if (view === 'dashboard') loadDashboard();
   if (view === 'reports') loadReports();
   if (view === 'series')    loadSeriesList();
