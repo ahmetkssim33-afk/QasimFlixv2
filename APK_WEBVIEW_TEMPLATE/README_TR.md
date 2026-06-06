@@ -18,10 +18,14 @@ Bu klasör, mevcut siteni Android Studio WebView APK içine koyarken kullanman i
 2. `HOME_URL` değerini kendi Vercel site adresinle değiştir:
 
 ```java
-private static final String HOME_URL = "https://qasim-flix2-swnn.vercel.app/index.html?source=apk";
+private static final String HOME_URL = "https://your-sineq-domain.vercel.app/index.html?source=apk";
 ```
 
 3. Manifest içindeki izinleri kendi projenin `AndroidManifest.xml` dosyasına ekle.
 4. `app/build.gradle` içindeki ayarları kendi Gradle dosyana uygula.
 
 > Not: Bu klasör direkt site içinde çalışmaz; Android Studio projesine kopyalanacak hazır şablondur.
+
+
+## APK site linki
+`gradle.properties` içindeki `SINEQ_WEB_URL` değerini kendi Vercel linkinle değiştir.

@@ -10,8 +10,17 @@ android {
         applicationId 'com.sineq.app'
         minSdk 24
         targetSdk 35
-        versionCode 10
-        versionName '1.0.10'
+        versionCode 11
+        versionName '1.0.11'
+
+        def defaultSineQUrl = 'https://your-sineq-domain.vercel.app/index.html?source=apk'
+        def sineqUrl = (project.findProperty('SINEQ_WEB_URL') ?: defaultSineQUrl).toString()
+        def escapedSineqUrl = sineqUrl.replace('\\', '\\\\').replace('"', '\\"')
+        buildConfigField 'String', 'SINEQ_WEB_URL', '"' + escapedSineqUrl + '"'
+    }
+
+    buildFeatures {
+        buildConfig true
     }
 
     compileOptions {

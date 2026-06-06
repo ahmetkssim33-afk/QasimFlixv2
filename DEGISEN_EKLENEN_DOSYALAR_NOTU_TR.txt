@@ -1,0 +1,22 @@
+SineQ(2).zip ile SineQ_AKICI_APK_SITE_FIXED.zip karsilastirildi.
+Bu paket sadece yeni eklenen ve degisen dosyalari icerir.
+
+YENI EKLENEN DOSYALAR:
+SINEQ_AKICILIK_APK_DUZELTME_NOTU_TR.md
+qf-runtime-optimizer.js
+
+DEGISEN DOSYALAR:
+.gitignore
+APK_WEBVIEW_TEMPLATE/README_TR.md
+APK_WEBVIEW_TEMPLATE/app/build.gradle
+APK_WEBVIEW_TEMPLATE/app/src/main/java/com/sineq/app/MainActivity.java
+APK_WEBVIEW_TEMPLATE/gradle.properties
+HATA_DUZELTME_NOTU_TR.md
+api/index.js
+app.js
+index.html
+lib/db.js
+lib/models.js
+qf-performance.css
+server.js
+version.json

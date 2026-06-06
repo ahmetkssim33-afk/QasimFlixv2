@@ -24,7 +24,7 @@ Bu paket şu sorunlar için güncellendi:
 
 5. **APK eski domain / 404**
    - APK WebView adresi yeni domain ile güncellendi:
-     `https://qasim-flix2-swnn.vercel.app/index.html?source=apk`
+     `https://your-sineq-domain.vercel.app/index.html?source=apk`
    - APK versionName `1.0.8`, versionCode `8` yapıldı.
 
 ## Deploy sonrası yapılacaklar

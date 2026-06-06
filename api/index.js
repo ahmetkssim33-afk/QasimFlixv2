@@ -23,6 +23,14 @@ const { isConfigured: isTMDBConfigured, searchTMDB, getTMDBDetails } = require('
 
 const app = express();
 
+function setShortCache(res, seconds = 30) {
+  res.setHeader('Cache-Control', `public, max-age=${seconds}, stale-while-revalidate=${Math.max(seconds * 4, 60)}`);
+}
+function setNoStore(res) {
+  res.setHeader('Cache-Control', 'no-store, max-age=0');
+}
+
+
 // ───────────────────────────────────────────────────────────
 // MIDDLEWARE
 // ───────────────────────────────────────────────────────────
@@ -894,6 +902,7 @@ app.use(async (req, res, next) => {
 // Tüm serileri getir
 app.get("/api/series", async (req, res) => {
   try {
+    setShortCache(res, 30);
     const page  = parseInt(req.query.page)  || 1;
     const limit = parseInt(req.query.limit) || 20;
     const skip  = (page - 1) * limit;
@@ -974,6 +983,7 @@ app.get('/api/content/latest', async (req, res) => {
 // ═══════════════════════════════════════════════════════════
 app.get("/api/series/search/:query", async (req, res) => {
   try {
+    setShortCache(res, 60);
     const query = req.params.query;
     const results = await Series.find({
       $or: [
@@ -995,6 +1005,7 @@ app.get("/api/series/search/:query", async (req, res) => {
 // Kategoriye göre arama
 app.get("/api/series/category/:category", async (req, res) => {
   try {
+    setShortCache(res, 60);
     const series = await Series.find({
       categories: { $regex: req.params.category, $options: 'i' }
     }).limit(30).lean();
@@ -1009,6 +1020,7 @@ app.get("/api/series/category/:category", async (req, res) => {
 // yapısını bekliyor. Bu endpoint tüm ağacı birleştirip döndürür.
 app.get("/api/series/:id", async (req, res) => {
   try {
+    setShortCache(res, 20);
     const series = await Series.findById(req.params.id).lean();
     if (!series) return res.status(404).json({ error: "Seri bulunamadı" });
 

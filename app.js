@@ -2,6 +2,39 @@
 // CONFIG
 // ═══════════════════════════════════════════
 const API = window.location.origin + '/api';
+
+// Hafif API cache: ana liste/detay/arama gibi GET isteklerini kısa süre saklar.
+// Mobil WebView ve APK'da aynı ekrana geri dönünce gereksiz tekrar istekleri azaltır.
+const SINEQ_API_CACHE_TTL = 45 * 1000;
+const sineqApiCache = new Map();
+function sineqCacheKey(url) {
+    try {
+        const u = new URL(String(url), window.location.origin);
+        // Eski cache kırıcı _ parametresini cache anahtarından çıkar.
+        u.searchParams.delete('_');
+        u.searchParams.delete('ts');
+        return u.toString();
+    } catch (_) {
+        return String(url || '').replace(/([?&])_=[^&]+/g, '$1').replace(/[?&]$/, '');
+    }
+}
+async function apiFetch(url, options = {}, ttl = SINEQ_API_CACHE_TTL) {
+    const method = String(options.method || 'GET').toUpperCase();
+    if (method !== 'GET' || ttl <= 0) return fetch(url, options);
+    const key = sineqCacheKey(url);
+    const now = Date.now();
+    const cached = sineqApiCache.get(key);
+    if (cached && cached.expires > now) return cached.response.clone();
+    const res = await fetch(url, { cache: 'default', ...options });
+    if (res.ok) {
+        sineqApiCache.set(key, { expires: now + ttl, response: res.clone() });
+        if (sineqApiCache.size > 80) sineqApiCache.delete(sineqApiCache.keys().next().value);
+    }
+    return res;
+}
+function clearSineQApiCache() { sineqApiCache.clear(); }
+window.clearSineQApiCache = clearSineQApiCache;
+
 let TOKEN = localStorage.getItem('token') || null;
 let USER_ID = localStorage.getItem('userId') || ('user_' + Math.random().toString(36).substr(2, 9));
 let AUTH_USER = null; // populated after auth
@@ -299,20 +332,21 @@ async function refreshPage() {
 // ═══════════════════════════════════════════
 async function loadAll() {
     try {
-        const res = await fetch(API + '/series?page=1&limit=100&_=' + Date.now());
+        const res = await apiFetch(API + '/series?page=1&limit=80', {}, 45 * 1000);
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
         allData = data.series || [];
 
         renderHero(allData);
         renderRow('popular-row', allData.slice(0, 12));
-        renderRow('series-row', allData.filter(isSeriesContent));
-        renderRow('documentaries-row', allData.filter(isAnimeContent));
-        renderRow('movies-row', allData.filter(isMovieContent));
+        renderRow('series-row', allData.filter(isSeriesContent).slice(0, 24));
+        renderRow('documentaries-row', allData.filter(isAnimeContent).slice(0, 24));
+        renderRow('movies-row', allData.filter(isMovieContent).slice(0, 24));
         // Yerli diziler (local) bölümü
-        renderRow('local-series-row', allData.filter(s => s.type === 'yerli'));
+        renderRow('local-series-row', allData.filter(s => s.type === 'yerli').slice(0, 24));
         // show local section if content exists
-        document.getElementById('local-series-section').style.display = (allData.some(s=>s.type==='yerli')) ? '' : 'none';
+        const localSection = document.getElementById('local-series-section');
+        if (localSection) localSection.style.display = (allData.some(s=>s.type==='yerli')) ? '' : 'none';
         initCarousels();
 
         // Always show sections; show empty state inside row if no content
@@ -441,9 +475,10 @@ function createCard(item) {
 // SEARCH
 // ═══════════════════════════════════════════
 let searchTimer;
+let searchAbortController = null;
 function handleSearch(val) {
     clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => doSearch(val.trim()), 250);
+    searchTimer = setTimeout(() => doSearch(val.trim()), 420);
 }
 
 async function doSearch(query) {
@@ -474,8 +509,11 @@ async function doSearch(query) {
         resultsEl.style.display = '';
         mainEl.style.display = 'none';
 
-        // API filtering for broader search
-        const res = await fetch(API + '/series/search/' + encodeURIComponent(query));
+        // API filtering for broader search. 1 harfte API'yi yorma; eski aramayı iptal et.
+        if (query.length < 2) return;
+        if (searchAbortController) searchAbortController.abort();
+        searchAbortController = new AbortController();
+        const res = await apiFetch(API + '/series/search/' + encodeURIComponent(query), { signal: searchAbortController.signal }, 30 * 1000);
         if (res.ok) {
             const apiResults = await res.json();
             // Merge results to avoid duplicates
@@ -493,6 +531,7 @@ async function doSearch(query) {
             document.getElementById('search-count').textContent = mergedResults.length + ' sonuç: "' + query + '"';
         }
     } catch (err) {
+        if (err && err.name === 'AbortError') return;
         console.error('Search error:', err);
     }
 }
@@ -512,9 +551,9 @@ function showCategory(type, btn) {
 
     // Re-render rows from cached data to ensure content shows
     if (type === 'series') {
-        renderRow('series-row', allData.filter(isSeriesContent));
+        renderRow('series-row', allData.filter(isSeriesContent).slice(0, 24));
     } else if (type === 'movie') {
-        renderRow('movies-row', allData.filter(isMovieContent));
+        renderRow('movies-row', allData.filter(isMovieContent).slice(0, 24));
     }
 }
 
@@ -532,10 +571,10 @@ function showAll(btn) {
 
     // Re-render all rows from cached data
     renderRow('popular-row', allData.slice(0, 12));
-    renderRow('series-row', allData.filter(isSeriesContent));
-    renderRow('documentaries-row', allData.filter(isAnimeContent));
-    renderRow('movies-row', allData.filter(isMovieContent));
-    renderRow('local-series-row', allData.filter(s => s.type === 'yerli'));
+    renderRow('series-row', allData.filter(isSeriesContent).slice(0, 24));
+    renderRow('documentaries-row', allData.filter(isAnimeContent).slice(0, 24));
+    renderRow('movies-row', allData.filter(isMovieContent).slice(0, 24));
+    renderRow('local-series-row', allData.filter(s => s.type === 'yerli').slice(0, 24));
 }
 
 function showDocumentaries(btn) {
@@ -548,7 +587,7 @@ function showDocumentaries(btn) {
     document.getElementById('series-section').style.display = 'none';
     document.getElementById('movies-section').style.display = 'none';
     document.getElementById('documentaries-section').style.display = '';
-    renderRow('documentaries-row', allData.filter(isAnimeContent));
+    renderRow('documentaries-row', allData.filter(isAnimeContent).slice(0, 24));
 }
 
 function showLocalSeries(btn) {
@@ -562,7 +601,7 @@ function showLocalSeries(btn) {
     document.getElementById('documentaries-section').style.display = 'none';
     document.getElementById('movies-section').style.display = 'none';
     document.getElementById('local-series-section').style.display = '';
-    renderRow('local-series-row', allData.filter(s => s.type === 'yerli'));
+    renderRow('local-series-row', allData.filter(s => s.type === 'yerli').slice(0, 24));
 }
 
 function initLocalCarousel() {
@@ -633,7 +672,7 @@ function setActiveNavBtn(btn) {
 // ═══════════════════════════════════════════
 async function openDetail(seriesId, autoPlay = false) {
     try {
-        const res = await fetch(API + '/series/' + seriesId + '?_=' + Date.now());
+        const res = await apiFetch(API + '/series/' + seriesId, {}, 15 * 1000);
         const series = await res.json();
         currentSeries = series;
         window.currentSeries = currentSeries;

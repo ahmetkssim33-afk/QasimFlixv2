@@ -1,10 +1,10 @@
 {
-  "version": "1.0.10",
-  "build": 2026060302,
+  "version": "1.0.11",
+  "build": 2026060601,
   "apkRequired": false,
-  "message": "qf-apk.js eski WebView uyumluluk ve syntax hatasi duzeltildi.",
+  "message": "SineQ akicilik, API cache ve APK WebView guncellemesi.",
   "apkUrl": "",
   "notifyUpdates": true,
   "notifyNewContent": true,
-  "forceClearCache": true
+  "forceClearCache": false
 }

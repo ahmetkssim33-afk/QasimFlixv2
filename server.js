@@ -23,6 +23,26 @@ const { isConfigured: isTMDBConfigured, searchTMDB, getTMDBDetails } = require('
 const nodemailer = require('nodemailer');
 
 const app = express();
+
+function staticCacheOptions() {
+  return {
+    etag: true,
+    maxAge: '7d',
+    setHeaders(res, filePath) {
+      if (/\.html?$/i.test(filePath)) res.setHeader('Cache-Control', 'no-cache');
+      else if (/\.(js|css|png|jpg|jpeg|webp|svg|ico|woff2?)$/i.test(filePath)) res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+    }
+  };
+}
+
+
+function setShortCache(res, seconds = 30) {
+  res.setHeader('Cache-Control', `public, max-age=${seconds}, stale-while-revalidate=${Math.max(seconds * 4, 60)}`);
+}
+function setNoStore(res) {
+  res.setHeader('Cache-Control', 'no-store, max-age=0');
+}
+
 app.use(securityHeaders);
 app.use(cors(createCorsOptions()));
 app.use(express.json({ limit: '20mb' }));
@@ -64,7 +84,7 @@ const upload = multer({
 });
 
 // Serve uploaded files
-app.use('/uploads', express.static(uploadsDir));
+app.use('/uploads', express.static(uploadsDir, { etag: true, maxAge: '1d' }));
 // Use shared DB connector and centralized models
 const { connectDB } = require('./lib/db');
 const { Series, Season, Episode, WatchProgress, Category, Film, User, Rating, Analytics, EmailLog, ContentRequest, IssueReport, PushSubscription, Announcement, AdminLog } = require('./lib/models');
@@ -590,6 +610,7 @@ app.get('/api/categories', async (req, res) => {
 // Get all series (with pagination)
 app.get('/api/series', async (req, res) => {
   try {
+    setShortCache(res, 30);
     const page = parseInt(req.query.page) || 1;
     const limit = 12;
     const skip = (page - 1) * limit;
@@ -615,6 +636,7 @@ app.get('/api/series', async (req, res) => {
 // Search series
 app.get('/api/series/search/:query', async (req, res) => {
   try {
+    setShortCache(res, 60);
     const query = req.params.query;
     const results = await Series.find({
       $or: [
@@ -661,6 +683,7 @@ app.get('/api/search/full', async (req, res) => {
 // Get series by category
 app.get('/api/series/category/:category', async (req, res) => {
   try {
+    setShortCache(res, 60);
     const series = await Series.find({
       categories: req.params.category
     }).limit(20);
@@ -673,6 +696,7 @@ app.get('/api/series/category/:category', async (req, res) => {
 // Get single series with all seasons and episodes
 app.get('/api/series/:id', async (req, res) => {
   try {
+    setShortCache(res, 20);
     const series = await Series.findById(req.params.id);
     if (!series) return res.status(404).json({ error: 'Series not found' });
 
@@ -1548,7 +1572,7 @@ app.post('/api/upload', upload.single('image'), (req, res) => {
 // ═══════════════════════════════════════════════════════════
 // STATIC & SERVE — root dizininden serve et (public/ değil)
 // ═══════════════════════════════════════════════════════════
-app.use(express.static(path.join(__dirname)));
+app.use(express.static(path.join(__dirname), staticCacheOptions()));
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/auth', (req, res) => res.sendFile(path.join(__dirname, 'auth.html')));

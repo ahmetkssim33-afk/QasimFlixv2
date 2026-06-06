@@ -76,3 +76,24 @@
     scroll-behavior: auto !important;
   }
 }
+
+
+/* Ek akıcılık: normal site + APK */
+.card-img,
+.ep-thumb-img {
+  object-fit: cover;
+  background: linear-gradient(135deg,#111827,#1f2937);
+}
+
+.qf-apk-mode .navbar,
+.qf-apk-mode .modal-content,
+.qf-apk-mode .player-wrap {
+  transform: translateZ(0);
+}
+
+@media (max-width: 768px) {
+  .cards-row { gap: 10px; padding-bottom: 16px; }
+  .card { min-width: 148px; }
+  .hero { min-height: 470px; }
+  .search-box input { font-size: 16px; }
+}

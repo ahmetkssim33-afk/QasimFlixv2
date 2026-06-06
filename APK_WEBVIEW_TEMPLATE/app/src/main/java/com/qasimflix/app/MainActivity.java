@@ -1,4 +1,4 @@
-package com.qasimflix.app;
+package com.sineq.app;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
@@ -31,7 +31,7 @@ import android.widget.Toast;
 
 
 public class MainActivity extends android.app.Activity {
-    private static final String HOME_URL = "https://qasim-flix2-swnn.vercel.app/index.html?source=apk";
+    private static final String HOME_URL = BuildConfig.SINEQ_WEB_URL;
     private static final int FILE_CHOOSER_REQUEST = 1001;
     private static final int NOTIFICATION_REQUEST = 2001;
 
@@ -82,6 +82,8 @@ public class MainActivity extends android.app.Activity {
         s.setDatabaseEnabled(true);
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
+        s.setLoadsImagesAutomatically(true);
+        s.setBlockNetworkImage(false);
         s.setLoadWithOverviewMode(true);
         s.setUseWideViewPort(true);
         s.setAllowFileAccess(true);
@@ -90,10 +92,10 @@ public class MainActivity extends android.app.Activity {
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
         webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
         WebView.setWebContentsDebuggingEnabled(false);
-        webView.getSettings().setUserAgentString(webView.getSettings().getUserAgentString() + " QasimFlixAPK/1.0.6");
+        webView.getSettings().setUserAgentString(webView.getSettings().getUserAgentString() + " SineQAPK/1.0.11");
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
-        webView.addJavascriptInterface(new QasimFlixBridge(), "QasimFlixAndroid");
+        webView.addJavascriptInterface(new SineQBridge(), "SineQAndroid");
 
         webView.setWebViewClient(new WebViewClient() {
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
@@ -108,6 +110,11 @@ public class MainActivity extends android.app.Activity {
 
             @Override public void onPageStarted(WebView view, String url, Bitmap favicon) {
                 super.onPageStarted(view, url, favicon);
+            }
+
+            @Override public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                view.evaluateJavascript("try{localStorage.setItem('sineq_apk','1');document.documentElement.classList.add('qf-apk-detected')}catch(e){}", null);
             }
         });
 
@@ -134,7 +141,7 @@ public class MainActivity extends android.app.Activity {
             }
         });
 
-        webView.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) -> startDownload(url, "QasimFlix Video"));
+        webView.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) -> startDownload(url, "SineQ Video"));
     }
 
     private void showCustomView(View view, WebChromeClient.CustomViewCallback callback) {
@@ -195,10 +202,10 @@ public class MainActivity extends android.app.Activity {
     private void startDownload(String url, String title) {
         try {
             DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
-            request.setTitle(title == null || title.trim().isEmpty() ? "QasimFlix Video" : title);
-            request.setDescription("QasimFlix indirme başlatıldı");
+            request.setTitle(title == null || title.trim().isEmpty() ? "SineQ Video" : title);
+            request.setDescription("SineQ indirme başlatıldı");
             request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, (title == null ? "qasimflix" : title.replaceAll("[^a-zA-Z0-9._-]", "_")) + ".mp4");
+            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, (title == null ? "sineq" : title.replaceAll("[^a-zA-Z0-9._-]", "_")) + ".mp4");
             request.addRequestHeader("Cookie", CookieManager.getInstance().getCookie(url));
             DownloadManager manager = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
             manager.enqueue(request);
@@ -231,7 +238,7 @@ public class MainActivity extends android.app.Activity {
         }
     }
 
-    public class QasimFlixBridge {
+    public class SineQBridge {
         @JavascriptInterface public void setPlayerActive(String active) {
             boolean on = Boolean.parseBoolean(active);
             runOnUiThread(() -> {
@@ -278,7 +285,7 @@ public class MainActivity extends android.app.Activity {
                 Intent sendIntent = new Intent(Intent.ACTION_SEND);
                 sendIntent.setType("text/plain");
                 sendIntent.putExtra(Intent.EXTRA_TEXT, text);
-                startActivity(Intent.createChooser(sendIntent, "QasimFlix"));
+                startActivity(Intent.createChooser(sendIntent, "SineQ"));
             });
         }
     }

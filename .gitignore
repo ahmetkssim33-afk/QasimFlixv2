@@ -40,3 +40,22 @@ APK_WEBVIEW_TEMPLATE/.cxx/
 uploads/
 db
 db.js/db
+
+
+# SineQ güvenli paketleme
+.env
+.env.*
+!.env.example
+node_modules/
+.git/
+.idea/
+.vscode/
+db
+db.js/
+desktop.ini
+uploads/*.tmp
+APK_WEBVIEW_TEMPLATE/.gradle/
+APK_WEBVIEW_TEMPLATE/.idea/
+APK_WEBVIEW_TEMPLATE/build/
+APK_WEBVIEW_TEMPLATE/app/build/
+APK_WEBVIEW_TEMPLATE/local.properties
