@@ -43,6 +43,24 @@ function setNoStore(res) {
   res.setHeader('Cache-Control', 'no-store, max-age=0');
 }
 
+function escapeRegex(value = '') {
+  return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function cleanSearchTerm(value = '', maxLength = 120) {
+  return String(value || '').trim().slice(0, maxLength);
+}
+
+function safeRegex(value = '', maxLength = 120) {
+  return new RegExp(escapeRegex(cleanSearchTerm(value, maxLength)), 'i');
+}
+
+function clampInt(value, fallback = 1, min = 1, max = 100) {
+  const n = parseInt(value, 10);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(min, Math.min(n, max));
+}
+
 app.use(securityHeaders);
 app.use(cors(createCorsOptions()));
 app.use(express.json({ limit: '20mb' }));
@@ -290,6 +308,11 @@ function shouldRequireAdmin(req) {
   if (method === 'GET' && path === '/api/announcements') return true;
   if (['GET','PATCH','DELETE'].includes(method) && pathMatches(path, /^\/api\/reports(?:\/[^/]+)?$/)) return true;
   if (['GET','PATCH','DELETE'].includes(method) && pathMatches(path, /^\/api\/content-requests(?:\/[^/]+)?$/)) return true;
+
+  // Eski uyumluluk endpointleri de canlıda korumasız kalmasın.
+  if (['POST','PUT','PATCH','DELETE'].includes(method) && ['/kategori-ekle', '/icerik-ekle', '/puan'].includes(path)) return true;
+  if (['DELETE'].includes(method) && pathMatches(path, /^\/icerik\/[^/]+$/)) return true;
+
   return false;
 }
 
@@ -611,8 +634,8 @@ app.get('/api/categories', async (req, res) => {
 app.get('/api/series', async (req, res) => {
   try {
     setShortCache(res, 30);
-    const page = parseInt(req.query.page) || 1;
-    const limit = 12;
+    const page = clampInt(req.query.page, 1, 1, 100000);
+    const limit = clampInt(req.query.limit, 12, 1, 100);
     const skip = (page - 1) * limit;
 
     const series = await Series.find()
@@ -637,15 +660,17 @@ app.get('/api/series', async (req, res) => {
 app.get('/api/series/search/:query', async (req, res) => {
   try {
     setShortCache(res, 60);
-    const query = req.params.query;
+    const query = cleanSearchTerm(req.params.query);
+    if (!query) return res.json([]);
+    const rx = safeRegex(query);
     const results = await Series.find({
       $or: [
-        { title: { $regex: query, $options: 'i' } },
-        { description: { $regex: query, $options: 'i' } },
-        { description_tr: { $regex: query, $options: 'i' } },
-        { description_ar: { $regex: query, $options: 'i' } },
-        { categories: { $regex: query, $options: 'i' } },
-        { type: { $regex: query, $options: 'i' } },
+        { title: rx },
+        { description: rx },
+        { description_tr: rx },
+        { description_ar: rx },
+        { categories: rx },
+        { type: rx },
         ...(Number.isFinite(Number(query)) ? [{ releaseYear: Number(query) }] : [])
       ]
     }).limit(30);
@@ -659,9 +684,9 @@ app.get('/api/series/search/:query', async (req, res) => {
 // Full search — title, episode title, category, year, descriptions
 app.get('/api/search/full', async (req, res) => {
   try {
-    const q = String(req.query.q || '').trim();
+    const q = cleanSearchTerm(req.query.q);
     if (!q) return res.json([]);
-    const rx = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    const rx = safeRegex(q);
     const year = Number(q);
     const seriesMatches = await Series.find({ $or: [
       { title: rx }, { description: rx }, { description_tr: rx }, { description_ar: rx }, { categories: rx }, { type: rx },
@@ -684,8 +709,10 @@ app.get('/api/search/full', async (req, res) => {
 app.get('/api/series/category/:category', async (req, res) => {
   try {
     setShortCache(res, 60);
+    const category = cleanSearchTerm(req.params.category, 80);
+    if (!category) return res.json([]);
     const series = await Series.find({
-      categories: req.params.category
+      categories: safeRegex(category, 80)
     }).limit(20);
     res.json(series);
   } catch (err) {

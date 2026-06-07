@@ -31,7 +31,7 @@ import android.widget.Toast;
 
 
 public class MainActivity extends android.app.Activity {
-    private static final String HOME_URL = "https://qasim-flix2-swnn.vercel.app/index.html?source=apk";
+    private static final String HOME_URL = BuildConfig.SINEQ_WEB_URL;
     private static final int FILE_CHOOSER_REQUEST = 1001;
     private static final int NOTIFICATION_REQUEST = 2001;
 
@@ -82,6 +82,8 @@ public class MainActivity extends android.app.Activity {
         s.setDatabaseEnabled(true);
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
+        s.setLoadsImagesAutomatically(true);
+        s.setBlockNetworkImage(false);
         s.setLoadWithOverviewMode(true);
         s.setUseWideViewPort(true);
         s.setAllowFileAccess(true);
@@ -90,7 +92,7 @@ public class MainActivity extends android.app.Activity {
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
         webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
         WebView.setWebContentsDebuggingEnabled(false);
-        webView.getSettings().setUserAgentString(webView.getSettings().getUserAgentString() + " SineQAPK/1.0.6");
+        webView.getSettings().setUserAgentString(webView.getSettings().getUserAgentString() + " SineQAPK/1.0.11");
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
         webView.addJavascriptInterface(new SineQBridge(), "SineQAndroid");
@@ -108,6 +110,11 @@ public class MainActivity extends android.app.Activity {
 
             @Override public void onPageStarted(WebView view, String url, Bitmap favicon) {
                 super.onPageStarted(view, url, favicon);
+            }
+
+            @Override public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                view.evaluateJavascript("try{localStorage.setItem('sineq_apk','1');document.documentElement.classList.add('qf-apk-detected')}catch(e){}", null);
             }
         });
 

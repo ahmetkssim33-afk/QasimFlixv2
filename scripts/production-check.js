@@ -43,6 +43,20 @@ assert(androidMain.includes('WebView.setWebContentsDebuggingEnabled(false);'), '
 
 const versionName = (androidGradle.match(/versionName\s+['"]([^'"]+)['"]/i) || [])[1];
 assert(versionName === version.version, `APK versionName (${versionName}) ile version.json (${version.version}) eşleşmiyor`);
+assert(androidMain.includes('BuildConfig.SINEQ_WEB_URL'), 'APK MainActivity hardcoded URL kullanıyor; BuildConfig.SINEQ_WEB_URL kullanılmalı');
+assert(androidMain.includes(`SineQAPK/${version.version}`), 'APK user-agent version.json ile eşleşmiyor');
+
+const legacyMain = path.join(root, 'APK_WEBVIEW_TEMPLATE/app/src/main/java/com/qasimflix/app/MainActivity.java');
+if (fs.existsSync(legacyMain)) {
+  const legacyText = fs.readFileSync(legacyMain, 'utf8');
+  assert(!/public\s+class\s+MainActivity/.test(legacyText), 'Eski qasimflix MainActivity duplicate class hatası üretebilir');
+}
+
+const envPath = path.join(root, '.env');
+if (fs.existsSync(envPath)) {
+  const envText = fs.readFileSync(envPath, 'utf8').trim();
+  assert(!/^mongodb(?:\+srv)?:\/\//i.test(envText), '.env formatı hatalı: MONGODB_URI=... şeklinde olmalı ve gerçek .env paylaşım zipine girmemeli');
+}
 
 warn(!fs.existsSync(path.join(root, 'node_modules')), 'node_modules proje zip/push içinde olmamalı');
 warn(!fs.existsSync(path.join(root, '.idea')), '.idea proje zip/push içinde olmamalı');
